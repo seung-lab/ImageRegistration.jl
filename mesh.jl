@@ -3,9 +3,16 @@ using HDF5
 using JLD
 include("convolve.jl")
 
+type Tile
+	index::Tuple{Integer, Integer}
+	array::Array{FloatingPoint, 2}
+	dx::FloatingPoint
+	dy::FloatingPoint
+end
+
 # EVENTUALLY ALL MESHES SHOULD EXTEND SOME TYPE - SAY 'MESHABLE' - WITH FUNCTIONS THAT HAVE CORRESPONDING METHODS
 type Mesh
-	Index::Tuple{Integer, Integer}	# sectionIndex, tileIndex as a tuple - if tileIndex is 0 then denotes entire section / collection of multiple meshes
+	index::Tuple{Integer, Integer}	# sectionIndex, tileIndex as a tuple - if tileIndex is 0 then denotes entire section / collection of multiple meshes
 
 	n::Integer # number of nodes in the mesh
 	m::Integer # number of edges in the mesh
@@ -21,14 +28,14 @@ type Mesh
 end
 
 type Matches
-	srcIndex::Tuple{Integer, Integer} 	# source index, sectionIndex, tileIndex
-	dstIndex::Tuple{Integer, Integer}	# destination index, sectionIndex, tileIndex
+	src_index::Tuple{Integer, Integer} 	# source index, sectionIndex, tileIndex
+	dst_index::Tuple{Integer, Integer}	# destination index, sectionIndex, tileIndex
 
 	n::Integer				# number of points in the mesh
 
-	srcPointIndices::Array{Integer, 1}	# keeps track of which points have been matched
-	srcPoints::Array{FloatingPoint, 2} 	# 2-by-n matrix of points at the source, each column stores [i-coordinate, j-coordinate]
-	dstPoints::Array{FloatingPoint, 2} 	# 2-by-n dense matrix of points at the destination, each column stores [i-coordinate, j-coordinate]
+	src_pointIndices::Array{Integer, 1}	# keeps track of which points have been matched
+	src_points::Array{FloatingPoint, 2} 	# 2-by-n matrix of points at the source, each column stores [i-coordinate, j-coordinate]
+	dst_points::Array{FloatingPoint, 2} 	# 2-by-n dense matrix of points at the destination, each column stores [i-coordinate, j-coordinate]
 
 	dispVectors::Array{FloatingPoint, 2}
 end
@@ -54,6 +61,7 @@ end
 
 function Mesh2JLD(filename, mesh::Mesh)
 	fid = jldopen(filename, "w");
+	i = mesh.index;
 	n = mesh.n;
 	m = mesh.m;
 	v = mesh.nodes;
@@ -68,6 +76,7 @@ function Mesh2JLD(filename, mesh::Mesh)
 	fid["e"] = e;
 	fid["l"] = l;
 	fid["k"] = k;
+	fid["f"] = f;
 
 	close(fid);
 end
@@ -128,7 +137,9 @@ function makeTileMesh(A, di, dj, mesh_length, mesh_coeff)
 				m += 1;
 				edges[k, m] = -1;
 				edges[getMeshIndex(mA, i-1, j-1), m] = 1;
-			elseif (i % 2 == 1) && (i > 2) && ((j == 1) || (j == mA[2]))
+			end
+			
+			if (i % 2 == 1) && ((j == 1) || (j == mA[2]))
 				m += 1;
 				edges[k, m] = -1;
 				edges[getMeshIndex(mA, i-2, j), m] = 1;
@@ -184,22 +195,22 @@ function isInternal(A, i, j, d)
 end
 
 # i, j are in world coordinates (as per the mesh coordinate specification)
-function getMaxVector_normxcorr2(A, Ai, Aj, B, dBi, dBj, block_size, search_r)
+function getMaxVector_normxcorr2(A, Ai_g, Aj_g, dAi, dAj, B, dBi, dBj, block_size, search_r)
 	b_rad = block_size + search_r;
-	noMatch = [0; 0; -1];
+	noMatch = [0 0 -1];
 
 	# convert to matrix coordinates
-	Ai = convert(Integer, round(Ai));
-	Aj = convert(Integer, round(Aj));
+	Ai = convert(Integer, round(Ai_g - dAi));
+	Aj = convert(Integer, round(Aj_g - dAj));
 
-	Bi = convert(Integer, round(Ai - dBi));
-	Bj = convert(Integer, round(Aj - dBj));
+	Bi = convert(Integer, round(Ai_g - dBi));
+	Bj = convert(Integer, round(Aj_g - dBj));
 
 	if (!isInternal(A, Ai, Aj, block_size) || !isInternal(B, Bi, Bj, b_rad))
 		return noMatch;
 	end
 
-	###println("Attempting match between ($Ai, $Aj) and ($Bi, $Bj)");
+	println("($Ai, $Aj)->($Bi, $Bj): ");
 
 	Ai_range = ceil(Ai)-block_size:ceil(Ai)+block_size;
 	Aj_range = ceil(Aj)-block_size:ceil(Aj)+block_size;
@@ -217,40 +228,43 @@ function getMaxVector_normxcorr2(A, Ai, Aj, B, dBi, dBj, block_size, search_r)
 	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max];
 end
 
-function extractMatchesAtMesh(A, A_Mesh, B, dBi, dBj, block_size, search_r, min_r)
-	srcIndex = A_Mesh.Index;
-	dstIndex = (A_Mesh.Index[1], A_Mesh.Index[2] + 1);
+function extractMatchesAtMesh(A, A_Mesh, dAi, dAj, B, dBi, dBj, block_size, search_r, min_r)
+	src_index = A_Mesh.index;
+	dst_index = (A_Mesh.index[1], A_Mesh.index[2] + 1);
 
 	n = 0;
 	n_upperbound = convert(Integer, A_Mesh.n);
 
-	srcPoints = Array(FloatingPoint, 2, n_upperbound);
-	srcPointIndices = Array(Integer, n_upperbound);
-	dstPoints = Array(FloatingPoint, 2, n_upperbound);
+	src_points = Array(FloatingPoint, 2, n_upperbound);
+	src_pointIndices = Array(Integer, n_upperbound);
+	dst_points = Array(FloatingPoint, 2, n_upperbound);
 	dispVectors = Array(FloatingPoint, 2, n_upperbound);
 
 	for j in [1:n_upperbound]
 		Ai = A_Mesh.nodes[1, j];
 		Aj = A_Mesh.nodes[2, j];
-	#	println("Matching mesh point $j of $n_upperbound");
-		v = getMaxVector_normxcorr2(A, Ai, Aj, B, dBi, dBj, block_size, search_r);
-		println("$v");
+		print("Matching mesh point $j of $n_upperbound: ");
+		v = getMaxVector_normxcorr2(A, Ai, Aj, dAi, dAj, B, dBi, dBj, block_size, search_r);
 		if v[3] < min_r
+			println("No match found.");
 			continue
 		end
+		println("$v");
 		n += 1;
-		srcPointIndices[n] = j;
+		src_pointIndices[n] = j;
 		dispVectors[:, n] = v[1:2];
-		srcPoints[:, n] = A_Mesh.nodes[:, j];
-		dstPoints[:, n] = srcPoints[:, n] + dispVectors[:, n];
+		src_points[:, n] = A_Mesh.nodes[:, j];
+		dst_points[:, n] = src_points[:, n] + dispVectors[:, n];
 	end
 
-	srcPointIndices = srcPointIndices[1:n];
-	srcPoints = srcPoints[:, 1:n];
-	dstPoints = dstPoints[:, 1:n];
+	src_pointIndices = src_pointIndices[1:n];
+	src_points = src_points[:, 1:n];
+	dst_points = dst_points[:, 1:n];
 	dispVectors = dispVectors[:, 1:n];
 
-	matches = Matches(srcIndex, dstIndex, n, srcPointIndices, srcPoints, dstPoints, dispVectors);
+	println("$n total matches found of $n_upperbound mesh points.");
+
+	matches = Matches(src_index, dst_index, n, src_pointIndices, src_points, dst_points, dispVectors);
 	return matches;
 end
 
@@ -260,19 +274,18 @@ function addFixedMatches!(A_Mesh, matches, spring_coeff)
 	n_new = A_Mesh.n + matches.n;
 	m_new = A_Mesh.m + matches.n;
 
-	nodes_add = matches.dstPoints;
+	nodes_add = matches.dst_points;
 	nodes_fixed_add = fill(true, matches.n); 
 
 	edges_new = similar(A_Mesh.edges, n_new, m_new);
 	edges_new[1:A_Mesh.n, 1:A_Mesh.m] = A_Mesh.edges[:, :]
 
-	edge_lengths_add = similar(A_Mesh.edge_lengths, matches.n);
-	edge_coeffs_add = fill(spring_coeff, matches.n);
+	edge_lengths_add = fill(convert(FloatingPoint, 0), matches.n);
+	edge_coeffs_add = fill(convert(FloatingPoint, spring_coeff), matches.n);
 
 	for j in [1:matches.n]
-		edges_new[matches.srcPointIndices[j], A_Mesh.m + j] = -1;
+		edges_new[matches.src_pointIndices[j], A_Mesh.m + j] = -1;
 		edges_new[A_Mesh.n + j, A_Mesh.m + j] = 1;
-		edge_lengths_add[j] = norm(matches.dispVectors[j]);
 	end
 
 	A_Mesh.n = n_new;
@@ -288,18 +301,27 @@ end
 
 ################################# SCRIPT FOR TESTING ###################################
 
-#=
-dAi = 0;
-dAj = 0;
-dBi = 0;
-dBj = 0;
-block_size = 10;
-search_r = 10;
+A = convert(Array{Float64, 2}, data(imread("./Test/Tile_r4-c2_S2-W001_sec20.tif")));
+dAi = 0; 21906;
+dAj = 178; 36429;
+
+
+B = convert(Array{Float64, 2}, data(imread("./Test/Tile_r4-c3_S2-W001_sec20.tif")));
+dBi = 7184; 29090; # 2908.6;
+dBj = 0;36251; # 3624.3;
+
+block_size = 40;
+search_r = 80;
 min_r = 0.5;
-mesh_coeff = 1;
-match_coeff = 1;
+mesh_length = 50;
+mesh_coeff = 0.5;
+match_coeff = 1.0;
 
-
+@time Am = makeTileMesh(A, dAi, dAj, mesh_length, mesh_coeff);
+@time matches = extractMatchesAtMesh(A, Am, dAi, dAj, B, dBi, dBj, block_size, search_r, min_r);
+@time addFixedMatches!(Am, matches, match_coeff); 
+@time Mesh2JLD("r4c2-r4c3.jld", Am);
+#=
 A = rand(11, 11);
 A_Mesh = makeTileMesh(A, 0, 0, 2, 0.5);
 
