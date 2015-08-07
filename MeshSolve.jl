@@ -26,13 +26,14 @@ function Energy( Springs, Stiffnesses, RestLengths)
 end
 
 function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
+    eps=1e-7
     # gradient of potential energy with respect to vertex positions
     # returns dxV array, same size as Vertices
     # physically, -gradient is spring forces acting on vertices
     Forces=similar(Springs)
     Lengths=sqrt(sum(Springs.^2,1))   # need fix for divide by zero?
     for a=1:size(Springs,2)
-        Forces[:,a]=Stiffnesses[a]*(1-RestLengths[a]/Lengths[a])*Springs[:,a]
+        Forces[:,a]=Stiffnesses[a]*(1-RestLengths[a]/(Lengths[a]+eps))*Springs[:,a]
     end
     Forces*Incidence'
 end
@@ -41,12 +42,12 @@ function Hessian( Springs, Incidence, Stiffnesses, RestLengths)
     # Hessian of the potential energy as an Vd x Vd matrix
     # i.e. VxV block matrix of dxd blocks
     # Note: symmetric positive definite
-    
+   eps = 1e-7 
     V = size(Incidence,1)
     d = size(Springs,1)
     H = zeros(V*d, V*d)
 
-    Lengths=sqrt(sum(Springs.^2,1))
+    Lengths=sqrt(sum(Springs.^2,1))+eps
 
     for a=1:size(Springs,2)
         # one-step build of dH
@@ -72,46 +73,59 @@ using PyPlot
 using HDF5
 using JLD
 
-data=load("8000x8000_100px.jld")
-Vertices=data["v"]
-Incidence=data["e"]
-RestLengths=data["l"]
-Stiffnesses=data["k"]
+data=load("r4c2-r4c3.jld")
+Vertices=data["nodes"]
+Incidence=data["edges"]
+RestLengths=data["edge_lengths"]
+Stiffnesses=data["edge_coeffs"]
+Fixed=data["nodes_fixed"]
+#=
+fid = jldopen("./solvedMesh.jld", "w")
+fid["n"] = 3317;
+fid["m"] = 9781;
+fid["nodes"] = Vertices[:, 1:3317];
+=#
 
 d=size(Vertices,1)
 V=size(Vertices,2)
 E=size(Incidence,2)
 Lengths=zeros(1,V)
 
+#Moving = fill(1, V) - convert(Array{Int64, 1}, Fixed);
+
+#println(Moving);
+
 #function MeshSolve(Vertices, Incidence, Stiffnesses, RestLengths, Moving)
-Moving=1:7400
+Moving=1:7394
 Moving2=[]
 for i in Moving
     Moving2=[Moving2; (i-1)*d+collect(1:d)]
 end
 Moving2=convert(Array{Int64,1},Moving2)
 
-Vertices[:,Moving]=Vertices[:,Moving]+30*randn(size(Vertices[:,Moving]))
+
+
+#Vertices[:,Moving]=Vertices[:,Moving]+20*randn(size(Vertices[:,Moving]))
 eta=0.5
-niter=100
+niter=250
 U=zeros(1,niter)     # energy vs. time
 g=similar(Vertices)  # gradient of potential energy
 
 for iter=1:niter
     Springs=Vertices*Incidence
     g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
-    if iter<10
+    if iter<1
     # gradient descent
         Vertices[:,Moving]=Vertices[:,Moving]-eta*g[:,Moving]
     else
-    # Newton's method
-        H=Hessian(Springs, Incidence, Stiffnesses, RestLengths)
-        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(sparse(H[Moving2,Moving2])\g[:,Moving][:],2,length(Moving))
+   #  Newton's method
+       H=Hessian(Springs, Incidence, Stiffnesses, RestLengths)
+        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(sparse(H[Moving2,Moving2])\g[:,Moving][:],2,length(Moving)) #
     end
-    # visualize the dynamics
+#    visualize the dynamics
     subplot(221)
     cla()
-#    scatter(Vertices[1,:],Vertices[2,:])
+    scatter(Vertices[1,:],Vertices[2,:])
     subplot(222)
     U[iter]=Energy(Springs,Stiffnesses,RestLengths)
     println(iter," ", U[iter])
@@ -123,6 +137,10 @@ for iter=1:niter
     draw()
 end
 
-
+#=
+fid["nodes_t"] = Vertices[:, 1:3317];
+fid["edges"] = Incidence[1:3317, 1:9781]
+=#
+close(fid);
 
 
