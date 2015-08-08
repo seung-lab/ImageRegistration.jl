@@ -40,7 +40,9 @@ function normxcorr2(template,img)
     # result has same size as MATLAB-style 'valid' convolution
     # efficient algorithm of J. P. Lewis
     # http://scribblethink.org/Work/nvisionInterface/nip.html
-    
+    #
+    # return NaN for image patch or template with zero variance
+    # 
     # need some argument checking
     # e.g. sizes of template should be less than those of img
     # this works for arrays.  extend to Image defined in Holy's package?
@@ -56,14 +58,22 @@ function normxcorr2(template,img)
     SL=LL-[n1;0]; LS=LL-[0;n2]
     SS=LL-[n1;n2]
     # sum of img and its square in template-sized neighborhoods
-    s=cumsum2(imgpad); localsum=s[LL...]-s[SL...]-s[LS...]+s[SS...]
-    s2=cumsum2(imgpad.^2); localsum2=s2[LL...]-s2[SL...]-s2[LS...]+s2[SS...]
-
-    # sufficient to subtract mean from one variable
+    s=cumsum2(imgpad)
+    localsum=s[LL...]-s[SL...]-s[LS...]+s[SS...]
+    s2=cumsum2(imgpad.^2)
+    localsum2=s2[LL...]-s2[SL...]-s2[LS...]+s2[SS...]
+    
+    # sufficient to subtract mean from just one variable
     dt=template-mean(template)
+    templatevariance=sum(dt.^2)
+    if templatevariance==0
+        return zeros(m1-n1+1,m2-n2+1)*NaN
+    end
     numerator=valid_convolve(img,dt[end:-1:1,end:-1:1],[1 2])
-    # normalize by standard deviations
-    denominator=sqrt((localsum2-localsum.^2/prod(size(template)))*sum(dt.^2))
+    localvariance=localsum2-localsum.^2/prod(size(template))
+    # following should only be negative due to roundoff error
+    localvariance[localvariance.<=0] *= NaN  
+    denominator=sqrt(localvariance*templatevariance)
     numerator./denominator
 end
     
