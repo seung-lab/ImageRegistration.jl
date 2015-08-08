@@ -18,7 +18,6 @@
 # 'Moving' - integer vector containing indices of moving vertices
 # could be changed to 1xE binary vector
 
-
 function Energy( Springs, Stiffnesses, RestLengths)
     # potential energy in springs
     Lengths=sqrt(sum(Springs.^2,1))   # spring lengths (row vector)
@@ -26,14 +25,17 @@ function Energy( Springs, Stiffnesses, RestLengths)
 end
 
 function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
-    eps=1e-7
-    # gradient of potential energy with respect to vertex positions
+    # gradient of energy with respect to vertex positions
     # returns dxV array, same size as Vertices
     # physically, -gradient is spring forces acting on vertices
     Forces=similar(Springs)
-    Lengths=sqrt(sum(Springs.^2,1))   # need fix for divide by zero?
+    Lengths=sqrt(sum(Springs.^2,1))
     for a=1:size(Springs,2)
-        Forces[:,a]=Stiffnesses[a]*(1-RestLengths[a]/(Lengths[a]+eps))*Springs[:,a]
+        if Lengths[a]==0
+            Forces[:,a]=0.*Forces[:,a]  # technically NaN if RestLengths[a]!=0
+        else
+            Forces[:,a]=Stiffnesses[a]*(1-RestLengths[a]/Lengths[a])*Springs[:,a]
+        end
     end
     Forces*Incidence'
 end
@@ -42,19 +44,18 @@ function Hessian( Springs, Incidence, Stiffnesses, RestLengths)
     # Hessian of the potential energy as an Vd x Vd matrix
     # i.e. VxV block matrix of dxd blocks
     # Note: symmetric positive definite
-   eps = 1e-7 
     V = size(Incidence,1)
     d = size(Springs,1)
     H = zeros(V*d, V*d)
 
-    Lengths=sqrt(sum(Springs.^2,1))+eps
+    Lengths=sqrt(sum(Springs.^2,1))
 
     for a=1:size(Springs,2)
-        # one-step build of dH
-        #        dH = (1-RestLengths[a]/Lengths[a])*eye(d)+RestLengths[a]*Springs[:,a]*Springs[:,a]'/Lengths[a]^3
-        # two-step build of dH
-        dH = eye(d)-Springs[:,a]*Springs[:,a]'/Lengths[a]^2  # projection perpendicular to Springs
-        dH = eye(d)-RestLengths[a]/Lengths[a]*dH
+        if Lengths[a]==0
+            dH = eye(d)   # technically NaN if RestLengths[a]!=0
+        else
+            dH = (1-RestLengths[a]/Lengths[a])*eye(d)+RestLengths[a]*Springs[:,a]*Springs[:,a]'/Lengths[a]^3
+        end
         dH = Stiffnesses[a]*dH;
         VertexList=find(Incidence[:,a])    # vertices incident on spring a
         for i=VertexList
@@ -91,18 +92,14 @@ V=size(Vertices,2)
 E=size(Incidence,2)
 Lengths=zeros(1,V)
 
-#Moving = fill(1, V) - convert(Array{Int64, 1}, Fixed);
-
-#println(Moving);
+Moving = ~Fixed
 
 #function MeshSolve(Vertices, Incidence, Stiffnesses, RestLengths, Moving)
-Moving=1:7394
 Moving2=[]
 for i in Moving
     Moving2=[Moving2; (i-1)*d+collect(1:d)]
 end
 Moving2=convert(Array{Int64,1},Moving2)
-
 
 
 #Vertices[:,Moving]=Vertices[:,Moving]+20*randn(size(Vertices[:,Moving]))
@@ -114,12 +111,12 @@ g=similar(Vertices)  # gradient of potential energy
 for iter=1:niter
     Springs=Vertices*Incidence
     g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
-    if iter<1
-    # gradient descent
+    if iter<30
+        # gradient descent
         Vertices[:,Moving]=Vertices[:,Moving]-eta*g[:,Moving]
     else
-   #  Newton's method
-       H=Hessian(Springs, Incidence, Stiffnesses, RestLengths)
+        #  Newton's method
+        H=Hessian(Springs, Incidence, Stiffnesses, RestLengths)
         Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(sparse(H[Moving2,Moving2])\g[:,Moving][:],2,length(Moving)) #
     end
 #    visualize the dynamics
