@@ -54,48 +54,11 @@ function pa_warp2{N}(img::Array{Float64, N},
     warped
 end
 
-function pa_warp3{N}(img::Array{Float64, N},
-                    src::Matrix{Float64}, dst::Matrix{Float64},
-                    trigs::Matrix{Int64})
-    warped = zeros(eltype(img), size(img))    
-    for t=1:size(trigs, 1)    
-        tr = squeeze(trigs[t, :], 1)
-        Y = src[tr, 1]
-        X = src[tr, 2]
-        
-        V = dst[tr, 1]
-        U = dst[tr, 2]
-               
-        # warp parameters from target (U, V) to source (X, Y)
-        M = affine_params(U, V, X, Y)
-        
-        mask = poly2mask2(U, V, size(img)[1:2]...)
-        vs, us = findn(mask)
-        # vs, us = poly2source(U, V)
-        
-        # for every pixel in target triangle we find corresponding pixel in source
-        # and copy its value
-        for i=1:length(vs)
-            u, v = us[i], vs[i]
-            x, y = warp_pixel(M, u, v)
-            if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
-                warped[v, u, :] = img[round(Int64,y), round(Int64,x), :]
-            end
-        end
-        
-    end
-    warped
-end
-
 function poly2source(px, py)
+# Run fillpoly2 and findn over the basic bounding box of a given triangle
     left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
     top, bottom = floor(Int64,minimum(py)), ceil(Int64,maximum(py))
     mask = zeros(Bool, bottom-top+10, right-left+10)
-    # println(size(mask))
-    # println(px)
-    # println(left)
-    # println(py)
-    # println(top)
     fill = fillpoly2!(mask, px-left+1, py-top+1, true)
     vs, us = findn(fill)
     vs += top-1
