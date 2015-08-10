@@ -44,9 +44,11 @@ function pa_warp2{N}(img::Array{Float64, N},
         # and copy its value
         for i=1:length(vs)
             u, v = us[i], vs[i]
-            x, y = warp_pixel(M, u, v)
+            x, y = M * [u, v, 1]
+            y = round(Int64,y)
+            x = round(Int64,x)
             if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
-                warped[v, u, :] = img[round(Int64,y), round(Int64,x), :]
+                warped[v, u] = img[y, x]
             end
         end
         
@@ -58,7 +60,7 @@ function poly2source(px, py)
 # Run fillpoly2 and findn over the basic bounding box of a given triangle
     left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
     top, bottom = floor(Int64,minimum(py)), ceil(Int64,maximum(py))
-    mask = zeros(Bool, bottom-top+10, right-left+10)
+    mask = zeros(Bool, bottom-top+1, right-left+1)
     fill = fillpoly2!(mask, px-left+1, py-top+1, true)
     vs, us = findn(fill)
     vs += top-1
