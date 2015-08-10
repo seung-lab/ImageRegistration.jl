@@ -17,3 +17,4 @@ A set of tools for elastic image registration in Julia.
 * Detect overlapping tile pairs based on affine transforms
 * Include unit tests in MeshSolve
 * Include unit tests in Mesh
+* Include unit tests in piecewiseaffine_warp
