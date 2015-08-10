@@ -210,8 +210,8 @@ end
 
 function demo_tiles()
 # Demo the two tile case
-    mesh_path = joinpath(BUCKET, "test_images", "solvedMesh.jld")
-    tile_path = joinpath(BUCKET, "test_images", "Tile_r4-c2_S2-W001_sec20.tif")
+    mesh_path = joinpath(BUCKET, "EM_images", "solvedMesh.jld")
+    tile_path = joinpath(BUCKET, "EM_images", "Tile_r4-c2_S2-W001_sec20.tif")
     offset = [21906, 36429]
     img, img_warped = warp_tile(mesh_path, tile_path, offset)
 end
