@@ -11,3 +11,7 @@ A set of tools for elastic image registration in Julia.
   * this could be helpful for blending https://github.com/timholy/Images.jl/blob/master/doc/overlays.md
 * Finish imwarp
 * Optimize incidences2triangles
+* Optimize pa_warp2 (rectify number of operations with time spent in method)
+* Visualize block matching locations
+* Test better interpolation method in piecewise affine warping
+* Detect overlapping tile pairs based on affine transforms
