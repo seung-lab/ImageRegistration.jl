@@ -15,3 +15,5 @@ A set of tools for elastic image registration in Julia.
 * Visualize block matching locations
 * Test better interpolation method in piecewise affine warping
 * Detect overlapping tile pairs based on affine transforms
+* Include unit tests in MeshSolve
+* Include unit tests in Mesh
