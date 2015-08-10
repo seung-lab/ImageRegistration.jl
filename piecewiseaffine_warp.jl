@@ -23,8 +23,13 @@ warp_pixel(M, x, y) = M * [x, y, 1]
 
 function pa_warp2{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
-                    trigs::Matrix{Int64})
-    warped = zeros(eltype(img), size(img))    
+                    trigs::Matrix{Int64}, interp = true)
+    warped = zeros(eltype(img), size(img))
+    if interp
+        println("w interpolation")
+    else
+        println("w/o interpolation")
+    end
     for t=1:size(trigs, 1)    
         tr = squeeze(trigs[t, :], 1)
         Y = src[tr, 1]
@@ -45,10 +50,19 @@ function pa_warp2{N}(img::Array{Float64, N},
         for i=1:length(vs)
             u, v = us[i], vs[i]
             x, y = M * [u, v, 1]
-            y = round(Int64,y)
-            x = round(Int64,x)
-            if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
-                warped[v, u] = img[y, x]
+            if interp
+                fx, fy = floor(Int64, x), floor(Int64, y)
+                wx, wy = x-fx, y-fy
+                if 1 <= y && y+1 <= size(img, 1) && 1 <= x && x+1 <= size(img, 2)
+                    p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
+                    warped[v, u] = p[1]
+                end
+            else
+                y = round(Int64,y)
+                x = round(Int64,x)
+                if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
+                    warped[v, u] = img[y, x]
+                end
             end
         end
         
