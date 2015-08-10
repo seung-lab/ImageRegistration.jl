@@ -110,9 +110,14 @@ function warp_tile(mesh_path, tile_path, offset)
 
     node_dict = incidence2dict(e)
     triangles = dict2triangles(node_dict)
+
+    # Use interpolation based method in PiecewiseAffine package
+    # warp_params = pa_warp_params(dst_nodes, triangles, size(img_padded))
+    # img_warped = pa_warp(warp_params, img_padded, src_nodes)
+
     img_warped = pa_warp2(img_padded, src_nodes, dst_nodes, triangles)
-    draw_mesh(make_isotropic(img_padded), src_nodes, node_dict)
-    draw_mesh(make_isotropic(img_warped), dst_nodes, node_dict) 
+    # draw_mesh(make_isotropic(img_padded), src_nodes, node_dict)
+    # draw_mesh(make_isotropic(img_warped), dst_nodes, node_dict) 
     return img_padded, img_warped
 end
 
@@ -137,7 +142,7 @@ end
 function demo_warp2()
 # Demo the updated pa_warp2 function that runs faster than original package
     img = imread(joinpath(BUCKET, "test_images", "turtle.jpg"))
-    img = convert(Array{Float64, 3}, data(separate(img)))
+    img = convert(Array{Float64, 3}, data(separate(img)))[:,:,1]
     initial_nodes = [20.0 20.0;
                     620.0 20.0;
                     620.0 560.0;
@@ -164,6 +169,41 @@ function demo_warp2()
     println(size(img))
 
     warp = pa_warp2(img, src_nodes, dst_nodes, triangles)
+    draw_mesh(warp, dst_nodes, node_dict)
+    println(size(warp))
+end
+
+function demo_warp3()
+# Demo the updated pa_warp2 function that runs faster than original package
+    img = imread(joinpath(BUCKET, "test_images", "turtle.jpg"))
+    img = convert(Array{Float64, 3}, data(separate(img)))[:,:,1]
+    initial_nodes = [20.0 20.0;
+                    620.0 20.0;
+                    620.0 560.0;
+                    20.0 560.0;
+                    320.0 290.0]
+    final_nodes = [20.0 20.0;
+                    620.0 20.0;
+                    620.0 560.0;
+                    20.0 560.0;
+                    400.0 460.0]
+    incidence = [1 1 1 0 0 0 0 0;
+                -1 0 0 1 1 0 0 0;
+                0 0 0 -1 0 1 1 0;
+                0 -1 0 0 0 0 -1 1;
+                0 0 -1 0 -1 -1 0 -1]
+    triangles = [1 2 5;
+                1 4 5;
+                2 3 5;
+                3 4 5];
+    src_nodes = xy2yx(initial_nodes)
+    dst_nodes = xy2yx(final_nodes)
+    node_dict = incidence2dict(incidence)
+    draw_mesh(img, src_nodes, node_dict)
+    println(size(img))
+
+    warp_params = pa_warp_params(dst_nodes, triangles, size(img))
+    warp = pa_warp(warp_params, img, src_nodes)
     draw_mesh(warp, dst_nodes, node_dict)
     println(size(warp))
 end
