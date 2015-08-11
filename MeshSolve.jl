@@ -28,15 +28,11 @@ function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
     # gradient of energy with respect to vertex positions
     # returns dxV array, same size as Vertices
     # physically, -gradient is spring forces acting on vertices
-    Forces=similar(Springs)
+    d=size(Springs,1)
     Lengths=sqrt(sum(Springs.^2,1))
-    for a=1:size(Springs,2)
-        if Lengths[a]==0
-            Forces[:,a]=0.*Forces[:,a]  # technically NaN if RestLengths[a]!=0
-        else
-            Forces[:,a]=Stiffnesses[a]*(1-RestLengths[a]/Lengths[a])*Springs[:,a]
-        end
-    end
+    Directions=broadcast(/,Springs,Lengths)
+    Directions[isnan(Directions)] *= 0
+    Forces=broadcast(*,Stiffnesses[:]',Springs-broadcast(*,RestLengths[:]',Directions))
     Forces*Incidence'
 end
 
@@ -54,7 +50,8 @@ function Hessian( Springs, Incidence, Stiffnesses, RestLengths)
         if Lengths[a]==0
             dH = eye(d)   # technically NaN if RestLengths[a]!=0
         else
-            dH = (1-RestLengths[a]/Lengths[a])*eye(d)+RestLengths[a]*Springs[:,a]*Springs[:,a]'/Lengths[a]^3
+            Direction=Springs[:,a]/Lengths[a]
+            dH = eye(d)-RestLengths[a]/Lengths[a]*(eye(d)-Direction*Direction')
         end
         dH = Stiffnesses[a]*dH;
         VertexList=find(Incidence[:,a])    # vertices incident on spring a
@@ -70,74 +67,40 @@ function Hessian( Springs, Incidence, Stiffnesses, RestLengths)
     H
 end
 
-using PyPlot
-using HDF5
-using JLD
+function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
+    # Hessian of the potential energy as an Vd x Vd matrix
+    # i.e. VxV block matrix of dxd blocks
+    # Note: symmetric positive definite
+    E = size(Incidence,2)   # number of springs
+    d = size(Springs,1)     # linear size of blocks in block matrix
+    d2 = d^d                # number of elements in block
+    # allocate space for sparse matrix
+    maxel=16*E*d2   # 16 = square of maximum number of vertices per spring
+    II=zeros(Int64,maxel)
+    JJ=zeros(Int64,maxel)
+    SS=zeros(Float64,maxel)
 
-data=load("r4c2-r4c3.jld")
-Vertices=data["nodes"]
-Incidence=data["edges"]
-RestLengths=data["edge_lengths"]
-Stiffnesses=data["edge_coeffs"]
-Fixed=data["nodes_fixed"]
-#=
-fid = jldopen("./solvedMesh.jld", "w")
-fid["n"] = 3317;
-fid["m"] = 9781;
-fid["nodes"] = Vertices[:, 1:3317];
-=#
-
-d=size(Vertices,1)
-V=size(Vertices,2)
-E=size(Incidence,2)
-Lengths=zeros(1,V)
-
-Moving = ~Fixed
-
-#function MeshSolve(Vertices, Incidence, Stiffnesses, RestLengths, Moving)
-Moving2=[]
-for i in Moving
-    Moving2=[Moving2; (i-1)*d+collect(1:d)]
-end
-Moving2=convert(Array{Int64,1},Moving2)
-
-
-#Vertices[:,Moving]=Vertices[:,Moving]+20*randn(size(Vertices[:,Moving]))
-eta=0.5
-niter=250
-U=zeros(1,niter)     # energy vs. time
-g=similar(Vertices)  # gradient of potential energy
-
-for iter=1:niter
-    Springs=Vertices*Incidence
-    g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
-    if iter<30
-        # gradient descent
-        Vertices[:,Moving]=Vertices[:,Moving]-eta*g[:,Moving]
-    else
-        #  Newton's method
-        H=Hessian(Springs, Incidence, Stiffnesses, RestLengths)
-        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(sparse(H[Moving2,Moving2])\g[:,Moving][:],2,length(Moving)) #
-    end
-#    visualize the dynamics
-    subplot(221)
-    cla()
-    scatter(Vertices[1,:],Vertices[2,:])
-    subplot(222)
-    U[iter]=Energy(Springs,Stiffnesses,RestLengths)
-    println(iter," ", U[iter])
-    plot(1:iter,U[1:iter])
-    subplot(223)
     Lengths=sqrt(sum(Springs.^2,1))
-    cla()
-    plot(1:E,Lengths')
-    draw()
+    numel=0
+    for a=1:size(Springs,2)
+        if Lengths[a]==0
+            dH = eye(d)   # technically NaN if RestLengths[a]!=0
+        else
+            Direction=Springs[:,a]/Lengths[a]
+            dH = eye(d)-RestLengths[a]/Lengths[a]*(eye(d)-Direction*Direction')
+        end
+        dH = Stiffnesses[a]*dH;
+        VertexList=find(Incidence[:,a])    # vertices incident on spring a
+        for i=VertexList
+            for j=VertexList
+                # indices and values of (i,j) block of Hessian
+                II[numel+(1:d2)]=[id for id=(i-1)*d+(1:d), jd=(j-1)*d+(1:d)][:]
+                JJ[numel+(1:d2)]=[jd for id=(i-1)*d+(1:d), jd=(j-1)*d+(1:d)][:]
+                SS[numel+(1:d2)]=(Incidence[i,a]*Incidence[j,a]*dH)[:]
+                numel += d2
+            end
+        end
+    end
+    sparse(II[1:numel],JJ[1:numel],SS[1:numel])
 end
-
-#=
-fid["nodes_t"] = Vertices[:, 1:3317];
-fid["edges"] = Incidence[1:3317, 1:9781]
-=#
-close(fid);
-
 
