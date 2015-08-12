@@ -56,6 +56,7 @@ function pa_warp2{N}(img::Array{Float64, N},
                 wx, wy = x-fx, y-fy
 
                 if 1 <= fy && fy+1 <= size(img, 1) && 1 <= fx && fx+1 <= size(img, 2)
+                    # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
                     p = ((1-wy)*img[fy,fx] + wy*img[fy,fx+1]) * (1-wx) + (wy*img[fy+1,fx] + (1-wy)*img[fy+1,fx+1]) * wx
                     warped[v, u] = p
                 end
