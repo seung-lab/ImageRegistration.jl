@@ -3,7 +3,7 @@
 # V = # mesh vertices in R^d
 # E = # of springs
 #
-# 'Vertices' - dxV matrix, columns contain vertex positions
+# 'Vertice' - dxV matrix, columns contain vertex positions
 #
 # 'Incidence' - VxE generalized oriented incidence matrix
 #    springs <-> columns
@@ -17,6 +17,8 @@
 
 # 'Moving' - integer vector containing indices of moving vertices
 # could be changed to 1xE binary vector
+
+import PyPlot
 
 function Energy( Springs, Stiffnesses, RestLengths)
     # potential energy in springs
@@ -102,5 +104,48 @@ function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
         end
     end
     sparse(II[1:numel],JJ[1:numel],SS[1:numel])
+end
+
+function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta, niter, ngrad, show_plot)
+
+d=size(Vertices,1)
+V=size(Vertices,2)
+E=size(Incidence,2)
+Lengths=zeros(1,V)
+Moving = ~Fixed
+Moving2=[Moving[:]'; Moving[:]'][:]   # double the dimensionality
+U=zeros(1,niter)     # energy vs. time
+g=similar(Vertices)  # gradient of potential energy
+
+for iter=1:niter
+    Springs=Vertices*Incidence
+    g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+    if iter<ngrad
+        # gradient descent
+        Vertices[:,Moving]=Vertices[:,Moving]-eta*g[:,Moving]
+    else
+        #  Newton's method
+	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
+        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
+
+    end
+    U[iter]=Energy(Springs,Stiffnesses,RestLengths)
+    println(iter," ", U[iter])
+    #    visualize the dynamics
+	if(show_plot)
+    PyPlot.subplot(221)
+    PyPlot.cla()
+    PyPlot.scatter(Vertices[1,:],Vertices[2,:])
+    PyPlot.subplot(222)
+    PyPlot.plot(1:iter,U[1:iter])
+    PyPlot.subplot(223)
+    Lengths=sqrt(sum(Springs.^2,1))
+    PyPlot.cla()
+    PyPlot.plot(1:E,Lengths')
+    PyPlot.draw()
+	end
+end
+
+return Vertices;
 end
 
