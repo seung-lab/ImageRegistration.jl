@@ -1,8 +1,12 @@
 using Images
 using ImageView
+using TestImages
+using Interpolations
 using AffineTransforms
 using Grid
 using Base.Test
+using Color
+using FixedPointNumbers
 
 type Rect
   i::Float64
@@ -27,24 +31,22 @@ end
 
 # Apply geometric transform to image
 function imwarp(img, tform)
-  bb = sz2bb(size(img))
-  tbb = snap_bb(tform_bb(bb, tform))
-  out_img = Array(Int64, Int64(tbb.h), Int64(tbb.w))
+    bb = sz2bb(size(img))
+    tbb = snap_bb(tform_bb(bb, tform))
+    out_img = similar(img, Int64(tbb.h), Int64(tbb.w))
 
-  i = 1:size(img,1)
-  j = 1:size(img,2)
-  zi = CoordInterpGrid((i,j), img.data, 0.0, InterpLinear)
+    zi = interpolate(img, BSpline(Constant),OnGrid)
+#    zi = CoordInterpGrid((1:size(img,1),1:size(img,2)), img, 0.0, InterpLinear)
 
-  i_off = Int64(tbb.i)
-  j_off = Int64(tbb.j)
-
-  for i = 1:Int64(bb.h)
-    for j = 1:Int64(bb.w)
-      pt = [i+i_off j+j_off 1]
-      ipt = (pt*tform^-1)[:,1:2]
-      out_img[i, j] = zi[ipt...]
+    i_off = Int64(tbb.i)
+    j_off = Int64(tbb.j)
+    II=[i for i = 1:Int64(tbb.h), j = 1:Int64(tbb.w)][:]'
+    JJ=[j for i = 1:Int64(tbb.h), j = 1:Int64(tbb.w)][:]'
+    pt = [II+i_off; JJ+j_off]
+    ipt = tforminv(tform,pt)
+    for t=1:length(II)
+        out_img[II[t], JJ[t]] = zi[ipt[:,t]...]
     end
-  end  
   return out_img
 end
 
@@ -58,17 +60,16 @@ function snap_bb(bb)
 end
 
 function tform_bb(bb, tform)
-  bb_pts = hcat(rect2pts(bb), ones(Int64, 5,1))
-  tform_pts = bb_pts * tform
-  i = minimum(tform_pts[:,1])
-  j = minimum(tform_pts[:,2])
-  w = maximum(tform_pts[:,2]) - j
-  h = maximum(tform_pts[:,1]) - i
+  tform_pts = tformfwd(tform,rect2pts(bb)');
+  i = minimum(tform_pts[1,:])
+  j = minimum(tform_pts[2,:])
+  w = maximum(tform_pts[2,:]) - j
+  h = maximum(tform_pts[1,:]) - i
   return Rect(i, j, w, h)
 end
 
 function sz2bb(sz)
-  return Rect(0, 0, sz...);
+  return Rect(0, 0, sz...);  # should origin be at 1,1 or 0,0?
 end
 
 function test_tform_bb()
@@ -105,7 +106,9 @@ function test_snap_bb()
 end
 
 function test_img()
-  imread("test_images/turtle.png")
+    tfm=tformrotate(0.2)
+    img=testimage("mandrill")
+    view(imwarp(img,tfm),xy=["y","x"])
 end
 
 function test()
