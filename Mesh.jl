@@ -1,9 +1,7 @@
 module MeshModule
 
-export Mesh
-export Matches
-export MeshSet
-
+export Mesh, Matches, MeshSet
+export Tile2Mesh, getMeshImage, Meshes2Matches, makeNewMeshSet, addMesh2MeshSet!, addMatches2MeshSet!, solveMeshSet!, JLD2Mesh, Mesh2JLD
 
 using Images
 using HDF5
@@ -500,7 +498,6 @@ end
 
 end
 
-
 ################################# SCRIPT FOR TESTING ###################################
 # Ap = "./EM_images/Tile_r4-c2_S2-W001_sec20.tif";
 # dAi = 21906;
@@ -532,3 +529,4 @@ end
 # @time addMatches2MeshSet!(Mab, Ms);
 # @time addMatches2MeshSet!(Mba, Ms);
 # @time solveMeshSet!(Ms, eta, n_steps, n_grad, true)
+=======
