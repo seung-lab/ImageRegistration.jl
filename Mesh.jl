@@ -498,35 +498,35 @@ end
 
 end
 
-################################# SCRIPT FOR TESTING ###################################
-# Ap = "./EM_images/Tile_r4-c2_S2-W001_sec20.tif";
-# dAi = 21906;
-# dAj = 36429;
+function test()
+	Ap = "./EM_images/Tile_r4-c2_S2-W001_sec20.tif";
+	dAi = 21906;
+	dAj = 36429;
 
-# Bp = "./EM_images/Tile_r4-c3_S2-W001_sec20.tif";
-# dBi = 29090; # 2908.6;
-# dBj = 36251; # 3624.3;
+	Bp = "./EM_images/Tile_r4-c3_S2-W001_sec20.tif";
+	dBi = 29090; # 2908.6;
+	dBj = 36251; # 3624.3;
 
-# block_size = 20;
-# search_r = 80;
-# min_r = 0.65;
-# mesh_length = 100;
-# mesh_coeff = 0.5;
-# match_coeff = 1.0;
-# eta = 0.15
-# n_steps = 80;
-# n_grad = 40;
+	block_size = 20;
+	search_r = 80;
+	min_r = 0.65;
+	mesh_length = 100;
+	mesh_coeff = 0.5;
+	match_coeff = 1.0;
+	eta = 0.15
+	n_steps = 80;
+	n_grad = 40;
 
-# @time Am = Tile2Mesh(Ap, (1, 2, 42), (4, 2), dAi, dAj, false, mesh_length, mesh_coeff);
-# @time Bm = Tile2Mesh(Bp, (1, 2, 43), (4, 3), dBi, dBj, false, mesh_length, mesh_coeff);
-# @time A = getMeshImage(Am);
-# @time B = getMeshImage(Bm);
-# @time Mab = Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r);
-# @time Mba = Meshes2Matches(B, Bm, A, Am, block_size, search_r, min_r);
-# Ms = makeNewMeshSet();
-# @time addMesh2MeshSet!(Am, Ms);
-# @time addMesh2MeshSet!(Bm, Ms);
-# @time addMatches2MeshSet!(Mab, Ms);
-# @time addMatches2MeshSet!(Mba, Ms);
-# @time solveMeshSet!(Ms, eta, n_steps, n_grad, true)
-=======
+	@time Am = Tile2Mesh(Ap, (1, 2, 42), (4, 2), dAi, dAj, false, mesh_length, mesh_coeff);
+	@time Bm = Tile2Mesh(Bp, (1, 2, 43), (4, 3), dBi, dBj, false, mesh_length, mesh_coeff);
+	@time A = getMeshImage(Am);
+	@time B = getMeshImage(Bm);
+	@time Mab = Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r);
+	@time Mba = Meshes2Matches(B, Bm, A, Am, block_size, search_r, min_r);
+	Ms = makeNewMeshSet();
+	@time addMesh2MeshSet!(Am, Ms);
+	@time addMesh2MeshSet!(Bm, Ms);
+	@time addMatches2MeshSet!(Mab, Ms);
+	@time addMatches2MeshSet!(Mba, Ms);
+	@time solveMeshSet!(Ms, eta, n_steps, n_grad, true)
+end
