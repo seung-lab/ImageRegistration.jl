@@ -99,8 +99,8 @@ function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, val
             if (px[i] <= x && x <= px[j]) || (px[j] <= x && x <= px[i])
                 # special case: adding the whole cut to ys                            
                 if px[i] == px[j]
-                    push!(ys, py[i])
-                    push!(ys, py[j])
+                    push!(ys, ceil(Int64, py[i]))
+                    push!(ys, ceil(Int64, py[j]))
                 else
                     y = py[i] + (x - px[i]) / (px[j] - px[i]) * (py[j] - py[i])
                     push!(ys, ceil(Int64, y))
