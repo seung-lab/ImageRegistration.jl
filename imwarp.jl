@@ -15,11 +15,6 @@ type Rect
   w::Float64
 end
 
-type SpatialRef
-  i::Float64
-  j::Float64
-end
-
 function rect2pts(r)
   # Create polygon point list, counter-clockwise
   return [r.i r.j;
