@@ -1,4 +1,12 @@
+module MeshModule
+
+export Mesh
+export Matches
+export MeshSet
+
+
 using Images
+using HDF5
 using JLD
 include("convolve.jl")
 include("MeshSolve.jl")
@@ -79,23 +87,6 @@ type MeshSet
 
 	matches::Array{Matches, 1}				# vector of matches in the set
 	matches_pairs::Array{Pair, 1}				# vector of index (in meshes) - (a, b) means the match is between (meshes[a] -> meshes[b])
-end
-
-type FlatMeshSet
-	meshset::MeshSet					# original MeshSet
-
-	n::Int64						# number of nodes in the set across the whole set
-	m::Int64						# number of edges in the set across the whole set
-	m_i::Int64						# number of internal edges in the set across the whole set
-	m_e::Int64						# number of internal edges in the set across the whole set
-
-	nodes::Points						# 2-by-n dense matrix of nodes, each column stores [i-coordinate, j-coordinate] in global coordinates
-	nodes_t::Points			 			# 2-by-n dense matrix of nodes after transformation, in the same order as nodes - by default same as nodes
-	nodes_fixed::BinaryProperty				# 1-by-n dense vector of nodes that denote whether points are fixed
-
-	edges::Edges				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
-	edge_lengths::FloatProperty	  			# 1-by-m dense vector of floats that stores the rest lengths.
-	edge_coeffs::FloatProperty	   			# 1-by-m dense vector of floats that stores the spring coefficients.
 end
 #=
 function Mesh2JLD(filename, mesh::Mesh)
@@ -440,7 +431,7 @@ function addMatches2MeshSet!(M, Ms)
 	return;
 end
 
-function solveMeshSet!(Ms, eta, n_steps, n_grad, true)
+function solveMeshSet!(Ms, eta, n_steps, n_grad, show_plot)
 	nodes = Points(0);
 	nodes_fixed = BinaryProperty(0);
 	edges = spzeros(Float64, Ms.n, 0);
@@ -481,9 +472,9 @@ function solveMeshSet!(Ms, eta, n_steps, n_grad, true)
 	nodes = hcat(nodes...);
 	edges = hcat(edges_padded...);
 
-	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta, n_steps, n_grad);
+	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta, n_steps, n_grad, show_plot);
 	nodes_t = Points(0);
-	for i in 1:size(nodes_t, 2)
+	for i in 1:size(nodes, 2)
        		push!(nodes_t, vec(nodes[:, i]))
        	end
 	for i in 1:Ms.N
@@ -493,78 +484,41 @@ function solveMeshSet!(Ms, eta, n_steps, n_grad, true)
 
 end
 
+function MeshSet2JLD(filename, Ms)
+	jldopen(filename, "w") do file
+		write(file, "MeshSet", Ms);
+	end
+end
 
-
-function flattenMeshSet(Ms, match_coeff)
-	meshset = Ms;
-
-	n = Ms.n;
-	m = Ms.m;
-	m_i = Ms.m_i;
-	m_e = Ms.m_e;
-
-	nodes = Points(0);
-	nodes_fixed = BinaryProperty(0);
-	edges = spzeros(Float64, Ms.n, 0);
-	edges_padded = Array{Edges}(0); 
-	edge_lengths = FloatProperty(0);
-	edge_coeffs = FloatProperty(0);
-
-	for i in 1:Ms.N
-		cur_mesh = Ms.meshes[i];
-		append!(nodes, cur_mesh.nodes);
-		append!(nodes_fixed, cur_mesh.nodes_fixed);
-		append!(edge_lengths, cur_mesh.edge_lengths);
-		append!(edge_coeffs, cur_mesh.edge_coeffs);
-		if (i == Ms.N)	
-			push!(edges_padded, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-						 cur_mesh.edges));
-		else
-			push!(edges_padded, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-						 cur_mesh.edges, 
-						 spzeros(Float64, Ms.n - Ms.nodes_indices[i] - cur_mesh.n, cur_mesh.m)));
-		end
+function JLD2MeshSet(filename)
+	jldopen(filename, "r") do file
+		Ms = file["MeshSet"];
 	end
 
-	for i in 1:Ms.M
-		cur_matches = Ms.matches[i];
-		append!(edge_lengths, fill(0.0, cur_matches.n));
-		append!(edge_coeffs, fill(convert(Float64, match_coeff), cur_matches.n));
-		edges_toadd = spzeros(Float64, Ms.n, cur_matches.n);
+	return Ms
+end
 
-		for j in 1:Ms.matches[i].n
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][1], cur_matches.src_pointIndices[j]), j] = -1;
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1];
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
-		end
-		push!(edges_padded, edges_toadd);
-	end
+end
 
-	edges = hcat(edges_padded...);
-
-	return FlatMeshSet(meshset, n, m, m_i, m_e, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs); 
-
-end;
 
 ################################# SCRIPT FOR TESTING ###################################
-Ap = "./Test/Tile_r4-c2_S2-W001_sec20.tif";
+Ap = "./EM_images/Tile_r4-c2_S2-W001_sec20.tif";
 dAi = 21906;
 dAj = 36429;
 
-Bp = "./Test/Tile_r4-c3_S2-W001_sec20.tif";
+Bp = "./EM_images/Tile_r4-c3_S2-W001_sec20.tif";
 dBi = 29090; # 2908.6;
 dBj = 36251; # 3624.3;
 
 block_size = 20;
 search_r = 80;
 min_r = 0.65;
-mesh_length = 200;
+mesh_length = 100;
 mesh_coeff = 0.5;
 match_coeff = 1.0;
 eta = 0.15
-n_steps = 40;
-n_grad = 20
+n_steps = 80;
+n_grad = 40;
 
 @time Am = Tile2Mesh(Ap, (1, 2, 42), (4, 2), dAi, dAj, false, mesh_length, mesh_coeff);
 @time Bm = Tile2Mesh(Bp, (1, 2, 43), (4, 3), dBi, dBj, false, mesh_length, mesh_coeff);
