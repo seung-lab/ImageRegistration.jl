@@ -47,19 +47,24 @@ function pa_warp2{N}(img::Array{Float64, N},
         
         # for every pixel in target triangle we find corresponding pixel in source
         # and copy its value
-        for i=1:length(vs)
-            u, v = us[i], vs[i]
-            x, y = M * [u, v, 1]
-            if interp
+        if interp
+            for i=1:length(vs)
+                u, v = us[i], vs[i]
+                x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]
+
                 fx, fy = floor(Int64, x), floor(Int64, y)
                 wx, wy = x-fx, y-fy
-                if 1 <= y && y+1 <= size(img, 1) && 1 <= x && x+1 <= size(img, 2)
-                    p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-                    warped[v, u] = p[1]
+
+                if 1 <= fy && fy+1 <= size(img, 1) && 1 <= fx && fx+1 <= size(img, 2)
+                    p = ((1-wy)*img[fy,fx] + wy*img[fy,fx+1]) * (1-wx) + (wy*img[fy+1,fx] + (1-wy)*img[fy+1,fx+1]) * wx
+                    warped[v, u] = p
                 end
-            else
-                y = round(Int64,y)
-                x = round(Int64,x)
+            end
+        else
+            for i=1:length(vs)
+                u, v = us[i], vs[i]
+                y = round(Int64, M[1,1]*u + M[1,2]*v + M[1,3])
+                y = round(Int64, M[2,1]*u + M[2,2]*v + M[2,3])
                 if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
                     warped[v, u] = img[y, x]
                 end
