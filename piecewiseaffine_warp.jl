@@ -1,3 +1,6 @@
+# Adapted from PiecewiseAffineTransforms.jl
+# https://github.com/dfdx/PiecewiseAffineTransforms.jl
+
 function source_point_mat(X, Y)
     x1, x2, x3 = X
     y1, y2, y3 = Y    
@@ -19,8 +22,6 @@ function affine_params(X, Y, U, V)
     M
 end
 
-warp_pixel(M, x, y) = M * [x, y, 1]
-
 function pa_warp2{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, interp = true)
@@ -40,9 +41,6 @@ function pa_warp2{N}(img::Array{Float64, N},
                
         # warp parameters from target (U, V) to source (X, Y)
         M = affine_params(U, V, X, Y)
-        
-        # mask = poly2mask2(U, V, size(img)[1:2]...)
-        # vs, us = findn(mask)
         vs, us = poly2source(U, V)
         
         # for every pixel in target triangle we find corresponding pixel in source
@@ -90,7 +88,6 @@ function poly2source(px, py)
     return vs, us
 end
 
-
 function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
     @assert length(px) == length(py)    
     left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
@@ -120,10 +117,4 @@ function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, val
         end
     end
     return M
-end
-
-
-function poly2mask2{P}(px::Vector{P}, py::Vector{P}, m::Int64, n::Int64)
-    mask = zeros(Bool, m, n)
-    fillpoly2!(mask, px, py, true)
 end
