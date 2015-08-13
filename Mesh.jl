@@ -4,6 +4,7 @@ export Mesh, Matches, MeshSet
 export Tile2Mesh, getMeshImage, Meshes2Matches, makeNewMeshSet, addMesh2MeshSet!, addMatches2MeshSet!, solveMeshSet!, JLD2Mesh, Mesh2JLD
 
 using Images
+#using ImageView
 using HDF5
 using JLD
 include("convolve.jl")
@@ -37,6 +38,7 @@ type Mesh
 	index::Index						# wafer, section, tile index of the mesh				tileIndex = 0 if the tile is a whole section
 	grid::Pair						# row, column of the tile within the section				(0, 0) if the tile is a whole section
 	disp::Point						# displacement of the tile within the section				(0, 0) if the tile starts at the top left corner
+	disp_t::Point						# displacement of the tile within the section after transform		(0, 0) if the tile starts at the top left corner
 
 	dims::Pair				 		# mesh dimensions in terms of nodes in the i direction, j direction. 	(0, 0) if the mesh is not a regular mesh
 	offsets::Point				                # mesh offset in terms of the top left, from the image. 		[0; 0] if the mesh is not a regular mesh
@@ -86,23 +88,6 @@ type MeshSet
 	matches::Array{Matches, 1}				# vector of matches in the set
 	matches_pairs::Array{Pair, 1}				# vector of index (in meshes) - (a, b) means the match is between (meshes[a] -> meshes[b])
 end
-#=
-function Mesh2JLD(filename, mesh::Mesh)
-	fid = jldopen(filename, "w");
-	fid["index"] = mesh.index;
-	fid["di"] = mesh.di;
-	fid["dj"] = mesh.dj;
-	fid["n"] = mesh.n;
-	fid["m"] = mesh.m;
-	fid["nodes"] = mesh.nodes;
-	fid["nodes_t"] = mesh.nodes_t;
-	fid["nodes_fixed"] = mesh.nodes_fixed;
-	fid["edges"] = mesh.edges;
-	fid["edge_lengths"] = mesh.edge_lengths;
-	fid["edge_coeffs"] = mesh.edge_coeffs;
-	close(fid);
-end
-=#
 
 function getMeshImage(mesh::Mesh)
 	return convert(Array{Float64, 2}, data(imread(mesh.path)));
@@ -164,7 +149,7 @@ function Tile2Mesh(path, index, grid, di, dj, tile_fixed, mesh_length, mesh_coef
 	edge_lengths = edge_lengths[1:m];
 	edge_coeffs = edge_coeffs[1:m];
 
-	return Mesh(path, index, grid, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
+	return Mesh(path, index, grid, disp, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
 end
 
 function getMeshIndex(dims, i, j)
@@ -221,11 +206,16 @@ function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
 	Bj_range = ceil(Bj)-b_rad:ceil(Bj)+b_rad;
 
 	xc = normxcorr2(sub(A, Ai_range, Aj_range), sub(B, Bi_range, Bj_range));
-	r_max = maximum(xc); ind = find(xc .== r_max);
-	if (size(ind) == 0) return noMatch; end
-	(i_max, j_max) = (rem(ind[1], size(xc, 2)), cld(ind[1], size(xc, 2)));
+	r_max = maximum(xc); 
+
+	ind = findfirst(r_max .== xc);
+
+	if ind == 0 return noMatch; end
+	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
+	if i_max == 0 i_max = size(xc, 1); end
 
 	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max];
+	
 end
 
 function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
@@ -246,7 +236,6 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 		(Ai, Aj) = Am.nodes[j]
 		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);
 		if v[3] < min_r continue; end
-		
 		dispVector = v[1:2];
 		dst_point = Am.nodes[j] + dispVector;
 		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
@@ -429,24 +418,25 @@ function addMatches2MeshSet!(M, Ms)
 	return;
 end
 
-function solveMeshSet!(Ms, eta, n_steps, n_grad, show_plot)
+function solveMeshSet!(Ms, match_coeff, eta, n_steps, n_grad, show_plot)
 	nodes = Points(0);
 	nodes_fixed = BinaryProperty(0);
 	edges = spzeros(Float64, Ms.n, 0);
-	edges_padded = Array{Edges}(0); 
 	edge_lengths = FloatProperty(0);
 	edge_coeffs = FloatProperty(0);
 	for i in 1:Ms.N
 		cur_mesh = Ms.meshes[i];
-		append!(nodes, cur_mesh.nodes);
+		#workaround for hcat bug
+		if i == 1 nodes = hcat(cur_mesh.nodes...);
+		else nodes = hcat(nodes, hcat(cur_mesh.nodes...)); end
 		append!(nodes_fixed, cur_mesh.nodes_fixed);
 		append!(edge_lengths, cur_mesh.edge_lengths);
 		append!(edge_coeffs, cur_mesh.edge_coeffs);
 		if (i == Ms.N)	
-			push!(edges_padded, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
+			edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
 						 cur_mesh.edges));
 		else
-			push!(edges_padded, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
+			edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
 						 cur_mesh.edges, 
 						 spzeros(Float64, Ms.n - Ms.nodes_indices[i] - cur_mesh.n, cur_mesh.m)));
 		end
@@ -456,20 +446,22 @@ function solveMeshSet!(Ms, eta, n_steps, n_grad, show_plot)
 		cur_matches = Ms.matches[i];
 		append!(edge_lengths, fill(0.0, cur_matches.n));
 		append!(edge_coeffs, fill(convert(Float64, match_coeff), cur_matches.n));
-		edges_toadd = spzeros(Float64, Ms.n, cur_matches.n);
+		edges_padded = spzeros(Float64, Ms.n, cur_matches.n);
 
 		for j in 1:Ms.matches[i].n
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][1], cur_matches.src_pointIndices[j]), j] = -1;
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1];
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
-			edges_toadd[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
+			edges_padded[findNode(Ms, Ms.matches_pairs[i][1], cur_matches.src_pointIndices[j]), j] = -1;
+			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1];
+			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
+			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
 		end
-		push!(edges_padded, edges_toadd);
+		#workaround for hcat bug
+		edges = hcat(edges, edges_padded);
 	end
 
+	#= hcat is bugged for large inputs
 	nodes = hcat(nodes...);
 	edges = hcat(edges_padded...);
-
+	=#
 	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta, n_steps, n_grad, show_plot);
 	nodes_t = Points(0);
 	for i in 1:size(nodes, 2)
@@ -477,7 +469,8 @@ function solveMeshSet!(Ms, eta, n_steps, n_grad, show_plot)
        	end
 	for i in 1:Ms.N
 		cur_mesh = Ms.meshes[i];
-		cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + 1:cur_mesh.n];
+		cur_mesh.disp_t = cur_mesh.nodes_t[1] - cur_mesh.offsets;
+		cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)];
 	end
 
 end
@@ -489,12 +482,14 @@ function MeshSet2JLD(filename, Ms)
 end
 
 function JLD2MeshSet(filename)
-	jldopen(filename, "r") do file
-		Ms = file["MeshSet"];
-	end
-
-	return Ms
+	Ms = load(filename, "MeshSet"); 
+	return Ms;
 end
 
-end
+
+################################### DIAGNOSTIC #########################################
+
+
+end #END MESHMODULE
+################################### SCRIPT ############################################
 

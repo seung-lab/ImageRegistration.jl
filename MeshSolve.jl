@@ -146,6 +146,5 @@ for iter=1:niter
 	end
 end
 
-return Vertices;
 end
 
