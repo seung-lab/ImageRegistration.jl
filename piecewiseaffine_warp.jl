@@ -50,6 +50,7 @@ function pa_warp2{N}(img::Array{Float64, N},
         if interp
             for i=1:length(vs)
                 u, v = us[i], vs[i]
+                # x, y = M * [u, v, 1]
                 x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]
 
                 fx, fy = floor(Int64, x), floor(Int64, y)
@@ -57,14 +58,15 @@ function pa_warp2{N}(img::Array{Float64, N},
 
                 if 1 <= fy && fy+1 <= size(img, 1) && 1 <= fx && fx+1 <= size(img, 2)
                     # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-                    p = ((1-wy)*img[fy,fx] + wy*img[fy,fx+1]) * (1-wx) + (wy*img[fy+1,fx] + (1-wy)*img[fy+1,fx+1]) * wx
+                    p = ((1-wy)*img[fy,fx] + wy*img[fy+1,fx]) * (1-wx) + ((1-wy)*img[fy,fx+1] + wy*img[fy+1,fx+1]) * wx
                     warped[v, u] = p
                 end
             end
         else
             for i=1:length(vs)
                 u, v = us[i], vs[i]
-                y = round(Int64, M[1,1]*u + M[1,2]*v + M[1,3])
+                # x, y = M * [u, v, 1]
+                x = round(Int64, M[1,1]*u + M[1,2]*v + M[1,3])
                 y = round(Int64, M[2,1]*u + M[2,2]*v + M[2,3])
                 if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
                     warped[v, u] = img[y, x]
@@ -99,8 +101,8 @@ function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, val
             if (px[i] <= x && x <= px[j]) || (px[j] <= x && x <= px[i])
                 # special case: adding the whole cut to ys                            
                 if px[i] == px[j]
-                    push!(ys, py[i])
-                    push!(ys, py[j])
+                    push!(ys, ceil(Int64, py[i]))
+                    push!(ys, ceil(Int64, py[j]))
                 else
                     y = py[i] + (x - px[i]) / (px[j] - px[i]) * (py[j] - py[i])
                     push!(ys, ceil(Int64, y))
