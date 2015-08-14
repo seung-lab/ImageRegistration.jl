@@ -57,7 +57,7 @@ function draw_vectors(img2, imgc, vectors, color=RGB(0,0,1))
 # Args:
 #   imgc: ImageCanvas object
 #   img2: ImageSliced2d object 
-#   nodes: Nx4 array of vector start and end points
+#   nodes: 4xN array of vector start and end points
 # Returns:
 #   imgc: ImageCanvas object
 #   img2: ImageSliced2d object  
@@ -75,6 +75,54 @@ end
 function draw_vectors(img, vectors)
     imgc, img2 = view(img)
     return draw_vectors(img2, imgc, vectors)
+end
+
+function draw_vectors(img, start_pts, end_pts)
+    imgc, img2 = view(img)
+    vectors = vcat(start_pts, end_pts)
+    return draw_vectors(img2, imgc, vectors)
+end
+
+function draw_points(img2, imgc, pts, color=RGB(0,0,1))
+# Display match displacement vectors on images
+# Args:
+#   imgc: ImageCanvas object
+#   img2: ImageSliced2d object 
+#   nodes: 2xN array of points
+# Returns:
+#   imgc: ImageCanvas object
+#   img2: ImageSliced2d object  
+    points = Array(Float64, 2, 0)
+    for j in 1:size(pts, 2)
+        points = hcat(points, pts[1:2, j])
+    end
+    annotate!(imgc, img2, AnnotationPoints(points, color=color))
+    return imgc, img2
+end 
+
+function draw_points(img, pts)
+    imgc, img2 = view(img)
+    return draw_points(img2, imgc, pts)
+end  
+
+function draw_imfuse_meshes(Oc, O2, dst_nodes_A, SR_A, dst_nodes_B, SR_B)
+# Incomplete
+    SR_A = [0, 0]
+    # SR_B = [7184.9, -178.7780] # NEED INTERPOLATION!
+    SR_B = [7185, -179]
+    SR_C = SR_B - SR_A
+    if SR_C[1] > 0
+        dst_nodes_B[:, 2] += SR_C[1]
+    elseif SR_C[1] < 0
+        dst_nodes_A[:, 2] -= SR_C[1]
+    end 
+    if SR_C[2] > 0
+        dst_nodes_B[:, 1] += SR_C[2]
+    elseif SR_C[2] < 0
+        dst_nodes_A[:, 1] -= SR_C[2]
+    end
+    imgc, img2 = draw_mesh(imgc, img2, dst_nodes_B, node_dict_B, RGB(0,0,1))
+    imgc, img2 = draw_mesh(imgc, img2, dst_nodes_A, node_dict_A, RGB(1,0,1))
 end
 
 function demo_color_plot()

@@ -18,3 +18,5 @@ A set of tools for elastic image registration in Julia.
 * Include unit tests in MeshSolve
 * Include unit tests in Mesh
 * Include unit tests in piecewiseaffine_warp
+* Create downsampling method
+* Test imfuse on stitching more than two tiles
