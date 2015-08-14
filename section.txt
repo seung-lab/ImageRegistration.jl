@@ -1,0 +1,16 @@
+Tile_r1-c1_S2-W001_sec20.tif	14628	14628
+Tile_r1-c2_S2-W001_sec20.tif	21815	14420
+Tile_r1-c3_S2-W001_sec20.tif	28980	14292
+Tile_r1-c4_S2-W001_sec20.tif	35871	14145
+Tile_r2-c1_S2-W001_sec20.tif	14659	21795
+Tile_r2-c2_S2-W001_sec20.tif	21880	21706
+Tile_r2-c3_S2-W001_sec20.tif	28916	21564
+Tile_r2-c4_S2-W001_sec20.tif	36075	21565
+Tile_r3-c1_S2-W001_sec20.tif	14621	29135
+Tile_r3-c2_S2-W001_sec20.tif	21851	28960
+Tile_r3-c3_S2-W001_sec20.tif	29125	28892
+Tile_r3-c4_S2-W001_sec20.tif	36176	28852
+Tile_r4-c1_S2-W001_sec20.tif	14602	36500
+Tile_r4-c2_S2-W001_sec20.tif	21907	36430
+Tile_r4-c3_S2-W001_sec20.tif	29091	36252
+Tile_r4-c4_S2-W001_sec20.tif	36259	36183
