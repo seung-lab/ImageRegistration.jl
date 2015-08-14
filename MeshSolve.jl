@@ -20,6 +20,8 @@
 
 import PyPlot
 
+global eps = 1E-8
+
 function Energy( Springs, Stiffnesses, RestLengths)
     # potential energy in springs
     Lengths=sqrt(sum(Springs.^2,1))   # spring lengths (row vector)
@@ -31,7 +33,7 @@ function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
     # returns dxV array, same size as Vertices
     # physically, -gradient is spring forces acting on vertices
     d=size(Springs,1)
-    Lengths=sqrt(sum(Springs.^2,1))
+    Lengths=sqrt(sum(Springs.^2,1)) + eps
     Directions=broadcast(/,Springs,Lengths)
     Directions[isnan(Directions)] *= 0
     Forces=broadcast(*,Stiffnesses[:]',Springs-broadcast(*,RestLengths[:]',Directions))
