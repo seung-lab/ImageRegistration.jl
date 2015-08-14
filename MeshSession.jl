@@ -5,15 +5,13 @@ Ms = MeshModule.makeNewMeshSet();
 sr = readdlm("section.txt");
 
 #params
-block_size = 20;
+block_size = 40;
 search_r = 80; #20;
 min_r = 0.65; #0.50;
 mesh_length = 200;
 mesh_coeff = 1;
 match_coeff = 10;
 eta = 0.01;
-n_steps = 2000;
-n_grad = 1950;
 show_plot = false;
 num_procs = 12;
 grad_threshold = 1/1000;
@@ -32,7 +30,7 @@ imageArray = SharedArray(Float64, 10000, 10000, num_tiles);
 	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
 	imageArray[1:size(meshImage, 1), 1:size(meshImage, 2), i] = meshImage;
 end
-
+#=
 @time for k in 0:num_procs:Ms.N^2
 	toFetch = @sync @parallel for l in num_procs
 	(i, j) = (rem(k+l, Ms.N), cld(k+l, Ms.N));
@@ -41,15 +39,17 @@ end
 		return MeshModule.Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
 	end
 	for i = 1:length(toFetch)
-		MeshModule.addMatches2MeshSet!(fetch(toFetch[1]), Ms);
+		M = fetch(toFetch[i])
+		if typeof(M) == Void continue; end
+		MeshModule.addMatches2MeshSet!(M, Ms);
 	end
 end
-
+=#
 
 @time for i in 1:Ms.N
 	for j in 1:Ms.N
 		if j == i continue; end
-	@time M = MeshModule.Meshes2Matches(imageArray[i], Ms.meshes[i], imageArray[j], Ms.meshes[j], block_size, search_r, min_r);
+	@time M = MeshModule.Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
 	if M.n == 0 continue; end
 	MeshModule.addMatches2MeshSet!(M, Ms);
 	end
