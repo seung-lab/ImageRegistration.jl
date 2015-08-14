@@ -1,4 +1,4 @@
-function convolve{T,n}(A::Array{T,n},B::Array{T,n},dims)
+function convolve{T,n}(A::SubArray{T, n},B::Array{T, n},dims)
     common_size=tuple(map(max,size(A),size(B))...)
     pA=zeros(Complex{T},common_size)
     pB=zeros(Complex{T},common_size)
@@ -51,9 +51,6 @@ function normxcorr2(template,img)
     # sufficient to subtract mean from just one variable
     dt=template-mean(template)
     templatevariance=sum(dt.^2)
-    if templatevariance==0
-        return zeros(m1-n1+1,m2-n2+1)*NaN
-    end
     numerator=valid_convolve(img,dt[end:-1:1,end:-1:1],[1 2])
     
     ##### local statistics of img
@@ -63,6 +60,9 @@ function normxcorr2(template,img)
     imgpad=zeros(m1+1,m2+1); imgpad[2:end,2:end]=img;
     # define four combinations of Small and Large ranges
     (n1,n2)=size(template);
+    if templatevariance==0
+        return zeros(m1-n1+1,m2-n2+1)*NaN
+    end
     LL=Any[1+(n1:m1),1+(n2:m2)]
     SL=LL-[n1;0]; LS=LL-[0;n2]
     SS=LL-[n1;n2]
