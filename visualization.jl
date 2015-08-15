@@ -96,8 +96,8 @@ function draw_points(img2, imgc, pts, color=RGB(0,0,1))
     for j in 1:size(pts, 2)
         points = hcat(points, pts[1:2, j])
     end
-    annotate!(imgc, img2, AnnotationPoints(points, color=color))
-    return imgc, img2
+    an = annotate!(imgc, img2, AnnotationPoints(points, color=color))
+    return imgc, img2, an
 end 
 
 function draw_points(img, pts)
