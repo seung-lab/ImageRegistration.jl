@@ -7,7 +7,7 @@
 
 include("incidence2triangles.jl")
 include("piecewiseaffine_warp.jl")
-include("visualization.jl")
+include("visualize.jl")
 include("Mesh.jl")
 
 using JLD
