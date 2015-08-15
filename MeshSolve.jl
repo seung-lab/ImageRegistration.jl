@@ -20,6 +20,8 @@
 
 import PyPlot
 
+global eps = 1E-8
+
 function Energy( Springs, Stiffnesses, RestLengths)
     # potential energy in springs
     Lengths=sqrt(sum(Springs.^2,1))   # spring lengths (row vector)
@@ -31,7 +33,7 @@ function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
     # returns dxV array, same size as Vertices
     # physically, -gradient is spring forces acting on vertices
     d=size(Springs,1)
-    Lengths=sqrt(sum(Springs.^2,1))
+    Lengths=sqrt(sum(Springs.^2,1)) + eps
     Directions=broadcast(/,Springs,Lengths)
     Directions[isnan(Directions)] *= 0
     Forces=broadcast(*,Stiffnesses[:]',Springs-broadcast(*,RestLengths[:]',Directions))
@@ -106,7 +108,47 @@ function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
     sparse(II[1:numel],JJ[1:numel],SS[1:numel])
 end
 
-function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta, niter, ngrad, show_plot)
+function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta, grad_threshold, n_newton)
+
+d=size(Vertices,1)
+V=size(Vertices,2)
+E=size(Incidence,2)
+Lengths=zeros(1,V)
+Moving = ~Fixed
+Moving2=[Moving[:]'; Moving[:]'][:]   # double the dimensionality
+U=Array{Float64, 1}(0);     # energy vs. time
+g=similar(Vertices)  # gradient of potential energy
+
+iter = 1;
+
+while true
+    Springs=Vertices*Incidence
+    g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+    Vertices[:,Moving]=Vertices[:,Moving]-eta*g[:,Moving]
+    push!(U, Energy(Springs,Stiffnesses,RestLengths))
+    println(iter," ", U[iter])
+    if iter != 1
+	if (U[iter-1] - U[iter]) / U[iter-1] < grad_threshold
+		println("Switching to Newton's Method:");    iter += 1; break;
+	end
+	end
+    iter += 1;
+end
+
+for i in 1:n_newton
+	Springs=Vertices*Incidence
+    	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
+        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
+    	push!(U, Energy(Springs,Stiffnesses,RestLengths))
+    println(iter," ", U[iter])
+	iter+=1;
+end
+
+end
+
+#=
+function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta, grad_threshold, nnewton, show_plot)
 
 d=size(Vertices,1)
 V=size(Vertices,2)
@@ -147,4 +189,5 @@ for iter=1:niter
 end
 
 end
+=#
 
