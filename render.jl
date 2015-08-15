@@ -13,7 +13,6 @@ include("Mesh.jl")
 using JLD
 using Images
 using ImageView
-using PiecewiseAffineTransforms
 using Color
 using FixedPointNumbers
 using MeshModule
@@ -108,7 +107,7 @@ function warp_tile(mesh, tile_path)
 
     img = rawdata(imread(tile_path))
     low, xhigh, yhigh = find_node_extrema(initial_nodes, final_nodes, size(img))
-    img_padded = pad_image(img, low, low, xhigh, yhigh)
+    img_padded = padimage(img, low, low, xhigh, yhigh)
 
     src_nodes = xy2yx(initial_nodes') + low
     dst_nodes = xy2yx(final_nodes') + low
@@ -159,35 +158,35 @@ function imfuse(A, SR_A, B, SR_B)
     # pad to common origin
     SR_C = SR_B - SR_A
     if SR_C[1] > 0
-        B = pad_image(B, SR_C[1], 0, 0, 0)
+        B = padimage(B, SR_C[1], 0, 0, 0)
     elseif SR_C[1] < 0
-        A = pad_image(A, -SR_C[1], 0, 0, 0)
+        A = padimage(A, -SR_C[1], 0, 0, 0)
     end 
     if SR_C[2] > 0
-        B = pad_image(B, 0, SR_C[2], 0, 0)
+        B = padimage(B, 0, SR_C[2], 0, 0)
     elseif SR_C[2] < 0
-        A = pad_image(A, 0, -SR_C[2], 0, 0)
+        A = padimage(A, 0, -SR_C[2], 0, 0)
     end 
     # pad to match sizes
     szA = collect(size(A))
     szB = collect(size(B))
     szC = szB - szA
     if szC[1] > 0
-        A = pad_image(A, 0, 0, 0, szC[1])
+        A = padimage(A, 0, 0, 0, szC[1])
     elseif szC[1] < 0
-        B = pad_image(B, 0, 0, 0, -szC[1])
+        B = padimage(B, 0, 0, 0, -szC[1])
     end 
     if szC[2] > 0
-        A = pad_image(A, 0, 0, szC[2], 0)
+        A = padimage(A, 0, 0, szC[2], 0)
     elseif szC[2] < 0
-        B = pad_image(B, 0, 0, -szC[2], 0)
+        B = padimage(B, 0, 0, -szC[2], 0)
     end
     O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
     SR_O = min(SR_A, SR_B)
     return O, SR_O
 end
 
-function pad_image(img, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64)
+function padimage(img, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64)
 # Pad image exterior to meet new_sz dimensions
 #  _________________________________
 # |                                 |
@@ -288,32 +287,32 @@ function demo_two_tiles_from_mesh_set()
 
     src_pts, dst_pts = load_matches(mesh_set.matches[1])
     # draw_points(make_isotropic(rawdata(imread(tile_pathA))), src_pts)
-    imgc, img2, h = draw_points(make_isotropic(rawdata(imread(tile_pathB))), dst_pts)
+    imgc, img2, annotation = draw_points(make_isotropic(rawdata(imread(tile_pathB))), dst_pts)
     O, SR_O = imfuse(A, SR_A, B, SR_B) 
     view(make_isotropic(O))
     return A, SR_A, B, SR_B
 end
 
-function test_pad_image()
+function test_padimage()
     o = ones(5,2)
-    po = pad_image(o, 0, 0, 0, 0)
+    po = padimage(o, 0, 0, 0, 0)
     @test size(po, 1) == 5
     @test size(po, 2) == 2
 
     o = ones(5,2)
-    po = pad_image(o, 1, 2, 3, 4)
+    po = padimage(o, 1, 2, 3, 4)
     @test size(po, 1) == 11
     @test size(po, 2) == 6
     @test po[1,1] == 0
 
     o = ones(5,2)
-    po = pad_image(o, 0, 1, 1, 0)
+    po = padimage(o, 0, 1, 1, 0)
     @test size(po, 1) == 6
     @test size(po, 2) == 3
     @test po[6,3] == 0    
 
     o = convert(Array{Int64, 2}, ones(5,2))
-    po = pad_image(o, 1, 2, 3, 4)
+    po = padimage(o, 1, 2, 3, 4)
     @test size(po, 1) == 11
     @test size(po, 2) == 6
 end
