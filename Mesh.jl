@@ -4,7 +4,6 @@ export Mesh, Matches, MeshSet
 export Tile2Mesh, getMeshImage, Meshes2Matches, makeNewMeshSet, addMesh2MeshSet!, addMatches2MeshSet!, solveMeshSet!, JLD2Mesh, Mesh2JLD
 
 using Images
-#using ImageView
 using HDF5
 using JLD
 include("convolve.jl")
@@ -97,7 +96,6 @@ end
 function Tile2Mesh(path, index, grid, di, dj, tile_fixed, mesh_length, mesh_coeff)
 
 	A = convert(Array{Float64, 2}, data(imread(path)));
-
 	(Ai, Aj) = size(A);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
@@ -106,7 +104,7 @@ function Tile2Mesh(path, index, grid, di, dj, tile_fixed, mesh_length, mesh_coef
 	disp = [di; dj];
 
 	n = maximum([getMeshIndex(dims, dims[1], dims[2]); getMeshIndex(dims, dims[1], dims[2]-1)]);
-
+	m = 0;
 	m_upperbound = 3 * n;
 
 	nodes = Points(n);
@@ -115,15 +113,9 @@ function Tile2Mesh(path, index, grid, di, dj, tile_fixed, mesh_length, mesh_coef
 	edge_lengths = FloatProperty(m_upperbound); edge_lengths[:] = convert(Float64, mesh_length);
 	edge_coeffs = FloatProperty(m_upperbound); edge_coeffs[:] = convert(Float64, mesh_coeff);
 
-
-	m = 0;	
-
 	for i in 1:dims[1], j in 1:dims[2]
-		k = getMeshIndex(dims, i, j);
-		if k == 0 continue; end
-
+		k = getMeshIndex(dims, i, j); if k == 0 continue; end
 		nodes[k] = getMeshCoord(dims, disp+offsets, dists, i, j);
-		
 		if (j != 1)
 			m += 1;	edges[k, m] = -1; edges[getMeshIndex(dims, i, j-1), m] = 1;
 		end
@@ -161,7 +153,6 @@ function getMeshIndex(dims, i, j)
 	ind += div(i-1, 2) * (dims[2] - 1); #even rows
 	ind += div(i, 2) * dims[2]; #odd rows
 	ind += j;
-
 	ind = convert(Int64, ind);
 	return ind;
 end
@@ -222,8 +213,13 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 
 	src_mesh = Am;
 	dst_mesh = Bm;
+	p1 = Am.path;
+	p2 = Bm.path;
 
 	n = 0;
+	n_total = 0;
+	n_lowr = 0;
+	n_noTriangle = 0;
 	n_upperbound = Am.n;
 
 	src_pointIndices = Array(Int64, n_upperbound);
@@ -232,14 +228,21 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 	dst_weights = Weights(n_upperbound);
 	dispVectors = Points(n_upperbound);
 
+	if (Am==Bm)
+		matches = Matches(src_mesh, dst_mesh, n, src_pointIndices[1:0], dst_points[1:0], dst_triangles[1:0], dst_weights[1:0], dispVectors[1:0]);
+		return matches;
+	end
+
 	for j in 1:n_upperbound
 		(Ai, Aj) = Am.nodes[j]
-		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);
-		if v[3] < min_r continue; end
+		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);				
+		if v == noMatch continue; end	
+		n_total +=1	
+		if v[3] < min_r; n_lowr +=1; continue; end
 		dispVector = v[1:2];
 		dst_point = Am.nodes[j] + dispVector;
 		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
-		if dst_triangle == (0, 0, 0) continue; end
+		if dst_triangle == noTriangle n_noTriangle +=1; continue; end
 		n += 1;
 		src_pointIndices[n] = j;
 		dispVectors[n] = dispVector;
@@ -254,7 +257,9 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 	dst_triangles = dst_triangles[1:n];
 	dst_weights = dst_weights[1:n]; 
 
-	println("$n total matches found of $n_upperbound mesh points.");
+	if n != 0
+	println("$p1 -> $p2: $n_total of $n_upperbound mesh points, $n_lowr rejected due to r, $n_noTriangle rejected due to outside, $n accepted matches.");
+	end
 
 	matches = Matches(src_mesh, dst_mesh, n, src_pointIndices, dst_points, dst_triangles, dst_weights, dispVectors);
 	return matches;
@@ -389,36 +394,43 @@ function makeNewMeshSet()
 	return MeshSet(N, M, indices, n, m, m_i, m_e, meshes, nodes_indices, matches, matches_pairs);
 end
 
+#=
+function computeMatchesinMeshSet!(Ms, block_size, search_r, min_r)
+	Ms.M = 0;
+	Ms.m = Ms.m_i;
+	Ms.m_e = 0;
+	for i in 1:Ms.N, j in 1:Ms.N
+	M = MeshModule.Meshes2Matches(imageArray[i], Ms.meshes[i], imageArray[j], Ms.meshes[j], block_size, search_r, min_r);
+	MeshModule.addMatches2MeshSet!(M, Ms);
+	end
+end
+=#
+
 function addMesh2MeshSet!(Am, Ms)
-	Ms.N += 1;
-
 	push!(Ms.indices, Am.index);
-
-	Ms.m_i += Am.m;
-	Ms.m += Am.m;
-
 	push!(Ms.meshes, Am);
 	if length(Ms.nodes_indices) == 0 push!(Ms.nodes_indices, 0);
 	else push!(Ms.nodes_indices, Ms.n);
 	end
-
+	Ms.N += 1;
+	Ms.m_i += Am.m;
+	Ms.m += Am.m;
 	Ms.n += Am.n;
 	return;
 end
 
 function addMatches2MeshSet!(M, Ms)
+	push!(Ms.matches, M);
+	push!(Ms.matches_pairs, (findIndex(Ms, M.src_mesh.index), findIndex(Ms, M.dst_mesh.index)));
+	if (M.n == 0) return; end
 	Ms.M += 1;
-	
 	Ms.n;
 	Ms.m += M.n;
 	Ms.m_e += M.n;
-
-	push!(Ms.matches, M);
-	push!(Ms.matches_pairs, (findIndex(Ms, M.src_mesh.index), findIndex(Ms, M.dst_mesh.index)));
 	return;
 end
 
-function solveMeshSet!(Ms, match_coeff, eta, n_steps, n_grad, show_plot)
+function solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton)
 	nodes = Points(0);
 	nodes_fixed = BinaryProperty(0);
 	edges = spzeros(Float64, Ms.n, 0);
@@ -426,7 +438,6 @@ function solveMeshSet!(Ms, match_coeff, eta, n_steps, n_grad, show_plot)
 	edge_coeffs = FloatProperty(0);
 	for i in 1:Ms.N
 		cur_mesh = Ms.meshes[i];
-		#workaround for hcat bug
 		if i == 1 nodes = hcat(cur_mesh.nodes...);
 		else nodes = hcat(nodes, hcat(cur_mesh.nodes...)); end
 		append!(nodes_fixed, cur_mesh.nodes_fixed);
@@ -454,23 +465,18 @@ function solveMeshSet!(Ms, match_coeff, eta, n_steps, n_grad, show_plot)
 			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
 			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
 		end
-		#workaround for hcat bug
 		edges = hcat(edges, edges_padded);
 	end
 
-	#= hcat is bugged for large inputs
-	nodes = hcat(nodes...);
-	edges = hcat(edges_padded...);
-	=#
-	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta, n_steps, n_grad, show_plot);
+	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta, grad_threshold, n_newton);
 	nodes_t = Points(0);
 	for i in 1:size(nodes, 2)
        		push!(nodes_t, vec(nodes[:, i]))
        	end
 	for i in 1:Ms.N
 		cur_mesh = Ms.meshes[i];
-		cur_mesh.disp_t = cur_mesh.nodes_t[1] - cur_mesh.offsets;
 		cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)];
+		cur_mesh.disp_t = cur_mesh.nodes_t[1] - cur_mesh.offsets;
 	end
 
 end
@@ -493,35 +499,3 @@ end
 end #END MESHMODULE
 ################################### SCRIPT ############################################
 
-function test()
-	Ap = "./EM_images/Tile_r4-c2_S2-W001_sec20.tif";
-	dAi = 21906;
-	dAj = 36429;
-
-	Bp = "./EM_images/Tile_r4-c3_S2-W001_sec20.tif";
-	dBi = 29090; # 2908.6;
-	dBj = 36251; # 3624.3;
-
-	block_size = 20;
-	search_r = 80;
-	min_r = 0.65;
-	mesh_length = 100;
-	mesh_coeff = 0.5;
-	match_coeff = 1.0;
-	eta = 0.15
-	n_steps = 80;
-	n_grad = 40;
-
-	@time Am = Tile2Mesh(Ap, (1, 2, 42), (4, 2), dAi, dAj, false, mesh_length, mesh_coeff);
-	@time Bm = Tile2Mesh(Bp, (1, 2, 43), (4, 3), dBi, dBj, false, mesh_length, mesh_coeff);
-	@time A = getMeshImage(Am);
-	@time B = getMeshImage(Bm);
-	@time Mab = Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r);
-	@time Mba = Meshes2Matches(B, Bm, A, Am, block_size, search_r, min_r);
-	Ms = makeNewMeshSet();
-	@time addMesh2MeshSet!(Am, Ms);
-	@time addMesh2MeshSet!(Bm, Ms);
-	@time addMatches2MeshSet!(Mab, Ms);
-	@time addMatches2MeshSet!(Mba, Ms);
-	@time solveMeshSet!(Ms, eta, n_steps, n_grad, true)
-end
