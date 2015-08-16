@@ -3,14 +3,6 @@ using ImageView
 
 include("render.jl")
 
-function demo()
-	mesh_set = load(joinpath(BUCKET, "EM_images", "Test.jld"))["MeshSet"]
-	src_pts, dst_pts = load_matches(mesh_set.matches[1])
-	tile_pathB = joinpath(BUCKET, "EM_images", "Tile_r4-c3_S2-W001_sec20.tif")
-	# draw_points(make_isotropic(rawdata(imread(tile_pathA))), src_pts)
-	imgc, img2, h = draw_points(make_isotropic(rawdata(imread(tile_pathB))), dst_pts)
-end
-
 function find_idx_of_closest_pt(pts, pt, limit)
 	d = sum((pts.-pt).^2, 1).^(1/2)
 	idx = eachindex(d)'[d .< limit]
@@ -65,3 +57,11 @@ function edit_matches(imgc, img2, annotation)
 	return pts_to_remove
 end
 
+function demo()
+	mesh_set = load(joinpath(BUCKET, "EM_images", "Test.jld"))["MeshSet"]
+	src_pts, dst_pts = load_matches(mesh_set.matches[1])
+	tile_pathB = joinpath(BUCKET, "EM_images", "Tile_r4-c3_S2-W001_sec20.tif")
+	# draw_points(make_isotropic(rawdata(imread(tile_pathA))), src_pts)
+	imgc, img2, annotation = draw_points(make_isotropic(rawdata(imread(tile_pathB))), dst_pts)
+	a = edit_matches(imgc, img2, annotation)
+end
