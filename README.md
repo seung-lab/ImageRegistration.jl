@@ -5,7 +5,7 @@ A set of tools for elastic image registration in Julia.
 * 8/7 Stitch two tiles (8/9)
 * 8/14 Stitch one section (8/16)
 * 8/21 Align one wafer
-  * Render section
+  * Render stitched section
   * Load tiles
   * Load affines
   * Apply imwarp to tiles with affines
