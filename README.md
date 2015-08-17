@@ -16,6 +16,7 @@ A set of tools for elastic image registration in Julia.
   * Create list of overlapping tile pairs based on affine transforms (Tommy)
   * Make seam inspection easier (Tommy)
   * Update mesh code to handle stitched sections (Dodam)
+  * Store cross correlation plots for the bad correspondences
 * 8/28 Elastically align one stack (piriform)
   * Parallelize
 * 9/4 Pre-alignment
