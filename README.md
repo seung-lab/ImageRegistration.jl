@@ -12,9 +12,10 @@ A set of tools for elastic image registration in Julia.
   * Downsample 2d array to arbitrary scale (not just factor of 2)
   * Blockmatch with subpixel accuracy
   * Filter spurious matches that are close to image edges
-  * Determine other necessary filters
+  * Determine other necessary match filters
   * Create list of overlapping tile pairs based on affine transforms
   * Make seam inspection easier
+  * Update mesh code to handle stitched sections
 * 8/28 Align one stack
   * Parallelize
 * 9/4 Pre-alignment
