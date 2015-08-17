@@ -70,7 +70,7 @@ function edit_matches(imgc, img2, annotation)
             idx = find_idx_of_nearest_pt(pts, [xi, yi], limit)
             println(idx, ": ", [xi, yi])
             annotation.ann.data.pts = hcat(annpts[:,1:annidx-1], 
-                                                        Sannpts[:,annidx+1:end])
+                                                        annpts[:,annidx+1:end])
             ImageView.redraw(imgc)
             push!(pts_to_remove, idx)
         end
