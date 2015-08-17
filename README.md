@@ -16,9 +16,9 @@ A set of tools for elastic image registration in Julia.
   * Create list of overlapping tile pairs based on affine transforms (Tommy)
   * Make seam inspection easier (Tommy)
   * Update mesh code to handle stitched sections (Dodam)
-* 8/28 Align one stack
+* 8/28 Elastically align one stack (piriform)
   * Parallelize
 * 9/4 Pre-alignment
   * Create overview object
-* 9/11 Optimize
+* 9/11 Pre-align & elastically align one stack (zebrafish)
   * AWS
