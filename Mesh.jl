@@ -176,6 +176,10 @@ function isInternal(A, i, j, d)
 	return false
 end
 
+function xcorr2Image(xc)
+	return grayim((xc .+ 1)./2)
+end
+
 # i, j are in world coordinates (as per the mesh coordinate specification)
 function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
 	b_rad = block_size + search_r;
@@ -188,7 +192,7 @@ function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
 	Bj = round(Int64, j - Bm.disp[2]);
 
 	if (!isInternal(A, Ai, Aj, block_size) || !isInternal(B, Bi, Bj, b_rad))
-		return noMatch;
+		return noMatch, [];
 	end
 
 	Ai_range = ceil(Ai)-block_size:ceil(Ai)+block_size;
@@ -201,11 +205,11 @@ function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
 
 	ind = findfirst(r_max .== xc);
 
-	if ind == 0 return noMatch; end
+	if ind == 0 return noMatch, xc; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
 	if i_max == 0 i_max = size(xc, 1); end
 
-	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max];
+	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max], xc;
 	
 end
 
@@ -235,7 +239,7 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 
 	for j in 1:n_upperbound
 		(Ai, Aj) = Am.nodes[j]
-		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);				
+		v, xc = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);				
 		if v == noMatch continue; end	
 		n_total +=1	
 		if v[3] < min_r; n_lowr +=1; continue; end
@@ -244,6 +248,9 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
 		if dst_triangle == noTriangle n_noTriangle +=1; continue; end
 		n += 1;
+		if !isnan(sum(xc))
+			imwrite(xcorr2Image(xc), joinpath(".","output_images", "normxcorr", string(join(Am.index, "_"), "_", join(Bm.index, "_"), "_", n, ".jpg")))
+		end
 		src_pointIndices[n] = j;
 		dispVectors[n] = dispVector;
 		dst_points[n] = Am.nodes[j] + dispVectors[n];

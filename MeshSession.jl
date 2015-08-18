@@ -1,8 +1,8 @@
 ################################# SCRIPT FOR TESTING ###################################
 
 
-Ms = MeshModule.makeNewMeshSet();
-sr = readdlm("section.txt");
+Ms = MeshModule.makeNewMeshSet()
+sr = readdlm(joinpath("input_images", "W001_sec20", "W001_sec20_offsets.txt"))
 
 #params
 block_size = 40;
@@ -22,7 +22,7 @@ num_tiles = size(sr, 1);
 imageArray = SharedArray(Float64, 10000, 10000, num_tiles);
 
 @time for i in 1:num_tiles
-	path = string("./EM_images/", sr[i, 1]);
+	path = string("./input_images/W001_sec20/", sr[i, 1]);
 	println(path);
 	di = sr[i, 2];
 	dj = sr[i, 3];
@@ -79,5 +79,5 @@ Ms = makeNewMeshSet();
 @time MeshModule.addMatches2MeshSet!(Mab, Ms);
 @time MeshModule.addMatches2MeshSet!(Mba, Ms);
 =#
-@time MeshModule.solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton);
-@time MeshModule.MeshSet2JLD("solvedMesh(1,20,0).jld", Ms);
+# @time MeshModule.solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton);
+# @time MeshModule.MeshSet2JLD("solvedMesh(1,20,0).jld", Ms);

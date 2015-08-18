@@ -204,8 +204,8 @@ function rerun_mesh_set(mesh_set)
   n_newton = 50;
   @time MeshModule.solveMeshSet!(mesh_set, match_coeff, 
                                                 eta, grad_threshold, n_newton)
-  @time MeshModule.MeshSet2JLD(joinpath(BUCKET, "EM_images", 
-                              "section20x5_blocksize20_FIXED.jld"), mesh_set)
+  # @time MeshModule.MeshSet2JLD(joinpath(BUCKET, "input_images", 
+                              # "section20x5_blocksize20_FIXED.jld"), mesh_set)
   return mesh_set
 end
 
@@ -235,7 +235,7 @@ function redisplay_mesh_set(mesh_set, problem_seams)
 end
 
 function fix_mesh_set()
-  mesh_set = load(joinpath(BUCKET, "EM_images", "section20x5.jld"))["MeshSet"]
+  mesh_set = load(joinpath(BUCKET, "input_images", "section20x5.jld"))["MeshSet"]
   fix_bad_seams(mesh_set)
   rerun_mesh_set(mesh_set)
 end
