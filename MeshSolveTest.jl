@@ -1,37 +1,36 @@
-using PyPlot
-using HDF5
-using JLD
+import PyPlot
+#using HDF5
+#using JLD
 
-#=
-data=load("r4c2-r4c3.jld")
-Vertices=data["nodes"]
-Incidence=data["edges"]
-RestLengths=data["edge_lengths"]
-Stiffnesses=data["edge_coeffs"]
-Fixed=data["nodes_fixed"]
-=#
-data=load("r4c2-r4c3.jld")
-Vertices=data["v"]
-Incidence=data["e"]
-RestLengths=data["l"]
-Stiffnesses=data["k"]
-Fixed=data["f"]
-#=
-fid = jldopen("./solvedMesh.jld", "w")
-fid["n"] = 3317;
-fid["m"] = 9781;
-fid["nodes"] = Vertices[:, 1:3317];
-=#
+#data=load("r4c2-r4c3.jld")
+#Vertices=data["nodes"]
+#Incidence=data["edges"]
+#RestLengths=data["edge_lengths"]
+#Stiffnesses=data["edge_coeffs"]
+#Fixed=data["nodes_fixed"]
 
-Vertices=map(Float64,Vertices)
-Incidence=sparse(map(Float64,full(Incidence)))
-RestLengths=map(Float64,RestLengths)
-Stiffnesses=map(Float64,Stiffnesses)
+#fid = jldopen("./solvedMesh.jld", "w")
+#fid["n"] = 3317;
+#fid["m"] = 9781;
+#fid["nodes"] = Vertices[:, 1:3317];
+
+#Vertices=convert(Array{Float64, 2},Vertices)
+#Incidence=convert(SparseMatrixCSC{Float64, Int64}, Incidence)
+#RestLengths=convert(Array{Float64, 1}, RestLengths)
+#Stiffnesses=convert(Array{Float64, 1}, Stiffnesses)
+
+Vertices = hcat(FMs.nodes...);
+Incidence = FMs.edges;
+RestLengths = FMs.edge_lengths;
+Stiffnesses = FMs.edge_coeffs;
+Fixed = FMs.nodes_fixed;
 
 d=size(Vertices,1)
 V=size(Vertices,2)
 E=size(Incidence,2)
 Lengths=zeros(1,V)
+
+println("$d, $V, $E")
 
 Moving = ~Fixed
 
@@ -54,26 +53,27 @@ for iter=1:niter
         #  Newton's method
         #=
         H=Hessian(Springs, Incidence, Stiffnesses, RestLengths)
-        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(sparse(H[Moving2,Moving2])\g[:,Moving][:],2,length(find(Moving)))
-=#
-        H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
+        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(sparse(H[Moving2,Moving2])\g[:,Moving][:],2,length(find(Moving)))=#
+
+H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
         Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
+
+#=        H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
+        Vertices[Moving]=Vertices[Moving]-eta*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))=#
     end
     U[iter]=Energy(Springs,Stiffnesses,RestLengths)
     println(iter," ", U[iter])
     #    visualize the dynamics
-    #=
-    subplot(221)
-    cla()
-    scatter(Vertices[1,:],Vertices[2,:])
-    subplot(222)
-    plot(1:iter,U[1:iter])
-    subplot(223)
+    PyPlot.subplot(221)
+    PyPlot.cla()
+    PyPlot.scatter(Vertices[1,:],Vertices[2,:])
+    PyPlot.subplot(222)
+    PyPlot.plot(1:iter,U[1:iter])
+    PyPlot.subplot(223)
     Lengths=sqrt(sum(Springs.^2,1))
-    cla()
-    plot(1:E,Lengths')
-    draw()
-    =#
+    PyPlot.cla()
+    PyPlot.plot(1:E,Lengths')
+    PyPlot.draw()
 end
 
 #=

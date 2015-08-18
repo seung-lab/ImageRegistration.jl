@@ -1,15 +1,25 @@
 # Julimaps
 A set of tools for elastic image registration in Julia.
 
-# To do
-* Find max of cross correlation with subpixel accuracy
-* Find eignevalue ratio for principal curvature
-* Try VoronoiDelaunay for mesh generation
-* Create render section method to stitch all tiles together
-* Optimize pa_warp2 (rectify number of operations with time spent in method)
-* Test better interpolation method in piecewise affine warping
-* Detect overlapping tile pairs based on affine transforms
-* Include unit tests in MeshSolve
-* Include unit tests in Mesh
-* Include unit tests in piecewiseaffine_warp
-* Create downsampling method
+# Milestones
+* 8/7 Stitch two tiles (8/9)
+* 8/14 Stitch one section (8/16)
+* 8/21 Align one wafer
+  * Render stitched section (Tommy)
+  * Load tiles (Tommy + Dodam)
+  * Load affines (Tommy + Dodam)
+  * Apply imwarp to tiles with affines (Tommy + Dodam)
+  * Downsample 2d array to arbitrary scale (not just factor of 2) (Shang)
+  * Blockmatch with subpixel accuracy (Shang)
+  * Filter spurious matches that are close to image edges (Dodam)
+  * Determine other necessary match filters (Dodam)
+  * Create list of overlapping tile pairs based on affine transforms (Tommy)
+  * Make seam inspection easier (Tommy)
+  * Update mesh code to handle stitched sections (Dodam)
+  * Store cross correlation plots for the bad correspondences
+* 8/28 Elastically align one stack (piriform)
+  * Parallelize
+* 9/4 Pre-alignment
+  * Create overview object
+* 9/11 Pre-align & elastically align one stack (zebrafish)
+  * AWS

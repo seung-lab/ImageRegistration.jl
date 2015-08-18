@@ -1,9 +1,14 @@
 ################################# SCRIPT FOR TESTING ###################################
 tic();
 
+<<<<<<< HEAD
 Ms = MeshModule.makeNewMeshSet();
 sr = readdlm("W001_sec21_offsets.txt");
 #sr = readdlm("section.txt");
+=======
+Ms = MeshModule.makeNewMeshSet()
+sr = readdlm(joinpath("input_images", "W001_sec20", "W001_sec20_offsets.txt"))
+>>>>>>> 9aef4664e3f63a0788b61fa2f27ae0d51ffd21c5
 
 #params
 block_size = 30;
@@ -23,6 +28,7 @@ num_rows = 0;
 num_cols = 0;
 
 @time for i in 1:num_tiles
+<<<<<<< HEAD
 	path = string("./W001_sec21/", sr[i, 1]);
 	row = sr[i, 2];
 	col = sr[i, 3];
@@ -41,6 +47,13 @@ end
 	@sync @parallel for l in 1:num_procs
 	i = k+l;
 	if i > num_tiles return; end;
+=======
+	path = string("./input_images/W001_sec20/", sr[i, 1]);
+	println(path);
+	di = sr[i, 2];
+	dj = sr[i, 3];
+	MeshModule.addMesh2MeshSet!(MeshModule.Tile2Mesh(path, (1, 20, i), (0, 0), di, dj, false, mesh_length, mesh_coeff), Ms);
+>>>>>>> 9aef4664e3f63a0788b61fa2f27ae0d51ffd21c5
 	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
 	imageArray[1:size(meshImage, 1), 1:size(meshImage, 2), i] = meshImage;
 	end
@@ -107,3 +120,8 @@ Ms = makeNewMeshSet();
 @time MeshModule.addMatches2MeshSet!(Mab, Ms);
 @time MeshModule.addMatches2MeshSet!(Mba, Ms);
 =#
+<<<<<<< HEAD
+=======
+# @time MeshModule.solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton);
+# @time MeshModule.MeshSet2JLD("solvedMesh(1,20,0).jld", Ms);
+>>>>>>> 9aef4664e3f63a0788b61fa2f27ae0d51ffd21c5
