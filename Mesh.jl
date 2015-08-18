@@ -1,7 +1,7 @@
 module MeshModule
 
 export Mesh, Matches, MeshSet
-export Tile2Mesh, getMeshImage, Meshes2Matches, makeNewMeshSet, addMesh2MeshSet!, addMatches2MeshSet!, solveMeshSet!, JLD2Mesh, Mesh2JLD
+export Tile2Mesh, getMeshImage, Meshes2Matches, makeNewMeshSet, addMesh2MeshSet!, addMatches2MeshSet!, solveMeshSet!, JLD2MeshSet, MeshSet2JLD, isDiagonal, isAdjacent
 
 using Images
 using HDF5
@@ -56,8 +56,8 @@ type Mesh
 end
 
 type Matches
-	src_mesh::Mesh						# source mesh
-	dst_mesh::Mesh						# destination mesh
+	src_index::Index					# source mesh index
+	dst_index::Index					# destination mesh index
 
 	n::Int64						# number of matches
 
@@ -211,57 +211,67 @@ end
 
 function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 
-	src_mesh = Am;
-	dst_mesh = Bm;
+	src_index = Am.index;
+	dst_index = Bm.index;
 	p1 = Am.path;
 	p2 = Bm.path;
 
 	n = 0;
 	n_total = 0;
 	n_lowr = 0;
+	n_outlier = 0;
 	n_noTriangle = 0;
 	n_upperbound = Am.n;
 
-	src_pointIndices = Array(Int64, n_upperbound);
-	dst_points = Points(n_upperbound);
-	dst_triangles = Triangles(n_upperbound);
-	dst_weights = Weights(n_upperbound);
-	dispVectors = Points(n_upperbound);
+	src_pointIndices = Array(Int64, 0);
+	dst_points = Points(0);
+	dst_triangles = Triangles(0);
+	dst_weights = Weights(0);
+	dispVectors = Points(0);
+	dispVectors_raw = Array{Array{Float64, 1}, 1}(0);
+	dispVectors_mags = Array{Float64, 1}(0);
 
 	if (Am==Bm)
-		matches = Matches(src_mesh, dst_mesh, n, src_pointIndices[1:0], dst_points[1:0], dst_triangles[1:0], dst_weights[1:0], dispVectors[1:0]);
-		return matches;
+		return Void;
 	end
 
 	for j in 1:n_upperbound
-		(Ai, Aj) = Am.nodes[j]
-		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);				
+		(Ai, Aj) = Am.nodes[j];
+		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);
+		push!(dispVectors_raw, v);
+		if v != noMatch && v[3] >= min_r
+			push!(dispVectors_mags, norm(v));
+		end
+	end
+
+	mu = mean(dispVectors_mags);
+	sig = std(dispVectors_mags);
+
+	for j in 1:n_upperbound
+		v = dispVectors_raw[j];	
 		if v == noMatch continue; end	
 		n_total +=1	
 		if v[3] < min_r; n_lowr +=1; continue; end
 		dispVector = v[1:2];
+		if norm(dispVector) > mu + 3* sig; n_outlier +=1; continue; end
 		dst_point = Am.nodes[j] + dispVector;
 		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
 		if dst_triangle == noTriangle n_noTriangle +=1; continue; end
 		n += 1;
-		src_pointIndices[n] = j;
-		dispVectors[n] = dispVector;
-		dst_points[n] = Am.nodes[j] + dispVectors[n];
-		dst_triangles[n] = dst_triangle;
-		dst_weights[n] = getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]);
+		push!(src_pointIndices, j);
+		push!(dispVectors, dispVector);
+		push!(dst_points, Am.nodes[j] + dispVectors[n]);
+		push!(dst_triangles, dst_triangle);
+		push!(dst_weights, getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]));
 	end
 
-	src_pointIndices = src_pointIndices[1:n];
-	dst_points = dst_points[1:n];
-	dispVectors = dispVectors[1:n];
-	dst_triangles = dst_triangles[1:n];
-	dst_weights = dst_weights[1:n]; 
-
-	if n != 0
-	println("$p1 -> $p2: $n_total of $n_upperbound mesh points, $n_lowr rejected due to r, $n_noTriangle rejected due to outside, $n accepted matches.");
+	if n == 0
+	return Void;
 	end
 
-	matches = Matches(src_mesh, dst_mesh, n, src_pointIndices, dst_points, dst_triangles, dst_weights, dispVectors);
+	println("$p1 -> $p2: $n_upperbound in mesh, $n_total in overlap. Rejections: $n_lowr (low r), $n_outlier (outliers), $n_noTriangle (outside triangles). $n accepted matches.");
+
+	matches = Matches(src_index, dst_index, n, src_pointIndices, dst_points, dst_triangles, dst_weights, dispVectors);
 	return matches;
 end
 
@@ -355,6 +365,16 @@ function findMeshTriangle(Am, i, j)
 	return (ind0, ind1, ind2);
 end
 
+function isAdjacent(Am, Bm)
+	if abs(Am.grid[1] - Bm.grid[1]) + abs(Am.grid[2] - Bm.grid[2]) == 1 return true; end
+	return false;
+end
+
+function isDiagonal(Am, Bm)
+	if abs(Am.grid[1] - Bm.grid[1]) + abs(Am.grid[2] - Bm.grid[2]) == 2 && Am.grid[1] != Bm.grid[1] && Am.grid[2] != Bm.grid[2] return true; end
+	return false;
+end
+
 # Convert Cartesian coordinate to triple of barycentric coefficients
 function getTriangleWeights(Am, triangle, pi, pj)
 	R = vcat(Am.nodes[triangle[1]]', Am.nodes[triangle[2]]', Am.nodes[triangle[3]]')
@@ -420,9 +440,9 @@ function addMesh2MeshSet!(Am, Ms)
 end
 
 function addMatches2MeshSet!(M, Ms)
+	if (typeof(M) == Void) return; end
 	push!(Ms.matches, M);
-	push!(Ms.matches_pairs, (findIndex(Ms, M.src_mesh.index), findIndex(Ms, M.dst_mesh.index)));
-	if (M.n == 0) return; end
+	push!(Ms.matches_pairs, (findIndex(Ms, M.src_index), findIndex(Ms, M.dst_index)));
 	Ms.M += 1;
 	Ms.n;
 	Ms.m += M.n;
