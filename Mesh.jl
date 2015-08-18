@@ -240,7 +240,6 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 	end
 
 	for j in 1:n_upperbound
-<<<<<<< HEAD
 		(Ai, Aj) = Am.nodes[j];
 		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);
 		push!(dispVectors_raw, v);
@@ -254,10 +253,6 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 
 	for j in 1:n_upperbound
 		v = dispVectors_raw[j];	
-=======
-		(Ai, Aj) = Am.nodes[j]
-		v, xc = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);				
->>>>>>> 9aef4664e3f63a0788b61fa2f27ae0d51ffd21c5
 		if v == noMatch continue; end	
 		n_total +=1	
 		if v[3] < min_r; n_lowr +=1; continue; end
@@ -267,22 +262,15 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
 		if dst_triangle == noTriangle n_noTriangle +=1; continue; end
 		n += 1;
-<<<<<<< HEAD
 		push!(src_pointIndices, j);
 		push!(dispVectors, dispVector);
 		push!(dst_points, Am.nodes[j] + dispVectors[n]);
 		push!(dst_triangles, dst_triangle);
 		push!(dst_weights, getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]));
-=======
-		if !isnan(sum(xc))
+		#=if !isnan(sum(xc))
 			imwrite(xcorr2Image(xc), joinpath(".","output_images", "normxcorr", string(join(Am.index, "_"), "_", join(Bm.index, "_"), "_", n, ".jpg")))
 		end
-		src_pointIndices[n] = j;
-		dispVectors[n] = dispVector;
-		dst_points[n] = Am.nodes[j] + dispVectors[n];
-		dst_triangles[n] = dst_triangle;
-		dst_weights[n] = getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]);
->>>>>>> 9aef4664e3f63a0788b61fa2f27ae0d51ffd21c5
+		=#
 	end
 
 	if n == 0
