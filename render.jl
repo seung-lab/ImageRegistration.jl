@@ -188,13 +188,14 @@ function render_section(tiles)
         push!(spatial_refs, spatial_ref)
     end
     global_ref = sum(spatial_refs)
-    section_img = zeros(global_ref.w, global_ref.h)
-    for (img, spatial_ref) in zip(tile_imgs, spatial_refs)
-        i = spatial_ref.x - global_ref.x+1
-        j = spatial_ref.y - global_ref.y+1
+    section_img = zeros(global_ref.h, global_ref.w)
+    for (idx, (img, spatial_ref)) in enumerate(zip(tile_imgs, spatial_refs))
+        println(idx)
+        i = spatial_ref.y - global_ref.y+1
+        j = spatial_ref.x - global_ref.x+1
         w = spatial_ref.w-1
         h = spatial_ref.h-1
-        section_img[i:i+w, j:j+h] = max(section_img[i:i+w, j:j+h], img)
+        section_img[i:i+h, j:j+w] = max(section_img[i:i+h, j:j+w], img')
     end
     return section_img
 end
@@ -371,7 +372,8 @@ end
 function demo_render_section()
     mesh_set = load(joinpath(BUCKET, "input_images", "section20x5_FIXED.jld"))["MeshSet"]
     tiles = load_tiles(mesh_set)
-
+    section_img = render_section(tiles)
+    imwrite(section_img, joinpath(BUCKET, "output_images", "W001_sec20.jpg"))
 end
 
 function test_padimage()

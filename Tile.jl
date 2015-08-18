@@ -40,8 +40,8 @@ Load original image for tile, using the WAFER_DIR and filename
 """
 function load_image(tile::Tile)
 	section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
-	# path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
-	path = joinpath(".", "input_images", "W001_sec20", string(tile.name, ".tif"))
+	path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
+	# path = joinpath(".", "input_images", "W001_sec20", string(tile.name, ".tif"))
 	return imread(path)
 end
 
