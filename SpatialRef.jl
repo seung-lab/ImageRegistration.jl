@@ -3,8 +3,8 @@ using Base.Test
 type SpatialRef
 	x::Int
 	y::Int
-	w::UInt
-	h::UInt
+	w::Int
+	h::Int
 end
 
 SpatialRef() = SpatialRef(0,0,0,0)

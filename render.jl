@@ -9,6 +9,7 @@ include("incidence2triangles.jl")
 include("piecewiseaffine_warp.jl")
 include("visualize.jl")
 include("Mesh.jl")
+include("Tile.jl")
 
 using JLD
 using Images
@@ -174,22 +175,28 @@ function warp_tile(mesh, tile_path)
     return img_warped, offset
 end
 
+"""
+Stitch array of tiles into one image, with max pixel blending
+"""
 function render_section(tiles)
 # Stitch together Tile objects
+    tile_imgs = []
+    spatial_refs = []
     for tile in tiles
-        tile = mesh_warp(tile)
+        img, spatial_ref = mesh_warp_tile(tile)
+        push!(tile_imgs, img)
+        push!(spatial_refs, spatial_ref)
     end
-    spatial_refs = Array{Int64,2}
-    for tile in tiles
-        spatial_refs = vcat(spatial_refs, tile.spatial_ref)
+    global_ref = sum(spatial_refs)
+    section_img = zeros(global_ref.w, global_ref.h)
+    for (img, spatial_ref) in zip(tile_imgs, spatial_refs)
+        i = spatial_ref.x - global_ref.x+1
+        j = spatial_ref.y - global_ref.y+1
+        w = spatial_ref.w-1
+        h = spatial_ref.h-1
+        section_img[i:i+w, j:j+h] = max(section_img[i:i+w, j:j+h], img)
     end
-    global_spatial_ref = min(spatial_refs)
-    # Incomplete
-end
-
-function render_section(tile_array)
-# Stitch together array of tile images and spatial references
-
+    return section_img
 end
 
 function resample_to_new_spatial_ref(img, SR)
@@ -359,6 +366,12 @@ function demo_two_tiles_from_mesh_set()
     O, SR_O = imfuse(A, SR_A, B, SR_B) 
     view(make_isotropic(O))
     return A, SR_A, B, SR_B
+end
+
+function demo_render_section()
+    mesh_set = load(joinpath(BUCKET, "input_images", "section20x5_FIXED.jld"))["MeshSet"]
+    tiles = load_tiles(mesh_set)
+
 end
 
 function test_padimage()
