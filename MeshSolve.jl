@@ -108,7 +108,7 @@ function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
     sparse(II[1:numel],JJ[1:numel],SS[1:numel])
 end
 
-function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta, grad_threshold, n_newton)
+function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gradient, eta_newton, grad_threshold, newton_tolerance)
 
 d=size(Vertices,1)
 V=size(Vertices,2)
@@ -124,7 +124,7 @@ iter = 1;
 while true
     Springs=Vertices*Incidence
     g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
-    Vertices[:,Moving]=Vertices[:,Moving]-eta*g[:,Moving]
+    Vertices[:,Moving]=Vertices[:,Moving]-eta_gradient*g[:,Moving]
     push!(U, Energy(Springs,Stiffnesses,RestLengths))
     println(iter," ", U[iter])
     if iter != 1
@@ -135,14 +135,17 @@ while true
     iter += 1;
 end
 
-for i in 1:n_newton
+while true
 	Springs=Vertices*Incidence
-    	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
 	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
-        Vertices[:,Moving]=Vertices[:,Moving]-eta*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
-    	push!(U, Energy(Springs,Stiffnesses,RestLengths))
+    Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
+	push!(U, Energy(Springs,Stiffnesses,RestLengths))
     println(iter," ", U[iter])
-	iter+=1;
+    if (U[iter-1] - U[iter]) / U[iter-1] < newton_tolerance
+        println("Converged below ", newton_tolerance); break;
+    end
+    iter+=1;
 end
 
 end

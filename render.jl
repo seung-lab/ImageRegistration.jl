@@ -179,7 +179,6 @@ end
 Stitch array of tiles into one image, with max pixel blending
 """
 function render_section(tiles)
-# Stitch together Tile objects
     tile_imgs = []
     spatial_refs = []
     for tile in tiles
@@ -188,17 +187,45 @@ function render_section(tiles)
         push!(spatial_refs, spatial_ref)
     end
     global_ref = sum(spatial_refs)
-    section_img = zeros(global_ref.h, global_ref.w)
+    section_img = zeros(global_ref.w, global_ref.h)
     for (idx, (img, spatial_ref)) in enumerate(zip(tile_imgs, spatial_refs))
         println(idx)
-        i = spatial_ref.y - global_ref.y+1
-        j = spatial_ref.x - global_ref.x+1
+        i = spatial_ref.x - global_ref.x+1
+        j = spatial_ref.y - global_ref.y+1
         w = spatial_ref.w-1
         h = spatial_ref.h-1
-        section_img[i:i+h, j:j+w] = max(section_img[i:i+h, j:j+w], img')
+        section_img[i:i+w, j:j+h] = max(section_img[i:i+w, j:j+h], img')
+        tile_imgs[idx] = 0
+        gc()
     end
     return section_img
 end
+
+# function imfuse_section(tiles)
+# # Stitch together Tile objects
+#     tile_reds = []
+#     tile_greens = []
+#     spatial_refs = []
+#     for tile in tiles
+#         img, spatial_ref = mesh_warp_tile(tile)
+#         if 
+#         push!(tile_imgs, img)
+#         push!(spatial_refs, spatial_ref)
+#     end
+#     global_ref = sum(spatial_refs)
+#     section_red = zeros(global_ref.w, global_ref.h)
+#     for (idx, (img, spatial_ref)) in enumerate(zip(tile_imgs, spatial_refs))
+#         println(idx)
+#         i = spatial_ref.x - global_ref.x+1
+#         j = spatial_ref.y - global_ref.y+1
+#         w = spatial_ref.w-1
+#         h = spatial_ref.h-1
+#         section_img[i:i+w, j:j+h] = max(section_img[i:i+w, j:j+h], img')
+#         tile_imgs[idx] = 0
+#         gc()
+#     end
+#     return section_img
+# end    
 
 function resample_to_new_spatial_ref(img, SR)
 # Shift image to pixel grid of its global space (get an integer spatial ref)
@@ -330,50 +357,51 @@ function demo_warp2()
 end
 
 function demo_section()
-    mesh_set = load(joinpath(BUCKET, "EM_images", "section20x5_blocksize20.jld"))["MeshSet"]
+    mesh_set = load(joinpath(BUCKET, "input_images", "W001_sec21_100_0.001_50000_100.jld"))["MeshSet"]
     matches = mesh_set.matches
     img_set = []
     for match in mesh_set.matches
         src_mesh =  match.src_mesh
         dst_mesh =  match.dst_mesh
         if src_mesh.index[3] > dst_mesh.index[3]
-            tile_pathA = joinpath(BUCKET, src_mesh.path)
+            tile_pathA = joinpath(BUCKET, "input_images", "W001_sec21", src_mesh.path[14:end])
             A, SR_A = warp_tile(src_mesh, tile_pathA) 
 
-            dst_mesh =  match.dst_mesh
-            tile_pathB = joinpath(BUCKET, dst_mesh.path)
+            tile_pathB = joinpath(BUCKET, "input_images", "W001_sec21", dst_mesh.path[14:end])
             B, SR_B = warp_tile(dst_mesh, tile_pathB)
 
             O, SR_O = imfuse(A, SR_A, B, SR_B)
-            imwrite(O, joinpath("/usr/people/tmacrina/Desktop/W001_sec20_blocksize20", string(tile_pathA[15:end-4],"_",tile_pathB[15:end-4],".jpg") )) 
+            imwrite(O, joinpath("/usr/people/tmacrina/Desktop/W001_sec21", string(src_mesh.path[14:end-4],"_",dst_mesh.path[14:end-4],".jpg") )) 
         end
     end
 end
 
 function demo_two_tiles_from_mesh_set()
 # Load JLD file for MeshSet, warp images, then display
-    mesh_set = load(joinpath(BUCKET, "EM_images", "Test.jld"))["MeshSet"]
+    mesh_set = load(joinpath(BUCKET, "input_images", "Test.jld"))["MeshSet"]
     # r4_c2
-    tile_pathA = joinpath(BUCKET, "EM_images", "Tile_r4-c2_S2-W001_sec20.tif")
+    tile_pathA = joinpath(BUCKET, "input_images", "W001_sec20", "Tile_r4-c2_S2-W001_sec20.tif")
     A, SR_A = warp_tile(mesh_set.meshes[1], tile_pathA) 
     
     # r4_c3
-    tile_pathB = joinpath(BUCKET, "EM_images", "Tile_r4-c3_S2-W001_sec20.tif")
-    # B, SR_B = warp_tile(mesh_set.meshes[2], tile_pathB)  
+    tile_pathB = joinpath(BUCKET, "input_images", "W001_sec20", "Tile_r4-c3_S2-W001_sec20.tif")
+    B, SR_B = warp_tile(mesh_set.meshes[2], tile_pathB)  
 
     src_pts, dst_pts = load_matches(mesh_set.matches[1])
     # draw_points(make_isotropic(rawdata(imread(tile_pathA))), src_pts)
-    imgc, img2, annotation = draw_points(make_isotropic(rawdata(imread(tile_pathB))), dst_pts)
+    # imgc, img2, annotation = draw_points(make_isotropic(rawdata(imread(tile_pathB))), dst_pts)
     O, SR_O = imfuse(A, SR_A, B, SR_B) 
     view(make_isotropic(O))
     return A, SR_A, B, SR_B
 end
 
 function demo_render_section()
-    mesh_set = load(joinpath(BUCKET, "input_images", "section20x5_FIXED.jld"))["MeshSet"]
+    fn = "section20x5_FIXED"
+    mesh_set = load(joinpath(BUCKET, "input_images", string(fn, ".jld")))["MeshSet"]
     tiles = load_tiles(mesh_set)
     section_img = render_section(tiles)
-    imwrite(section_img, joinpath(BUCKET, "output_images", "W001_sec20.jpg"))
+    img = grayim(section_img)
+    imwrite(img, joinpath(BUCKET, "output_images", string(fn, ".jpg")))
 end
 
 function test_padimage()

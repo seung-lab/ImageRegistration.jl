@@ -169,27 +169,41 @@ function fix_bad_seams(mesh_set)
     src_index =  match.src_mesh.index[3]
     dst_index =  match.dst_mesh.index[3]
     vectors = load_vectors(match)
+    # # automated intervention
+    # d = sum((vectors[1:2,:] - vectors[3:4,:]).^2, 1).^(1/2)
+    # d_mean = mean(d)
+    # d_std = mean((d.-d_mean).^2).^(1/2)
+    # pts_to_remove = eachindex(d)'[(d.-d_mean)./d_std .> 3]
+    # if length(pts_to_remove) > 0
+    #   println((src_index, dst_index))
+    #   println(pts_to_remove)
+    #   remove_matches_from_meshset!(pts_to_remove, idx, mesh_set)
+    # end
+
+    # manual intervention
     outliers = count_outliers(vectors, 3)
     println(idx, ": ", outliers)
-    if outliers > 0
-      println((src_index, dst_index))
-      c = canvasgrid(1,2)
-      tile_pathA = joinpath(BUCKET, match.src_mesh.path)
-      tile_pathB = joinpath(BUCKET, match.dst_mesh.path)
-      src_pts, dst_pts = load_matches(match)
-      # vectors = load_vectors(match)
-      imgA = make_isotropic(rawdata(imread(tile_pathA)))
-      imgc, img2 = view(c[1,1], imgA)
-      draw_points(imgc, img2, src_pts, RGB(0,0,1))
-      imgB = make_isotropic(rawdata(imread(tile_pathB)))
-      imgc, img2 = view(c[1,2], imgB)
-      imgc, img2, points, lines = draw_vectors(imgc, img2, vectors, RGB(1,0,0))
-      pts_to_remove = edit_matches(imgc, img2, points)
-      println(pts_to_remove)
-      if length(pts_to_remove) > 0
-        remove_matches_from_meshset!(pts_to_remove, idx, mesh_set)
-      end
+    # if outliers > 0
+    println((src_index, dst_index))
+    c = canvasgrid(1,2)
+    tile_pathA = joinpath(BUCKET, "input_images", "W001_sec21", match.src_mesh.path[14:end])
+    tile_pathB = joinpath(BUCKET, "input_images", "W001_sec21", match.dst_mesh.path[14:end])
+    src_pts, dst_pts = load_matches(match)
+    # vectors = load_vectors(match)
+    imgA = make_isotropic(rawdata(imread(tile_pathA)))
+    imgc, img2 = view(c[1,1], imgA)
+    draw_points(imgc, img2, src_pts, RGB(0,0,1))
+    imgB = make_isotropic(rawdata(imread(tile_pathB)))
+    imgc, img2 = view(c[1,2], imgB)
+    imgc, img2, points, lines = draw_vectors(imgc, img2, vectors, RGB(1,0,0))
+    pts_to_remove = edit_matches(imgc, img2, points)
+    println(pts_to_remove)
+    if length(pts_to_remove) > 0
+      remove_matches_from_meshset!(pts_to_remove, idx, mesh_set)
     end
+    c = 0; imgA = 0; imgB = 0; imgc = 0; img2 = 0;
+    gc()
+    # end
   end
 end
 
@@ -198,14 +212,15 @@ Run mesh_set back through elastic solver and save
 """
 function rerun_mesh_set(mesh_set)
   match_coeff = 10;
-  eta = 0.01;
+  eta_gradient = 0.01;
+  eta_newton = 1.0;
   show_plot = false;
   grad_threshold = 1/1000;
-  n_newton = 50;
+  newton_tolerance = 10.0^-7;
   @time MeshModule.solveMeshSet!(mesh_set, match_coeff, 
-                                                eta, grad_threshold, n_newton)
-  # @time MeshModule.MeshSet2JLD(joinpath(BUCKET, "input_images", 
-                              # "section20x5_blocksize20_FIXED.jld"), mesh_set)
+                                                eta_gradient, eta_newton, grad_threshold, newton_tolerance)
+  @time MeshModule.MeshSet2JLD(joinpath(BUCKET, "input_images", 
+                              "section20x5_FIXED.jld"), mesh_set)
   return mesh_set
 end
 
@@ -235,7 +250,7 @@ function redisplay_mesh_set(mesh_set, problem_seams)
 end
 
 function fix_mesh_set()
-  mesh_set = load(joinpath(BUCKET, "input_images", "section20x5.jld"))["MeshSet"]
+  mesh_set = load(joinpath(BUCKET, "input_images", "section20x5_FIXED.jld"))["MeshSet"]
   fix_bad_seams(mesh_set)
   rerun_mesh_set(mesh_set)
 end
