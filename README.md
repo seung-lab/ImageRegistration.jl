@@ -1,3 +1,5 @@
+![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg "travis")
+
 # Julimaps
 A set of tools for elastic image registration in Julia.
 
