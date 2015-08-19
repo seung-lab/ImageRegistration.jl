@@ -31,8 +31,8 @@ function AffineAlignSections(img1::Array{}, img2::Array{})
 		offset,r = BlockMatchAtPoint(img1, p, img2, p, half_block_size, search_radius)
 		println(p, offset, r)
 		if r > accept_xcorr
-			push!(points1, p)
-			push!(points2, p + offset)
+			push!(points1, [p; 1])
+			push!(points2, [p + offset; 1])
 		end
 	end
 	points1 = hcat(points1[:]...)
@@ -43,7 +43,7 @@ end
 
 function FindAffine(points1, points2)
 # Inputs:
-# 		2D arrays with each column being a point.
+# 		2D arrays with each column being a point in homogeneous coords.
 # Returns:
 #    	Affine transformation A, that produces points2 = A * points1
 
