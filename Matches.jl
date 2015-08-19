@@ -95,7 +95,7 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 		n_total +=1	
 		if v[3] < min_r; n_lowr +=1; continue; end
 		dispVector = v[1:2];
-		if norm(dispVector) > mu + 3* sig; n_outlier +=1; continue; end
+		if norm(dispVector) > mu + 2 * sig; n_outlier +=1; continue; end
 		dst_point = Am.nodes[j] + dispVector;
 		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
 		if dst_triangle == noTriangle n_noTriangle +=1; continue; end
