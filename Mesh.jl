@@ -437,7 +437,7 @@ function addMatches2MeshSet!(M, Ms)
 	return;
 end
 
-function solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton)
+function solveMeshSet!(Ms, match_coeff, eta_gradient, eta_newton, grad_threshold, newton_tolerance)
 	nodes = Points(0);
 	nodes_fixed = BinaryProperty(0);
 	edges = spzeros(Float64, Ms.n, 0);
@@ -475,7 +475,7 @@ function solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton)
 		edges = hcat(edges, edges_padded);
 	end
 
-	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta, grad_threshold, n_newton);
+	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, eta_newton, grad_threshold, newton_tolerance);
 	nodes_t = Points(0);
 	for i in 1:size(nodes, 2)
        		push!(nodes_t, vec(nodes[:, i]))
@@ -486,6 +486,12 @@ function solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton)
 		cur_mesh.disp_t = cur_mesh.nodes_t[1] - cur_mesh.offsets;
 	end
 
+end
+
+function check_mesh_disp(mesh_set)
+	for mesh in mesh_set.meshes
+		println(mesh.disp, " - ", mesh.disp_t, " = ", mesh.disp - mesh.disp_t)
+	end
 end
 
 function MeshSet2JLD(filename, Ms)

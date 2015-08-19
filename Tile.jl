@@ -40,8 +40,8 @@ Load original image for tile, using the WAFER_DIR and filename
 """
 function load_image(tile::Tile)
 	section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
-	path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
-	# path = joinpath(".", "input_images", "W001_sec20", string(tile.name, ".tif"))
+	# path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
+	path = joinpath(".", "input_images", "W001_sec20", string(tile.name, ".tif"))
 	return imread(path)
 end
 
@@ -116,7 +116,7 @@ function mesh_warp_tile(tile::Tile)
 
     img_warped = pa_warp2(img_padded, src_nodes, dst_nodes, triangles)
     # imgc = draw_mesh(make_isotropic(img_warped), dst_nodes, node_dict)
-    spatial_ref = SpatialRef(offset..., size(img_warped)...)
+    spatial_ref = SpatialRef(offset..., reverse(size(img_warped))...)
     return img_warped, spatial_ref
 end
 
