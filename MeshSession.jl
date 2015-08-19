@@ -65,7 +65,7 @@ print("Blockmatching, "); toc(); println();
 
 
 
-@time MeshModule.solveMeshSet!(Ms, match_coeff, eta_grad, grad_threshold, eta_newton, newton_threshold);
+@time MeshModule.solveMeshSet!(Ms, match_coeff, eta_grad, grad_threshold, eta_newton, newton_tolerance);
 
 disps = Points(0);
 
