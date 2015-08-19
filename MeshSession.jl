@@ -1,42 +1,58 @@
+using Julimaps
+using Params
+using MeshModule
+
 ################################# SCRIPT FOR TESTING ###################################
+tic();
 
+max_tile_size = 0;
+Ms = MeshModule.makeNewMeshSet();
+sr = readdlm("W001_sec21_offsets.txt");
 
-Ms = MeshModule.makeNewMeshSet()
-sr = readdlm(joinpath("input_images", "W001_sec20", "W001_sec20_offsets.txt"))
+#sr = readdlm(joinpath("input_images", "W001_sec20", "W001_sec20_offsets.txt"))
 
-#params
-block_size = 40;
-search_r = 80; #20;
-min_r = 0.65; #0.50;
-mesh_length = 200;
-mesh_coeff = 1;
-match_coeff = 10;
-eta = 0.01;
-show_plot = false;
-num_procs = 12;
-grad_threshold = 1/1000;
-n_newton = 50;
-max_tile_size = 10000;
-num_tiles = size(sr, 1);
-
-imageArray = SharedArray(Float64, 10000, 10000, num_tiles);
 
 @time for i in 1:num_tiles
-	path = string("./input_images/W001_sec20/", sr[i, 1]);
-	println(path);
-	di = sr[i, 2];
-	dj = sr[i, 3];
-	MeshModule.addMesh2MeshSet!(MeshModule.Tile2Mesh(path, (1, 20, i), (0, 0), di, dj, false, mesh_length, mesh_coeff), Ms);
+	path = string("./W001_sec21/", sr[i, 1]);
+	row = sr[i, 2];
+	col = sr[i, 3];
+	di = sr[i, 4];
+	dj = sr[i, 5];
+	MeshModule.addMesh2MeshSet!(MeshModule.Tile2Mesh(path, (1, 21, i), (row, col), di, dj, false, mesh_length, mesh_coeff), Ms);
+	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
+	max_size = max(size(meshImage, 1), size(meshImage, 2));
+	if max_tile_size < max_size max_tile_size = max_size; end
+end
+	imageArray = SharedArray(Float64, max_tile_size, max_tile_size, num_tiles);
+
+@time for k in 0:num_procs:num_tiles
+	@sync @parallel for l in 1:num_procs
+	i = k+l;
+	if i > num_tiles return; end;
 	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
 	imageArray[1:size(meshImage, 1), 1:size(meshImage, 2), i] = meshImage;
+	end
 end
-#=
-@time for k in 0:num_procs:Ms.N^2
-	toFetch = @sync @parallel for l in num_procs
-	(i, j) = (rem(k+l, Ms.N), cld(k+l, Ms.N));
-	if i == 0 i = Ms.N; end
-	if i == j || i > Ms.N || j > Ms.N continue end;
-		return MeshModule.Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
+
+print("Initialisation, "); toc(); println();
+
+tic();
+adjacent_pairs = Pairings(0);
+diagonal_pairs = Pairings(0);
+
+for i in 1:Ms.N, j in 1:Ms.N
+	if MeshModule.isAdjacent(Ms.meshes[i], Ms.meshes[j]) push!(adjacent_pairs, (i, j)); end
+	if MeshModule.isDiagonal(Ms.meshes[i], Ms.meshes[j]) push!(diagonal_pairs, (i, j)); end
+end
+
+pairs = vcat(adjacent_pairs, diagonal_pairs);
+
+@time for k in 0:num_procs:length(pairs)
+	toFetch = @sync @parallel for l in 1:num_procs
+	ind = k + l;
+	if ind > length(pairs) return; end
+	(i, j) = pairs[ind];
+	return MeshModule.Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
 	end
 	for i = 1:length(toFetch)
 		M = fetch(toFetch[i])
@@ -44,16 +60,31 @@ end
 		MeshModule.addMatches2MeshSet!(M, Ms);
 	end
 end
-=#
 
-@time for i in 1:Ms.N
-	for j in 1:Ms.N
-		if j == i continue; end
-	@time M = MeshModule.Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
-	if M.n == 0 continue; end
-	MeshModule.addMatches2MeshSet!(M, Ms);
+print("Blockmatching, "); toc(); println();
+
+
+
+@time MeshModule.solveMeshSet!(Ms, match_coeff, eta_grad, grad_threshold, eta_newton, newton_threshold);
+
+disps = Points(0);
+
+for k in 1:Ms.M
+	for i in 1:Ms.matches[k].n
+		w = Ms.matches[k].dst_weights[i];
+		t = Ms.matches[k].dst_triangles[i];
+		p = Ms.matches[k].src_pointIndices[i];
+		src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
+		dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+		p1 = src.nodes_t[p];
+		p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
+		push!(disps, p2-p1);
 	end
 end
+@time MeshModule.MeshSet2JLD("solvedMesh(1,21,0).jld", Ms);
+
+
+####### LEGACY CODE FOR PAIR TESTING #############
 
 #Ap = "./EM_images/Tile_r4-c2_S2-W001_sec20.tif";
 #dAi = 21906;
@@ -79,5 +110,3 @@ Ms = makeNewMeshSet();
 @time MeshModule.addMatches2MeshSet!(Mab, Ms);
 @time MeshModule.addMatches2MeshSet!(Mba, Ms);
 =#
-# @time MeshModule.solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton);
-# @time MeshModule.MeshSet2JLD("solvedMesh(1,20,0).jld", Ms);

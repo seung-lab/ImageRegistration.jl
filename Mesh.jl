@@ -1,45 +1,14 @@
-module MeshModule
-
-export Mesh, Matches, MeshSet
-export Tile2Mesh, getMeshImage, Meshes2Matches, makeNewMeshSet, addMesh2MeshSet!, addMatches2MeshSet!, solveMeshSet!, JLD2Mesh, Mesh2JLD
-
+using Julimaps
 using Images
-using HDF5
-using JLD
-include("convolve.jl")
-include("MeshSolve.jl")
-
-####### global variables ########
-global noMatch = [0; 0; -1];
-global noTriangle = (0, 0, 0);
-
-####### typealiases for sanity #######
-typealias Index Tuple{Int64, Int64, Int64};			# (wafer, section, tile)
-
-typealias Triangle Tuple{Int64, Int64, Int64};			# index of three points of the triangle for some point
-typealias Triangles Array{Triangle, 1};				# index of three points of the triangle for some point
-
-typealias Weight Tuple{Float64, Float64, Float64};		# weights for respective triangle
-typealias Weights Array{Weight, 1};				# weights for respective triangle
-
-typealias Pair Tuple{Int64, Int64};				# useful for abstraction
-
-typealias Point Array{Float64, 1};				# [i; j]
-typealias Points Array{Point, 1};				# array of points
-typealias BinaryProperty Array{Bool, 1};			# array of bools
-
-typealias Edges SparseMatrixCSC{Float64, Int64}			# sparse array for edges - columns represent edges and the rows represent the nodes
-typealias FloatProperty Array{Float64, 1}
 
 type Mesh
 	path;							# path to the image file
 
 	index::Index						# wafer, section, tile index of the mesh				tileIndex = 0 if the tile is a whole section
-	grid::Pair						# row, column of the tile within the section				(0, 0) if the tile is a whole section
+	grid::Pairing						# row, column of the tile within the section				(0, 0) if the tile is a whole section
 	disp::Point						# displacement of the tile within the section				(0, 0) if the tile starts at the top left corner
-	disp_t::Point						# displacement of the tile within the section after transform		(0, 0) if the tile starts at the top left corner
 
-	dims::Pair				 		# mesh dimensions in terms of nodes in the i direction, j direction. 	(0, 0) if the mesh is not a regular mesh
+	dims::Pairing				 		# mesh dimensions in terms of nodes in the i direction, j direction. 	(0, 0) if the mesh is not a regular mesh
 	offsets::Point				                # mesh offset in terms of the top left, from the image. 		[0; 0] if the mesh is not a regular mesh
 	dists::Point				                # mesh distance in each direction. 					[0; 0] if the mesh is not a regular mesh
 
@@ -53,39 +22,6 @@ type Mesh
 	edges::Edges				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
 	edge_lengths::FloatProperty	  			# 1-by-m dense vector of floats that stores the rest lengths.
 	edge_coeffs::FloatProperty	   			# 1-by-m dense vector of floats that stores the spring coefficients.
-end
-
-type Matches
-	src_mesh::Mesh						# source mesh
-	dst_mesh::Mesh						# destination mesh
-
-	n::Int64						# number of matches
-
-	src_pointIndices::Array{Int64, 1}			# index of points in src_mesh.points
-	dst_points::Points					# location of points in the destination
-	dst_triangles::Triangles				# index of the triangles
-	dst_weights::Weights					# weights at each
-
-	dispVectors::Points					# displacement vector src->dest
-end
-
-
-type MeshSet
-	N::Int64						# number of meshes in the set
-	M::Int64						# number of matches in the set - (a -> b) and (b -> a) are distinct
-
-	indices::Array{Index, 1}				# wafer, section, tile index as a tuple - if tileIndex is 0 then denotes entire section
-
-	n::Int64						# number of nodes in the set across the whole set
-	m::Int64						# number of edges in the set across the whole set
-	m_i::Int64						# number of internal edges in the set across the whole set
-	m_e::Int64						# number of edges between meshes
-	
-	meshes::Array{Mesh, 1}					# vector of meshes in the set
-	nodes_indices::Array{Int64, 1}				# vector of number of nodes before the n-th mesh. To get index at i-th node of n-th mesh, nodes_indices[n] + i.
-
-	matches::Array{Matches, 1}				# vector of matches in the set
-	matches_pairs::Array{Pair, 1}				# vector of index (in meshes) - (a, b) means the match is between (meshes[a] -> meshes[b])
 end
 
 function getMeshImage(mesh::Mesh)
@@ -141,7 +77,7 @@ function Tile2Mesh(path, index, grid, di, dj, tile_fixed, mesh_length, mesh_coef
 	edge_lengths = edge_lengths[1:m];
 	edge_coeffs = edge_coeffs[1:m];
 
-	return Mesh(path, index, grid, disp, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
+	return Mesh(path, index, grid, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
 end
 
 function getMeshIndex(dims, i, j)
@@ -174,102 +110,6 @@ function isInternal(A, i, j, d)
 		return true
 	end
 	return false
-end
-
-function xcorr2Image(xc)
-	return grayim((xc .+ 1)./2)
-end
-
-# i, j are in world coordinates (as per the mesh coordinate specification)
-function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
-	b_rad = block_size + search_r;
-
-	# convert to matrix coordinates
-	Ai = round(Int64, i - Am.disp[1]);
-	Aj = round(Int64, j - Am.disp[2]);
-
-	Bi = round(Int64, i - Bm.disp[1]);
-	Bj = round(Int64, j - Bm.disp[2]);
-
-	if (!isInternal(A, Ai, Aj, block_size) || !isInternal(B, Bi, Bj, b_rad))
-		return noMatch, [];
-	end
-
-	Ai_range = ceil(Ai)-block_size:ceil(Ai)+block_size;
-	Aj_range = ceil(Aj)-block_size:ceil(Aj)+block_size;
-	Bi_range = ceil(Bi)-b_rad:ceil(Bi)+b_rad;
-	Bj_range = ceil(Bj)-b_rad:ceil(Bj)+b_rad;
-
-	xc = normxcorr2(sub(A, Ai_range, Aj_range), sub(B, Bi_range, Bj_range));
-	r_max = maximum(xc); 
-
-	ind = findfirst(r_max .== xc);
-
-	if ind == 0 return noMatch, xc; end
-	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
-	if i_max == 0 i_max = size(xc, 1); end
-
-	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max], xc;
-	
-end
-
-function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
-
-	src_mesh = Am;
-	dst_mesh = Bm;
-	p1 = Am.path;
-	p2 = Bm.path;
-
-	n = 0;
-	n_total = 0;
-	n_lowr = 0;
-	n_noTriangle = 0;
-	n_upperbound = Am.n;
-
-	src_pointIndices = Array(Int64, n_upperbound);
-	dst_points = Points(n_upperbound);
-	dst_triangles = Triangles(n_upperbound);
-	dst_weights = Weights(n_upperbound);
-	dispVectors = Points(n_upperbound);
-
-	if (Am==Bm)
-		matches = Matches(src_mesh, dst_mesh, n, src_pointIndices[1:0], dst_points[1:0], dst_triangles[1:0], dst_weights[1:0], dispVectors[1:0]);
-		return matches;
-	end
-
-	for j in 1:n_upperbound
-		(Ai, Aj) = Am.nodes[j]
-		v, xc = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);				
-		if v == noMatch continue; end	
-		n_total +=1	
-		if v[3] < min_r; n_lowr +=1; continue; end
-		dispVector = v[1:2];
-		dst_point = Am.nodes[j] + dispVector;
-		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
-		if dst_triangle == noTriangle n_noTriangle +=1; continue; end
-		n += 1;
-		if !isnan(sum(xc))
-			imwrite(xcorr2Image(xc), joinpath(".","output_images", "normxcorr", string(join(Am.index, "_"), "_", join(Bm.index, "_"), "_", n, ".jpg")))
-		end
-		src_pointIndices[n] = j;
-		dispVectors[n] = dispVector;
-		dst_points[n] = Am.nodes[j] + dispVectors[n];
-		dst_triangles[n] = dst_triangle;
-		dst_weights[n] = getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]);
-	end
-
-	src_pointIndices = src_pointIndices[1:n];
-	dst_points = dst_points[1:n];
-	dispVectors = dispVectors[1:n];
-	dst_triangles = dst_triangles[1:n];
-	dst_weights = dst_weights[1:n]; 
-
-	if n != 0
-	println("$p1 -> $p2: $n_total of $n_upperbound mesh points, $n_lowr rejected due to r, $n_noTriangle rejected due to outside, $n accepted matches.");
-	end
-
-	matches = Matches(src_mesh, dst_mesh, n, src_pointIndices, dst_points, dst_triangles, dst_weights, dispVectors);
-	return matches;
 end
 
 # find the triangular mesh indices for a given point in A
@@ -372,143 +212,3 @@ function getTriangleWeights(Am, triangle, pi, pj)
 
 	return (V[1], V[2], V[3]);
 end
-
-function findNode(Ms, mesh_ind, node_ind);
-	return Ms.nodes_indices[mesh_ind] + node_ind;
-end
-
-function findIndex(Ms, mesh_index_tuple)
-	return findfirst(this -> mesh_index_tuple == this.index, Ms.meshes)
-end
-
-function makeNewMeshSet()
-	N = 0;
-	M = 0;
-
-	indices = Array{Index, 1}(0);
-	
-	n = 0;
-	m = 0;
-	m_i = 0;
-	m_e = 0;
-
-	meshes = Array{Mesh, 1}(0);
-	nodes_indices = Array{Int64, 1}(0);
-
-	matches = Array{Matches, 1}(0);
-	matches_pairs = Array{Pair, 1}(0);
-
-	return MeshSet(N, M, indices, n, m, m_i, m_e, meshes, nodes_indices, matches, matches_pairs);
-end
-
-#=
-function computeMatchesinMeshSet!(Ms, block_size, search_r, min_r)
-	Ms.M = 0;
-	Ms.m = Ms.m_i;
-	Ms.m_e = 0;
-	for i in 1:Ms.N, j in 1:Ms.N
-	M = MeshModule.Meshes2Matches(imageArray[i], Ms.meshes[i], imageArray[j], Ms.meshes[j], block_size, search_r, min_r);
-	MeshModule.addMatches2MeshSet!(M, Ms);
-	end
-end
-=#
-
-function addMesh2MeshSet!(Am, Ms)
-	push!(Ms.indices, Am.index);
-	push!(Ms.meshes, Am);
-	if length(Ms.nodes_indices) == 0 push!(Ms.nodes_indices, 0);
-	else push!(Ms.nodes_indices, Ms.n);
-	end
-	Ms.N += 1;
-	Ms.m_i += Am.m;
-	Ms.m += Am.m;
-	Ms.n += Am.n;
-	return;
-end
-
-function addMatches2MeshSet!(M, Ms)
-	push!(Ms.matches, M);
-	push!(Ms.matches_pairs, (findIndex(Ms, M.src_mesh.index), findIndex(Ms, M.dst_mesh.index)));
-	if (M.n == 0) return; end
-	Ms.M += 1;
-	Ms.n;
-	Ms.m += M.n;
-	Ms.m_e += M.n;
-	return;
-end
-
-function solveMeshSet!(Ms, match_coeff, eta_gradient, eta_newton, grad_threshold, newton_tolerance)
-	nodes = Points(0);
-	nodes_fixed = BinaryProperty(0);
-	edges = spzeros(Float64, Ms.n, 0);
-	edge_lengths = FloatProperty(0);
-	edge_coeffs = FloatProperty(0);
-	for i in 1:Ms.N
-		cur_mesh = Ms.meshes[i];
-		if i == 1 nodes = hcat(cur_mesh.nodes...);
-		else nodes = hcat(nodes, hcat(cur_mesh.nodes...)); end
-		append!(nodes_fixed, cur_mesh.nodes_fixed);
-		append!(edge_lengths, cur_mesh.edge_lengths);
-		append!(edge_coeffs, cur_mesh.edge_coeffs);
-		if (i == Ms.N)	
-			edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-						 cur_mesh.edges));
-		else
-			edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-						 cur_mesh.edges, 
-						 spzeros(Float64, Ms.n - Ms.nodes_indices[i] - cur_mesh.n, cur_mesh.m)));
-		end
-	end
-
-	for i in 1:Ms.M
-		cur_matches = Ms.matches[i];
-		append!(edge_lengths, fill(0.0, cur_matches.n));
-		append!(edge_coeffs, fill(convert(Float64, match_coeff), cur_matches.n));
-		edges_padded = spzeros(Float64, Ms.n, cur_matches.n);
-
-		for j in 1:Ms.matches[i].n
-			edges_padded[findNode(Ms, Ms.matches_pairs[i][1], cur_matches.src_pointIndices[j]), j] = -1;
-			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1];
-			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
-			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
-		end
-		edges = hcat(edges, edges_padded);
-	end
-
-	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, eta_newton, grad_threshold, newton_tolerance);
-	nodes_t = Points(0);
-	for i in 1:size(nodes, 2)
-       		push!(nodes_t, vec(nodes[:, i]))
-       	end
-	for i in 1:Ms.N
-		cur_mesh = Ms.meshes[i];
-		cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)];
-		cur_mesh.disp_t = cur_mesh.nodes_t[1] - cur_mesh.offsets;
-	end
-
-end
-
-function check_mesh_disp(mesh_set)
-	for mesh in mesh_set.meshes
-		println(mesh.disp, " - ", mesh.disp_t, " = ", mesh.disp - mesh.disp_t)
-	end
-end
-
-function MeshSet2JLD(filename, Ms)
-	jldopen(filename, "w") do file
-		write(file, "MeshSet", Ms);
-	end
-end
-
-function JLD2MeshSet(filename)
-	Ms = load(filename, "MeshSet"); 
-	return Ms;
-end
-
-
-################################### DIAGNOSTIC #########################################
-
-
-end #END MESHMODULE
-################################### SCRIPT ############################################
-

@@ -396,7 +396,7 @@ function demo_two_tiles_from_mesh_set()
 end
 
 function demo_render_section()
-    fn = "section20x5_FIXED"
+    fn = "solvedMesh(1, 21,0)_1E-3_1E-3_.5_1E-7"
     mesh_set = load(joinpath(BUCKET, "input_images", string(fn, ".jld")))["MeshSet"]
     tiles = load_tiles(mesh_set)
     section_img = render_section(tiles)
