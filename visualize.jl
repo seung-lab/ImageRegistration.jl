@@ -52,38 +52,30 @@ function draw_mesh(img, nodes, node_dict)
     return draw_mesh(imgc, img2, nodes, node_dict)
 end
 
-function draw_vectors(img2, imgc, vectors, color=RGB(0,0,1))
+function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,0,1))
 # Display match displacement vectors on images
 # Args:
 #   imgc: ImageCanvas object
 #   img2: ImageSliced2d object 
-#   nodes: 4xN array of vector start and end points
+#   vectors: 4xN array of vector start and end points
+#   pt_color: optional color argument for points
+#   vec_color: optional color argument for vectors
 # Returns:
 #   imgc: ImageCanvas object
-#   img2: ImageSliced2d object  
-    lines = Array(Float64, 4, 0)
-    points = Array(Float64, 2, 0)
-    for j in 1:size(vectors, 2)
-        points = hcat(points, vectors[1:2, j])
-        lines = hcat(lines, vectors[:, j])
-    end
-    annotate!(imgc, img2, AnnotationPoints(points, color=color))
-    annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="xxyy"))
-    return imgc, img2
+#   img2: ImageSliced2d object
+#   an_points: annotation object for the points
+#   an_vectors: annotation object for the vectors
+    an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], color=pt_color))
+    an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, coord_order="xxyy", linewidth=3))
+    return imgc, img2, an_points, an_vectors
 end    
 
 function draw_vectors(img, vectors)
     imgc, img2 = view(img)
-    return draw_vectors(img2, imgc, vectors)
+    return draw_vectors(imgc, img2, vectors)
 end
 
-function draw_vectors(img, start_pts, end_pts)
-    imgc, img2 = view(img)
-    vectors = vcat(start_pts, end_pts)
-    return draw_vectors(img2, imgc, vectors)
-end
-
-function draw_points(img2, imgc, pts, color=RGB(0,0,1))
+function draw_points(imgc, img2, pts, color=RGB(0,0,1))
 # Display match displacement vectors on images
 # Args:
 #   imgc: ImageCanvas object
@@ -91,18 +83,19 @@ function draw_points(img2, imgc, pts, color=RGB(0,0,1))
 #   nodes: 2xN array of points
 # Returns:
 #   imgc: ImageCanvas object
-#   img2: ImageSliced2d object  
+#   img2: ImageSliced2d object
+#   an_points: annotation object for the points
     points = Array(Float64, 2, 0)
     for j in 1:size(pts, 2)
         points = hcat(points, pts[1:2, j])
     end
-    annotate!(imgc, img2, AnnotationPoints(points, color=color))
-    return imgc, img2
+    an_points = annotate!(imgc, img2, AnnotationPoints(points, color=color))
+    return imgc, img2, an_points
 end 
 
 function draw_points(img, pts)
     imgc, img2 = view(img)
-    return draw_points(img2, imgc, pts)
+    return draw_points(imgc, img2, pts)
 end  
 
 function draw_imfuse_meshes(Oc, O2, dst_nodes_A, SR_A, dst_nodes_B, SR_B)
