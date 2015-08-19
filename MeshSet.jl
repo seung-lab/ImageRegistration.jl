@@ -10,7 +10,7 @@ type MeshSet
 	N::Int64						# number of meshes in the set
 	M::Int64						# number of matches in the set - (a -> b) and (b -> a) are distinct
 
-	indices::Array{Index, 1}				# wafer, section, tile index as a tuple - if tileIndex is 0 then denotes entire section
+	indices::Array{Index, 1}				# wafer, section, row, column as a tuple - if tileIndex is 0 then denotes entire section
 
 	n::Int64						# number of nodes in the set across the whole set
 	m::Int64						# number of edges in the set across the whole set
@@ -25,12 +25,12 @@ type MeshSet
 end
 
 function isAdjacent(Am, Bm)
-	if abs(Am.grid[1] - Bm.grid[1]) + abs(Am.grid[2] - Bm.grid[2]) == 1 return true; end
+	if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) == 1 return true; end
 	return false;
 end
 
 function isDiagonal(Am, Bm)
-	if abs(Am.grid[1] - Bm.grid[1]) + abs(Am.grid[2] - Bm.grid[2]) == 2 && Am.grid[1] != Bm.grid[1] && Am.grid[2] != Bm.grid[2] return true; end
+	if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) == 2 && Am.index[3] != Bm.index[3] && Am.index[4] != Bm.index[4] return true; end
 	return false;
 end
 
@@ -98,7 +98,7 @@ function addMatches2MeshSet!(M, Ms)
 	return;
 end
 
-function solveMeshSet!(Ms, match_coeff, eta_gradient, eta_newton, grad_threshold, newton_tolerance)
+function solveMeshSet!(Ms, match_coeff, eta_gradient, eta_newton, ftol_grad, ftol_newton)
 	nodes = Points(0);
 	nodes_fixed = BinaryProperty(0);
 	edges = spzeros(Float64, Ms.n, 0);
@@ -136,7 +136,7 @@ function solveMeshSet!(Ms, match_coeff, eta_gradient, eta_newton, grad_threshold
 		edges = hcat(edges, edges_padded);
 	end
 
-	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, eta_newton, grad_threshold, newton_tolerance);
+	SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, eta_newton, ftol_grad, ftol_newton);
 	nodes_t = Points(0);
 	for i in 1:size(nodes, 2)
        		push!(nodes_t, vec(nodes[:, i]))
@@ -144,7 +144,6 @@ function solveMeshSet!(Ms, match_coeff, eta_gradient, eta_newton, grad_threshold
 	for i in 1:Ms.N
 		cur_mesh = Ms.meshes[i];
 		cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)];
-		cur_mesh.disp_t = cur_mesh.nodes_t[1] - cur_mesh.offsets;
 	end
 
 end

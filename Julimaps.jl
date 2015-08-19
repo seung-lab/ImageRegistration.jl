@@ -10,7 +10,7 @@ export Point, Points
 export Edges
 export BinaryProperty, FloatProperty
 
-typealias Index Tuple{Int64, Int64, Int64};			# (wafer, section, tile)
+typealias Index Tuple{Int64, Int64, Int64, Int64};		# (wafer, section, row, column)
 
 typealias Triangle Tuple{Int64, Int64, Int64};			# index of three points of the triangle for some point
 typealias Triangles Array{Triangle, 1};				# index of three points of the triangle for some point
