@@ -1,30 +1,18 @@
+using Julimaps
+using Params
+using MeshModule
+
 ################################# SCRIPT FOR TESTING ###################################
 tic();
 
+max_tile_size = 0;
 Ms = MeshModule.makeNewMeshSet();
 sr = readdlm("W001_sec21_offsets.txt");
 
 #sr = readdlm(joinpath("input_images", "W001_sec20", "W001_sec20_offsets.txt"))
 
-#params
-block_size = 30;
-search_r = 80;
-min_r = 0.75;
-mesh_length = 200;
-mesh_coeff = 1;
-match_coeff = 100;
-eta = 0.001;
-show_plot = false;
-num_procs = 10;
-grad_threshold = 1/20000;
-n_newton = 100;
-max_tile_size = 0;
-num_tiles = size(sr, 1);
-num_rows = 0;
-num_cols = 0;
 
 @time for i in 1:num_tiles
-<<<<<<< HEAD
 	path = string("./W001_sec21/", sr[i, 1]);
 	row = sr[i, 2];
 	col = sr[i, 3];
@@ -34,8 +22,6 @@ num_cols = 0;
 	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
 	max_size = max(size(meshImage, 1), size(meshImage, 2));
 	if max_tile_size < max_size max_tile_size = max_size; end
-	if num_rows < row num_rows = row; end
-	if num_cols < row num_cols = col; end
 end
 	imageArray = SharedArray(Float64, max_tile_size, max_tile_size, num_tiles);
 
@@ -51,8 +37,8 @@ end
 print("Initialisation, "); toc(); println();
 
 tic();
-adjacent_pairs = Array{MeshModule.Pair, 1}(0);
-diagonal_pairs = Array{MeshModule.Pair, 1}(0);
+adjacent_pairs = Pairings(0);
+diagonal_pairs = Pairings(0);
 
 for i in 1:Ms.N, j in 1:Ms.N
 	if MeshModule.isAdjacent(Ms.meshes[i], Ms.meshes[j]) push!(adjacent_pairs, (i, j)); end
@@ -77,10 +63,25 @@ end
 
 print("Blockmatching, "); toc(); println();
 
-@time MeshModule.solveMeshSet!(Ms, match_coeff, eta, grad_threshold, n_newton);
+
+
+@time MeshModule.solveMeshSet!(Ms, match_coeff, eta_grad, grad_threshold, eta_newton, newton_threshold);
+
+disps = Points(0);
+
+for k in 1:Ms.M
+	for i in 1:Ms.matches[k].n
+		w = Ms.matches[k].dst_weights[i];
+		t = Ms.matches[k].dst_triangles[i];
+		p = Ms.matches[k].src_pointIndices[i];
+		src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
+		dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+		p1 = src.nodes_t[p];
+		p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
+		push!(disps, p2-p1);
+	end
+end
 @time MeshModule.MeshSet2JLD("solvedMesh(1,21,0).jld", Ms);
-
-
 
 
 ####### LEGACY CODE FOR PAIR TESTING #############
