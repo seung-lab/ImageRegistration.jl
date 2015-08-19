@@ -109,49 +109,47 @@ function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
 end
 
 function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gradient, eta_newton, grad_threshold, newton_tolerance)
+    d=size(Vertices,1)
+    V=size(Vertices,2)
+    E=size(Incidence,2)
+    Lengths=zeros(1,V)
+    Moving = ~Fixed
+    Moving2=[Moving[:]'; Moving[:]'][:]   # double the dimensionality
+    U=Array{Float64, 1}(0);     # energy vs. time
+    g=similar(Vertices)  # gradient of potential energy
 
-d=size(Vertices,1)
-V=size(Vertices,2)
-E=size(Incidence,2)
-Lengths=zeros(1,V)
-Moving = ~Fixed
-Moving2=[Moving[:]'; Moving[:]'][:]   # double the dimensionality
-U=Array{Float64, 1}(0);     # energy vs. time
-g=similar(Vertices)  # gradient of potential energy
+    iter = 1;
 
-iter = 1;
-
-while true
-    Springs=Vertices*Incidence
-    g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
-    Vertices[:,Moving]=Vertices[:,Moving]-eta_gradient*g[:,Moving]
-    push!(U, Energy(Springs,Stiffnesses,RestLengths))
-    println(iter," ", U[iter])
-    if iter != 1
-	if (U[iter-1] - U[iter]) / U[iter-1] < grad_threshold
-		println("Switching to Newton's Method:");    iter += 1; break;
-	end
-	end
-    iter += 1;
-end
-
-while true
-	Springs=Vertices*Incidence
-	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
-	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
-    Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
-	push!(U, Energy(Springs,Stiffnesses,RestLengths))
-    println(iter," ", U[iter])
-    if (U[iter-1] - U[iter]) / U[iter-1] < newton_tolerance
-        println("Converged below ", newton_tolerance); break;
+    while true
+        Springs=Vertices*Incidence
+        g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+        Vertices[:,Moving]=Vertices[:,Moving]-eta_gradient*g[:,Moving]
+        push!(U, Energy(Springs,Stiffnesses,RestLengths))
+        println(iter," ", U[iter])
+        if iter != 1
+    	if (U[iter-1] - U[iter]) / U[iter-1] < grad_threshold
+    		println("Switching to Newton's Method:");    iter += 1; break;
+    	end
+    	end
+        iter += 1;
     end
-    iter+=1;
-end
 
+    while true
+    	Springs=Vertices*Incidence
+    	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+    	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
+        Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
+    	push!(U, Energy(Springs,Stiffnesses,RestLengths))
+        println(iter," ", U[iter])
+        if (U[iter-1] - U[iter]) / U[iter-1] < newton_tolerance
+            println("Converged below ", newton_tolerance); break;
+        end
+        iter+=1;
+    end
 end
 
 #=
-function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta, grad_threshold, nnewton, show_plot)
+function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_grad, grad_threshold, eta_newton, newton_threshold, show_plot)
 
 d=size(Vertices,1)
 V=size(Vertices,2)
