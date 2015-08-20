@@ -7,11 +7,11 @@ using MeshModule
 ################################# SCRIPT FOR TESTING ###################################
 tic();
 
-info_path = "import_string_W006_final.txt";
+#info_path = "import_string_W006_final.txt";
 
-@time session = parseRoughMontage(info_path);
-@time imageArray = loadSectionImages(session, 1);
-@time Ms = MeshModule.makeSectionMeshSet(session, 1);
+#@time session = parseRoughMontage(info_path);
+@time imageArray = loadSectionImages(SESSION, 1);
+@time Ms = MeshModule.makeSectionMeshSet(SESSION, 1);
 @time MeshModule.addAllMatches!(Ms, imageArray);
 
 

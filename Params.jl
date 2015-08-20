@@ -29,7 +29,7 @@ function parseRoughAlign(info_path::String)
 end
 
 
-bucket_dir_path = "~/seungmount";
+bucket_dir_path = "/usr/people/dih/seungmount";
 affine_dir_path = "~";
 dataset_dir_path = "./datasets/piriform"
 wafer_filename = "wafer_paths.txt";
