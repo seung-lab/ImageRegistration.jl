@@ -1,15 +1,6 @@
 module IO
 
-function waferpaths2dict(wafer_path_file)
-	warray = readdlm(wafer_path_file)
-	wdict = Dict()
-	for (idx, path) in zip(warray[:,1], warray[:,2])
-		wdict[idx] = path
-	end
-	return wdict
-end
-
-export parseName, getPath, getFloatImage, loadSection, parseRoughMontage, toJLD, waferpaths2dict
+export parseName, getPath, getFloatImage, loadSection, toJLD, parseRoughAlign, waferpaths2dict
 
 using Julimaps
 using Params
@@ -39,8 +30,17 @@ function loadAffine(path::String)
 	return readcsv(path);
 end
 
-function parseRoughMontage(info_path::String)
-	file = readdlm(info_path, '\ ');
+function waferpaths2dict(wafer_path_file)
+	warray = readdlm(wafer_path_file)
+	wdict = Dict()
+	for (idx, path) in zip(warray[:,1], warray[:,2])
+		wdict[idx] = path
+	end
+	return wdict
+end
+
+function parseRoughAlign(info_path::String)
+	file = readdlm(info_path);
 	session = cell(size(file, 1), 4); # name, index, dx, dy
 	for i in 1:size(file, 1)
 	m = match(r"(Tile\S+).tif", file[i, 1]);
