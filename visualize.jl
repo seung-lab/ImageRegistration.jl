@@ -25,6 +25,23 @@ function write_vector_color_plot(mesh_path, write_name, offset=[0,0])
     ccp.write_image_from_points(v', vt', write_name)
 end
 
+"""
+Turn 2D array into Image object with isotropic pixel spacing for display
+
+Args:
+
+* img: 2D array
+
+Returns:
+
+* img: Image object for isotropic ImageView display
+"""
+function make_isotropic(img)
+    img = Image(img)
+    img["pixelspacing"] = [1, 1]
+    return img
+end
+
 function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
 # Display mesh on image
 # Args:
