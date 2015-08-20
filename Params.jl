@@ -1,10 +1,17 @@
 module Params
 
+importall IO
+
+bucket_dir_path = "~/seungmount";
+affine_dir_path = "~";
+wafer_path_file = "wafer_paths.txt";
+info_path_file = "import_string_W006_final.txt";
+
 export BUCKET, AFFINE_DIR, WAFER_DIR
 
-BUCKET = ".";
-AFFINE_DIR = "~/150502_piriform/affine_transforms";
-WAFER_DIR = "~/seungmount/research/GABA/data/atlas/MasterUTSLdirectory/07122012S2/S2-W001/HighResImages_ROI1_7nm_120apa"; #waferpath2dict("")
+global BUCKET = bucket_dir_path;
+global AFFINE_DIR = affine_dir_path;
+global WAFER_DIR = IO.waferpaths2dict(wafer_path_file);
 
 export block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols;
 

@@ -1,68 +1,18 @@
+importall IO
 using Julimaps
 using Params
 using MeshModule
-import IO
+
 
 ################################# SCRIPT FOR TESTING ###################################
 tic();
 
-max_tile_size = 0;
+info_path = "import_string_W006_final.txt";
 
-#sr = readdlm(joinpath("input_images", "W001_sec20", "W001_sec20_offsets.txt"))
-
-sr = readdlm("import_string_W006_final.txt", '\ ');
-Ms = MeshModule.makeNewMeshSet();
-
-@time for i in 1:num_tiles
-	path = string(sr[i, 1]);
-	ind = IO.parsePath(path);
-	di = string(sr[i, 2]);
-	dj = string(sr[i, 2]);
-	MeshModule.addMesh2MeshSet!(MeshModule.Tile2Mesh(path, ind, di, dj, false, mesh_length, mesh_coeff), Ms);
-	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
-	max_size = max(size(meshImage, 1), size(meshImage, 2));
-	if max_tile_size < max_size max_tile_size = max_size; end
-end
-	imageArray = SharedArray(Float64, max_tile_size, max_tile_size, num_tiles);
-
-@time for k in 0:num_procs:num_tiles
-	@sync @parallel for l in 1:num_procs
-	i = k+l;
-	if i > num_tiles return; end;
-	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
-	imageArray[1:size(meshImage, 1), 1:size(meshImage, 2), i] = meshImage;
-	end
-end
-
-print("Initialisation, "); toc(); println();
-
-tic();
-adjacent_pairs = Pairings(0);
-diagonal_pairs = Pairings(0);
-
-for i in 1:Ms.N, j in 1:Ms.N
-	if MeshModule.isAdjacent(Ms.meshes[i], Ms.meshes[j]) push!(adjacent_pairs, (i, j)); end
-	if MeshModule.isDiagonal(Ms.meshes[i], Ms.meshes[j]) push!(diagonal_pairs, (i, j)); end
-end
-
-pairs = vcat(adjacent_pairs, diagonal_pairs);
-
-@time for k in 0:num_procs:length(pairs)
-	toFetch = @sync @parallel for l in 1:num_procs
-	ind = k + l;
-	if ind > length(pairs) return; end
-	(i, j) = pairs[ind];
-	return MeshModule.Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
-	end
-	for i = 1:length(toFetch)
-		M = fetch(toFetch[i])
-		if typeof(M) == Void continue; end
-		MeshModule.addMatches2MeshSet!(M, Ms);
-	end
-end
-
-print("Blockmatching, "); toc(); println();
-
+@time session = parseRoughMontage(info_path);
+@time imageArray = loadSectionImages(session, 1);
+@time Ms = MeshModule.makeSectionMeshSet(session, 1);
+@time MeshModule.addAllMatches!(Ms, imageArray);
 
 
 @time MeshModule.solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
