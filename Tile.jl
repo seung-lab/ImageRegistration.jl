@@ -39,10 +39,11 @@ end
 Load original image for tile, using the WAFER_DIR and filename
 """
 function load_image(tile::Tile)
-	section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
+	# section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
 	# path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
-	path = joinpath(".", "input_images", "W001_sec20", string(tile.name, ".tif"))
-	return imread(path)
+	section_folder = string("W00", tile.id[1], "_Sec", tile.id[2])
+	path = joinpath(".", "input_images", section_folder, string(tile.name, ".tif"))
+	return rawdata(imread(path))
 end
 
 """
@@ -67,14 +68,6 @@ function set_mesh!(tile::Tile, mesh::MeshModule.Mesh)
 	tile.mesh = mesh
 end
 
-# """
-# Remove image from a tile
-# """
-# function remove_img!(tile::Tile)
-# 	tile.img = []
-# 	tile.spatial_ref = SpatialRef()
-# end
-
 """
 Parse Mesh object to retrieve nodes, edges, and spatial reference
 
@@ -94,30 +87,9 @@ function parse_mesh(mesh)
     dst_nodes = hcat(mesh.nodes_t...)
     offset = convert(Array{Int64,1}, mesh.disp)
 
-    src_nodes = src_nodes .- offset
-    dst_nodes = dst_nodes .- offset
-    final_offset = convert(Array{Int64,1}, floor(mesh.disp_t))
-    return src_nodes, dst_nodes, mesh.edges, final_offset
-end
-
-function mesh_warp_tile(tile::Tile)
-	initial_nodes, final_nodes, e, offset = parse_mesh(tile.mesh)
-
-    img = rawdata(load_image(tile))
-
-    low, xhigh, yhigh = find_node_extrema(initial_nodes, final_nodes, size(img))
-    img_padded = padimage(img, low, low, xhigh, yhigh)
-
-    src_nodes = xy2yx(initial_nodes') + low
-    dst_nodes = xy2yx(final_nodes') + low
-
-    node_dict = incidence2dict(e)
-    triangles = dict2triangles(node_dict)
-
-    img_warped = pa_warp2(img_padded, src_nodes, dst_nodes, triangles)
-    # imgc = draw_mesh(make_isotropic(img_warped), dst_nodes, node_dict)
-    spatial_ref = SpatialRef(offset..., reverse(size(img_warped))...)
-    return img_warped, spatial_ref
+    src_nodes = xy2yx(src_nodes .- offset)
+    dst_nodes = xy2yx(dst_nodes .- offset)
+    return src_nodes, dst_nodes, mesh.edges, offset
 end
 
 function load_section(dir_path)
