@@ -1,6 +1,6 @@
 module IO
 
-export parseName, getPath, getFloatImage, loadSection, toJLD, parseRoughAlign, waferpaths2dict
+export parseName, getPath, getFloatImage, loadSection, toJLD, parseRoughAlign, waferpaths2dict, loadSectionImages
 
 using Julimaps
 using Params
@@ -15,8 +15,8 @@ end
 # Mesh.jl: getPath(mesh::Mesh)
 function getPath(name::String)
 	index = parseName(name);
-	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
-	return joinpath(BUCKET, WAFER_DIR[parseName(name)[1]], name, ".tif")
+	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
+	return joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
 end
 
 # extensions:
@@ -56,7 +56,7 @@ end
 # extensions:
 # MeshSet.jl loadSectionImages(Ms::MeshSet)
 function loadSectionImages(session, section_num)
-	indices = find(i -> array[i,3][2] == section_num, 1:size(session, 1))
+	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1))
 	max_tile_size = 0;
 	num_tiles = length(indices);
 	paths = Array{String, 1}(num_tiles);
@@ -102,11 +102,11 @@ Extract wafer no, section no, row, and col for tile from filename
 """
 
 """
-Load original image for tile, using the WAFER_DIR and filename
+Load original image for tile, using the WAFER_DIR_DICT and filename
 """
 function load_image(tile::Tile)
 	section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
-	# path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
+	# path = joinpath(homedir(), WAFER_DIR_DICT[tile.id[1]], section_folder, string(tile.name, ".tif"))
 	path = joinpath(".", "input_images", "W001_sec20", string(tile.name, ".tif"))
 	return imread(path)
 end

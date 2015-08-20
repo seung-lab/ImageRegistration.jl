@@ -2,6 +2,7 @@ module Julimaps
 
 push!(LOAD_PATH, "./mesh")
 
+
 ### TypeAliases ###############################
 
 export Index
