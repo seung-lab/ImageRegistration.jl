@@ -1,6 +1,7 @@
 ![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg "travis")
 
 # Julimaps
+JULia IMAge Processing Suite:
 A set of tools for elastic image registration in Julia.
 
 # Milestones

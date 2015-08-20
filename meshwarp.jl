@@ -1,6 +1,8 @@
 # Adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
+include("BoundingBox.jl")
+
 function source_point_mat(X, Y)
     x1, x2, x3 = X
     y1, y2, y3 = Y    
@@ -22,10 +24,23 @@ function affine_params(X, Y, U, V)
     M
 end
 
-function pa_warp2{N}(img::Array{Float64, N},
+function meshwarp{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
-                    trigs::Matrix{Int64}, interp = true)
+                    trigs::Matrix{Int64}, bb = BoundingBox(), interp = true)
+    println(dst)
+    wbb = snap_bb(find_mesh_bb(dst))
+    println(wbb)
+    low, high = bounds2padding(size(img), minsandmax(wbb)...)
+    println(low, high)
+    img = padimage(img, low..., high...)
+    src = src .+ low'
+    dst = dst .+ low'
+    wbb = BoundingBox(bb.x-low[1], bb.y-low[2], size(img)...)
     warped = zeros(eltype(img), size(img))
+
+    # wbb = snap_bb(find_mesh_bb(dst))
+    # warped = similar(img, Int64(bb.h), Int64(bb.w))
+
     if interp
         println("w interpolation")
     else
@@ -73,7 +88,7 @@ function pa_warp2{N}(img::Array{Float64, N},
         end
         
     end
-    warped
+    return warped, wbb
 end
 
 function poly2source(px, py)
@@ -117,4 +132,81 @@ function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, val
         end
     end
     return M
+end
+
+function warp_pts(affine, pts)
+    pts = hcat(pts, ones(size(pts,1)))
+    tpts = pts * affine
+    return tpts[:,1:2]
+end
+
+function test_mesh_warp()
+    img = reshape(float(collect(1:121).%2), 11, 11) # 11x11 checkerboard
+    # incidence = [1 1 0;
+    #             -1 0 1;
+    #             0 -1 -1]
+    triangles = [1 2 3]
+
+    src = [2.0 2.0;
+            10.0 2.0;
+            6.0 10.0]
+    dst = [4.0 2.0;
+            8.0 2.0;
+            6.0 10.0]
+    offset = [0, 0]
+    img_warped, bb = meshwarp(img, src, dst, triangles)
+    @test bb == BoundingBox(0,0,11,12)
+
+    offset = [10, 10]
+    iimg_warped, bb = meshwarp(img, src, dst, triangles, BoundingBox(10, 10, 11, 11))
+    @test bb == BoundingBox(10,10,11,12)   
+
+    # tform = [cos(pi/6) -sin(pi/6) 0;
+    #         sin(pi/6) cos(pi/6) 0;
+    #         0 0 1]
+    # src = [-16.0 0.0;
+    #         27.0 0.0;
+    #         6.0 40.0]    
+    # dst = warp_pts(tform, src)
+    # offset = [0, 0]
+    # iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    # @test bb == BoundingBox(0,0,11,11)
+
+    tform = [1 0 0;
+            0 1 0;
+            10 10 1]
+    src = [0.0 0.0;
+            0.0 10.0;
+            10.0 0.0]   
+    dst = warp_pts(tform, src)
+    iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    @test bb == BoundingBox(0,0,20,20) 
+
+    tform = [1 0 0;
+            0 1 0;
+            -4 -4 1]
+    src = [1.0 1.0;
+            1.0 4.0;
+            4.0 0.0]   
+    dst = warp_pts(tform, src)
+    iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    @test bb == BoundingBox(-4,-5,16,15) 
+
+    src = [0.0 0.0;
+            0.0 10.0;
+            20.0 20.0]  
+    dst = [0.0 0.0;
+            0.0 10.0;
+            10.0 10.0]
+    iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    @test bb == BoundingBox(-1,-1,12,12) 
+
+    src = [-10.0 0.0;
+            0.0 10.0;
+            10.0 10.0]  
+    dst = [0.0 0.0;
+            0.0 10.0;
+            10.0 10.0]
+    img_warped, bb = meshwarp(img, src, dst, triangles)
+    @test bb == BoundingBox(-1,-1,12,12) 
 end
