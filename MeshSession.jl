@@ -1,24 +1,24 @@
 using Julimaps
 using Params
 using MeshModule
+import IO
 
 ################################# SCRIPT FOR TESTING ###################################
 tic();
 
 max_tile_size = 0;
-Ms = MeshModule.makeNewMeshSet();
-sr = readdlm("W001_sec21_offsets.txt");
 
 #sr = readdlm(joinpath("input_images", "W001_sec20", "W001_sec20_offsets.txt"))
 
+sr = readdlm("import_string_W006_final.txt", '\ ');
+Ms = MeshModule.makeNewMeshSet();
 
 @time for i in 1:num_tiles
-	path = string("./W001_sec21/", sr[i, 1]);
-	row = sr[i, 2];
-	col = sr[i, 3];
-	di = sr[i, 4];
-	dj = sr[i, 5];
-	MeshModule.addMesh2MeshSet!(MeshModule.Tile2Mesh(path, (1, 21, row, col), di, dj, false, mesh_length, mesh_coeff), Ms);
+	path = string(sr[i, 1]);
+	ind = IO.parsePath(path);
+	di = string(sr[i, 2]);
+	dj = string(sr[i, 2]);
+	MeshModule.addMesh2MeshSet!(MeshModule.Tile2Mesh(path, ind, di, dj, false, mesh_length, mesh_coeff), Ms);
 	meshImage = MeshModule.getMeshImage(Ms.meshes[i]);
 	max_size = max(size(meshImage, 1), size(meshImage, 2));
 	if max_tile_size < max_size max_tile_size = max_size; end
