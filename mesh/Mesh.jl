@@ -1,11 +1,12 @@
 using Julimaps
 using Images
+importall IO
 
 type Mesh
-	path;							# path to the image file
+	name::String;						# name of the image file
 
 	index::Index						# wafer, section, tile index of the mesh				tileIndex = 0 if the tile is a whole section
-	disp::Point						# displacement of the tile within the section				(0, 0) if the tile starts at the top left corner
+	disp::Point						# displacement of the tile within the section, y, x			(0, 0) if the tile starts at the top left corner
 
 	dims::Pairing				 		# mesh dimensions in terms of nodes in the i direction, j direction. 	(0, 0) if the mesh is not a regular mesh
 	offsets::Point				                # mesh offset in terms of the top left, from the image. 		[0; 0] if the mesh is not a regular mesh
@@ -23,20 +24,27 @@ type Mesh
 	edge_coeffs::FloatProperty	   			# 1-by-m dense vector of floats that stores the spring coefficients.
 end
 
-function getMeshImage(mesh::Mesh)
-	return convert(Array{Float64, 2}, data(imread(mesh.path)));
+### IO EXTENSIONS
+function getPath(mesh::Mesh)
+	return getPath(mesh.name);
 end
 
-# Tile2Mesh(path, grid, di, dj, mesh_length, mesh_coeff)
-function Tile2Mesh(path, index, di, dj, tile_fixed, mesh_length, mesh_coeff)
+function getFloatImage(mesh::Mesh)
+	return getFloatImage(mesh.name);
+end
 
-	A = convert(Array{Float64, 2}, data(imread(path)));
+
+
+
+# Tile2Mesh(path, grid, dj, di, mesh_length, mesh_coeff)
+function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+	A = getFloatImage(name);
 	(Ai, Aj) = size(A);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
 	dims = (convert(Int64, div(Ai, dists[1]) + 1), convert(Int64, div(Aj, dists[2]) + 1));
  	offsets = [rem(Ai, dists[1])/2; rem(Aj, dists[2])/2];
-	disp = [di; dj];
+	disp = [dy; dx];
 
 	n = maximum([getMeshIndex(dims, dims[1], dims[2]); getMeshIndex(dims, dims[1], dims[2]-1)]);
 	m = 0;
@@ -76,7 +84,7 @@ function Tile2Mesh(path, index, di, dj, tile_fixed, mesh_length, mesh_coeff)
 	edge_lengths = edge_lengths[1:m];
 	edge_coeffs = edge_coeffs[1:m];
 
-	return Mesh(path, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
+	return Mesh(name, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
 end
 
 function getMeshIndex(dims, i, j)

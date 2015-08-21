@@ -1,14 +1,18 @@
+using Julimaps
+using Params
+
 include("Mesh.jl")
 using MeshModule
 
+
 type Tile
-	name::String
+	path::String
 	affine
-	mesh
-	id::Tuple # wafer, section, row, col
+	mesh::Mesh
+	id::Index # wafer, section, row, col
 end
 
-Tile(path::String) = Tile(path, nothing, nothing, parsename(path))
+Tile(path::String) = Tile(path, nothing, nothing, parsepath(path))
 
 """
 Create dictionary of waferpaths in bucket from file
