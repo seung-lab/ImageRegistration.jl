@@ -1,5 +1,4 @@
 include("Mesh.jl")
-include("SpatialRef.jl")
 using MeshModule
 
 type Tile

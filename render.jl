@@ -5,6 +5,7 @@
 # Functions to load meshes, warp images via piecewise affine transforms, and
 # display images with meshes.
 
+using Julimaps
 include("incidence2triangles.jl")
 include("meshwarp.jl")
 include("visualize.jl")
@@ -368,7 +369,7 @@ function demo_two_tiles_from_mesh_set()
 end
 
 function demo_render_section()
-    fn = "section20x5"
+    fn = "solvedMesh(1, 21,0)_1E-3_1E-3_.5_1E-7"
     mesh_set = load(joinpath(BUCKET, "input_images", string(fn, ".jld")))["MeshSet"]
     tiles = load_tiles(mesh_set)
     section_img = render_section(tiles)
