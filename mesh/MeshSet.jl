@@ -1,6 +1,8 @@
 using Julimaps
+using Params
 using HDF5
 using JLD
+importall IO
 include("Mesh.jl")
 include("Matches.jl")
 include("MeshSolve.jl")
@@ -158,5 +160,54 @@ function JLD2MeshSet(filename)
 	Ms = load(filename, "MeshSet"); 
 	return Ms;
 end
+
+function getAllOverlaps(Ms)
+adjacent_pairs = Pairings(0);
+diagonal_pairs = Pairings(0);
+
+	for i in 1:Ms.N, j in 1:Ms.N
+		if isAdjacent(Ms.meshes[i], Ms.meshes[j]) push!(adjacent_pairs, (i, j)); end
+		if isDiagonal(Ms.meshes[i], Ms.meshes[j]) push!(diagonal_pairs, (i, j)); end
+	end
+
+	pairs = vcat(adjacent_pairs, diagonal_pairs);
+
+	return pairs;
+end
+
+function addAllMatches!(Ms, imageArray::SharedArray)
+
+pairs = getAllOverlaps(Ms)
+
+@time for k in 0:num_procs:length(pairs)
+	toFetch = @sync @parallel for l in 1:num_procs
+	ind = k + l;
+	if ind > length(pairs) return; end
+	(i, j) = pairs[ind];
+	return Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
+	end
+	for i = 1:length(toFetch)
+		M = fetch(toFetch[i])
+		if typeof(M) == Void continue; end
+		addMatches2MeshSet!(M, Ms);
+	end
+	end
+	return Ms;
+end
+
+function makeSectionMeshSet(session, section_num)
+	Ms = makeNewMeshSet();
+	indices = find(i -> array[i,3][2] == section_num, 1:size(session, 1))
+	for i in 1:length(indices)
+	name = session[i, 1];
+	index = session[i, 2];
+	dx = session[i, 3];
+	dy = session[i, 4];
+	addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
+	end
+	return Ms;
+end
+
+
 
 

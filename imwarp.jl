@@ -22,16 +22,35 @@ end
 """
 Apply geometric transform to image
 
+## Definitions
+Bounding boxes of images contain the image by running through the upper 
+left corner pixel and lower right corner pixel.
+
+    (1,1)  ___________
+          |           |
+    height|           |
+    (i) m |           |
+          |___________|
+                n   (m,n)
+               (j)
+              width
+Offset between an internal point, A (i,j), and the upper leftcorner of the 
+image will be (i-1, j-1).
+
+Coordinates are in i,j format, to match Julia's column-first storage.
+
+Affine transform matrix form
+
+    A = [a b 0;
+         c d 0;
+         x y 1] --> homogoneous coordinates are in 3rd column (A[:,3])
+                    so, right-hand matrix multiplication:
+                      [x, y, 1] * M
+
 Args:
 
 * img: 2D array of an image
-* tform: 3x3 array for an affine transform of the form
-
-  [a b 0;
-   c d 0;
-   x y 1] --> homogoneous coordinates are in 3rd column (tform[:,3])
-              so, right-hand matrix multiplication:
-                [x, y, 1] * M
+* tform: 3x3 array for an affine transform for right-handed multiplication
 * offset: 2-element array for displacement of the upper left-hand pixel of img
   from the global origin (optional)
 
@@ -41,7 +60,7 @@ Returns:
     (for Int type images, the output is the same type with pixel values rounded)
 * offset: updated 2-element array for displacement of image from global origin
 
-  warped_img, warped_offset = imwarp(img, tform, offset)
+    warped_img, warped_offset = imwarp(img, tform, offset)
 """
 function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # img bb set at offset, with width and height matching the image

@@ -1,23 +1,5 @@
 module Julimaps
-
-#=
-# Definitions
-  Bounding boxes of images contain the image by running through the upper 
-  left corner pixel and lower right corner pixel.
-
-    (1,1)  ___________
-          |           |
-    height|           |
-    (i) m |           |
-          |___________|
-                n   (m,n)
-               (j)
-              width
-  Offset between an internal point, A (i,j), and the upper leftcorner of the 
-  image will be (i-1, j-1).
-
-  Coordinates are in i,j format, to match Julia's column-first storage.
-=#
+push!(LOAD_PATH, "./mesh")
 
 ### TypeAliases ###############################
 
