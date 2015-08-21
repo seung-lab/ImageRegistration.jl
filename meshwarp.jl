@@ -3,17 +3,6 @@
 
 include("BoundingBox.jl")
 
-function create_affine(U, V, X, Y)
-    pts = [X[1] X[2] X[3]; 
-            Y[1] Y[2] Y[3]; 
-            1 1 1]
-    tpts = [U[1] U[2] U[3]; 
-            V[1] V[2] V[3];
-            1 1 1]
-    # tpts*A = pts => tpts^-1 * pts
-    return inv(tpts) * pts
-end
-
 """
 Find the extrema of a mesh, and generate a bounding box
 
@@ -35,17 +24,33 @@ function find_mesh_bb(nodes)
     return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
 end
 
+"""
+MESHWARP Apply piecewise affine transform to image using bilinear interpolation
+
+See definitions in IMWARP documentation for further help.
+
+Args:
+
+* img: 2D array, image (todo: extend to Image type)
+* src: Nx2 array of mesh nodes that will be deformed _defined in global space_
+* dst: Nx2 array of mesh nodes that have been deformed _defined in global space_
+* trigs: Nx3 array defining list of triangles - each row contains indices 
+    defining which nodes compose a triangle
+* offset: 2-element array, position of img[1,1] in 2D space, so also the offset 
+    of the src nodes (optional - default is [0,0])
+* interp: bool determining whether to use bilinear interpolation or not
+    (optional - default is true)
+
+Returns:
+
+* warped_img: with pixel values the same type as original image
+    (for Int type, pixel values are rounded), and contained by the bounding
+    box of the dst mesh
+* warped_offset: 2-element array, position of warped_img[1,1] in 2D space 
+"""
 function meshwarp{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
-                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
-    # wbb = snap_bb(find_mesh_bb(dst))
-    # low, high = bounds2padding(size(img), minsandmax(wbb)...)
-    # img = padimage(img, low..., high...)
-    # src = src .+ low'
-    # dst = dst .+ low'
-    # bb = BoundingBox(offset.-low..., size(img)...)
-    # warped = zeros(eltype(img), size(img))
-
+                    trigs::Matrix{Int64}, offset=[0,0], interp=true)
     bb = snap_bb(find_mesh_bb(dst))
     warped_img = similar(img, bb.h+1, bb.w+1)
     warped_offset = [bb.i, bb.j]
@@ -57,14 +62,16 @@ function meshwarp{N}(img::Array{Float64, N},
     end
     for t=1:size(trigs, 1)    
         tr = squeeze(trigs[t, :], 1)
+        # coordinates of the source triangle
         X = src[tr, 1]
         Y = src[tr, 2]
-        
+        # coordinates of the destination triangle
         U = dst[tr, 1]
         V = dst[tr, 2]
-               
-        # Create matrix to transform from warped image to original image
-        M = create_affine(U, V, X, Y) # tform U,V to X,Y
+        # Create matrix to transform from destination triangle to source image
+        src_tri = [X Y ones(3,1)]
+        dst_tri = [U V ones(3,1)]
+        M = dst_tri \ src_tri # dst_tri * M = src_tri
         # Create list of coordinates in warped image that represent this
         # triangle (coordinates in the global space).
         us, vs = poly2source(U, V)
@@ -117,7 +124,7 @@ function poly2source(pts_i, pts_j)
     # Create image based on number of pixels in bb that will identify triangle
     mask = zeros(Bool, bottom-top+1, right-left+1)
     # Convert vertices into pixel space and fill the mask to identify triangle
-    fillpoly2!(mask, pts_i-top+1, pts_j-left+1, true)
+    fillpoly2!(mask, pts_j-left+1, pts_i-top+1, true)
     # Create list of pixel coordinates that are contained by the triangle
     us, vs = findn(mask)
     # Convert that list of pixel coordinates back into global space
@@ -126,32 +133,53 @@ function poly2source(pts_i, pts_j)
     return us, vs
 end
 
-function fillpoly2!{T,P<:Number}(M::Matrix{T}, pts_i::Vector{P}, pts_j::Vector{P}, value::T)
-    @assert length(pts_i) == length(pts_j)    
-    left, right = floor(Int64,minimum(pts_j)), ceil(Int64,maximum(pts_j))
+"""
+Update matrix to value at coordinates contained by the polygon defined by px, py
+
+Args:
+
+* M: 2D array
+* px: 1D array of x-components of polygon vertices
+* py: 1D array of y-components of polygon vertices
+* value: the value to set an array element to if its contained in the polygon
+
+Returns:
+
+* (updated M)
+"""
+function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
+    @assert length(py) == length(px)    
+    left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
+    # Scan poly from left to right
     for x=left:right     
         ys = Set{Int64}()
-        j = length(pts_j)
-        for i=1:length(pts_j)            
-            if (pts_j[i] <= x && x <= pts_j[j]) || (pts_j[j] <= x && x <= pts_j[i])
-                # special case: adding the whole cut to ys                            
-                if pts_j[i] == pts_j[j]
-                    push!(ys, ceil(Int64, pts_i[i]))
-                    push!(ys, ceil(Int64, pts_i[j]))
+        m = length(px)
+        for n=1:length(px)
+            # Check if x falls between two successive vertices
+            # Then add minimum y and maximum y of the polygon at that x            
+            if (px[n] <= x && x <= px[m]) || (px[m] <= x && x <= px[n])
+                # Vertices are directly on top of each other - add both y's                           
+                if px[n] == px[m]
+                    push!(ys, ceil(Int64, py[n]))
+                    push!(ys, ceil(Int64, py[m]))
                 else
-                    y = pts_i[i] + (x - pts_j[i]) / (pts_j[j] - pts_j[i]) * (pts_i[j] - pts_i[i])
+                    # Equation of a line between two points, evaluated @ x
+                    y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
                     push!(ys, ceil(Int64, y))
                 end            
             end
-            j = i
+            m = n
         end
+        # ys is now an array defining ordered point pairs defining slices inside
+        # the polygon
         ys = sort([y for y in ys])
-        # if there's an odd number of intersection points, add one imeginary point
+        # if odd number of intersection points, add duplicate end point
         if length(ys) % 2 == 1
             push!(ys, ys[end])
         end
-        for i=1:2:length(ys)           
-            M[ys[i]:ys[i+1], x] = value  # <-- bounds error here!
+        # Place value in matrix at all the y's between min and max for given x
+        for n=1:2:length(ys)           
+            M[ys[n]:ys[n+1], x] = value
         end
     end
     return M
@@ -165,10 +193,42 @@ end
 
 function test_meshwarp()
     img = reshape(float(collect(1:121).%2), 11, 11) # 11x11 checkerboard
-    # incidence = [1 1 0;
-    #             -1 0 1;
-    #             0 -1 -1]
     triangles = [1 2 3]
+
+    tform = [1 0 0;
+            0 1 0;
+            0 0 1]
+    src = [0.0 0.0;
+            0.0 10.0;
+            10.0 0.0]   
+    dst = warp_pts(tform, src)
+    offset = [0,0]
+    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
+    @test warped_offset == [0,0] 
+
+    tform = [1 0 0;
+            0 1 0;
+            0 0 1]
+    src = [0.0 0.0;
+            0.0 10.0;
+            10.0 0.0]   
+    dst = warp_pts(tform, src)
+    offset = [5,10]
+    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
+    @test_approx_eq_eps img_warped zeros(11,11) 1e-10
+    @test warped_offset == [0,0] 
+
+    tform = [1 0 0;
+            0 1 0;
+            0 0 1]
+    src = [0.0 0.0;
+            0.0 20.0;
+            20.0 0.0]   
+    dst = warp_pts(tform, src)
+    offset = [5,10]
+    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
+    @test img_warped[6,11] == 1.0 
+    @test warped_offset == [0,0] 
 
     src = [2.0 2.0;
             10.0 2.0;
@@ -178,63 +238,5 @@ function test_meshwarp()
             6.0 10.0]
     offset = [0, 0]
     img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    view(img_warped)
-    @test warped_offset == [0,0]
-
-    offset = [10, 10]
-    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    @test warped_offset == [9,9]
-
-    tform = [cos(pi/4) -sin(pi/4) 0;
-            sin(pi/4) cos(pi/4) 0;
-            0 0 1]
-    src = [1.0 1.0;
-            11.0 1.0;
-            1.0 11.0]    
-    dst = warp_pts(tform, src)
-    offset = [0, 0]
-    img_warped, bb = meshwarp(img, src, dst, triangles)
-    view(img_warped)
-    # @test bb == BoundingBox(0,0,11,11)
-
-    tform = [1 0 0;
-            0 1 0;
-            0 0 1]
-    src = [0.0 0.0;
-            0.0 10.0;
-            10.0 0.0]   
-    dst = warp_pts(tform, src)
-    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    view(img_warped)
-    @test bb == BoundingBox(0,0,20,20) 
-
-    tform = [1 0 0;
-            0 1 0;
-            -4 -4 1]
-    src = [0.0 0.0;
-            0.0 10.0;
-            10.0 0.0]    
-    dst = warp_pts(tform, src)
-    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    view(img_warped)
-    @test bb == BoundingBox(-4,-5,16,15) 
-
-    src = [0.0 0.0;
-            0.0 10.0;
-            10.0 0.0]  
-    src = [0.0 0.0;
-            0.0 9.5;
-            10.0 0.0] 
-    img_warped, bb = meshwarp(img, src, dst, triangles)
-    view(img_warped)
-    @test bb == BoundingBox(-1,-1,12,12) 
-
-    src = [-10.0 0.0;
-            0.0 10.0;
-            10.0 10.0]  
-    dst = [0.0 0.0;
-            0.0 10.0;
-            10.0 10.0]
-    img_warped, bb = meshwarp(img, src, dst, triangles)
-    @test bb == BoundingBox(-1,-1,12,12) 
+    @test warped_offset == [4,2]
 end
