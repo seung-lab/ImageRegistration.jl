@@ -1,4 +1,7 @@
+![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg "travis")
+
 # Julimaps
+JULia IMAge Processing Suite:
 A set of tools for elastic image registration in Julia.
 
 # Milestones
@@ -16,10 +19,10 @@ A set of tools for elastic image registration in Julia.
   * Create list of overlapping tile pairs based on affine transforms (Tommy)
   * Make seam inspection easier (Tommy)
   * Update mesh code to handle stitched sections (Dodam)
-  * Store cross correlation plots for the bad correspondences
+  * Store cross correlation plots for the bad correspondences X
+  * Pre-align two stitched section images (Shang)
+  * Build section type to store tiles with pre-alignment
 * 8/28 Elastically align one stack (piriform)
   * Parallelize
-* 9/4 Pre-alignment
-  * Create overview object
 * 9/11 Pre-align & elastically align one stack (zebrafish)
   * AWS
