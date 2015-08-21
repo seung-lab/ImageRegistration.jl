@@ -78,7 +78,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # snap transformed bb to the nearest exterior integer values
   tbb = snap_bb(wbb)
   # construct warped_img, pixels same Type as img, size calculated from tbb
-  warped_img = similar(img, Int64(tbb.h)+1, Int64(tbb.w)+1)
+  warped_img = similar(img, tbb.h+1, tbb.w+1)
   # WARNING: this should have zero values, but unclear whether this is guaranteed by similar
 
   # offset of warped_img from the global origin
@@ -137,14 +137,12 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
         end
     end
   end
-  return warped_img, [tbb.i, tbb.j], bb, wbb, tbb
+  return warped_img, [tbb.i, tbb.j]
 end
 
 function test_imwarp()
   img = reshape(float(collect(1:121).%2), 11, 11) # 11x11 checkerboard
   warp = img
-  warp[11,:] = zeros(11)
-  warp[:,11] = zeros(11)
 
   tform = [1 0 0;
           0 1 0;
@@ -153,6 +151,14 @@ function test_imwarp()
   img_warped, warped_offset = imwarp(img, tform, offset)
   @test_approx_eq warp img_warped
   @test warped_offset == [0, 0]
+
+  tform = [1 0 0;
+          0 1 0;
+          0 0 1]
+  offset = [10, 20]
+  img_warped, warped_offset = imwarp(img, tform, offset)
+  @test_approx_eq warp img_warped
+  @test warped_offset == [10, 20]
 
   tform = [1 0 0;
           0 1 0;
@@ -167,7 +173,7 @@ function test_imwarp()
           0 0 1]
   offset = [0, 0]
   img_warped, warped_offset = imwarp(img, tform, offset)
-  @test warped_offset == [0, -6]
+  @test warped_offset == [0, -5]
 end
 
 
