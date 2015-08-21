@@ -22,7 +22,14 @@ end
 # extensions:
 # Mesh.jl getFloatImage(mesh::Mesh)
 function getFloatImage(path::String)
-	return convert(Array{Float64, 2}, convert(Array, imread(path)));
+	img = imread(path);
+	#=if img.properties["timedim"] == 0
+		return convert(Array{Float64, 2}, convert(Array, img));
+	else=#
+	img = img[:, :, 1];
+	img.properties["timedim"] = 0;
+	return convert(Array{Float64, 2}, convert(Array, img));
+	#end
 end
 
 function loadAffine(path::String)
@@ -69,7 +76,7 @@ function loadSectionImages(session, section_num)
 	end
 	imageArray = SharedArray(Float64, max_tile_size, max_tile_size, num_tiles);
 
-	@time for k in 0:num_procs:num_tiles
+	for k in 0:num_procs:num_tiles
 		@sync @parallel for l in 1:num_procs
 		i = k+l;
 		if i > num_tiles return; end;
