@@ -23,19 +23,20 @@ Returns:
 
 * BoundingBox containing all of the mesh nodes
 
-    BoundingBox(xlow, ylow, xlow+xhigh, ylow+yhigh) = find_bounds(nodes)
+    BoundingBox(xlow, ylow, height, width) = find_bounds(nodes)
 """
 function find_mesh_bb(nodes)
-    xlow = Int64(floor(minimum(nodes[:,1])))-1
-    ylow = Int64(floor(minimum(nodes[:,2])))-1
-    xhigh = Int64(ceil(maximum(nodes[:,1])))
-    yhigh = Int64(ceil(maximum(nodes[:,2])))
+    xlow = floor(Int64,minimum(nodes[:,1]))
+    ylow = floor(Int64,minimum(nodes[:,2]))
+    xhigh = ceil(Int64,maximum(nodes[:,1]))
+    yhigh = ceil(Int64,maximum(nodes[:,2]))
     return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
 end
 
 function meshwarp{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
-                    trigs::Matrix{Int64}, offset=[0,0], padded=true, interp=true)
+                     trigs::Matrix{Int64}, offset=[0,0], padded=false, interp=true)
+    padded=false
     if padded
         wbb = snap_bb(find_mesh_bb(dst))
         low, high = bounds2padding(size(img), minsandmax(wbb)...)
@@ -46,8 +47,9 @@ function meshwarp{N}(img::Array{Float64, N},
         warped = zeros(eltype(img), size(img))
     else
         bb = snap_bb(find_mesh_bb(dst))
-        warped_img = similar(img, Int64(bb.h), Int64(bb.w))
-        dst = dst .- [bb.i, bb.j]'
+        warped_img = similar(img, bb.h+1, bb.w+1)
+        warped_offset = [bb.i, bb.j]
+#        dst = dst .- [bb.i, bb.j]'
     end
 
     if interp
@@ -65,23 +67,23 @@ function meshwarp{N}(img::Array{Float64, N},
                
         # warp parameters from target (U, V) to source (X, Y)
         M = create_affine(U, V, X, Y)
-        vs, us = poly2source(U, V)
+        us, vs = poly2source(U, V)
         
         # for every pixel in target triangle we find corresponding pixel in source
         # and copy its value
         if interp
             for i=1:length(vs)
-                u, v = us[i], vs[i]
+                u, v = us[i]-1+warped_offset[1], vs[i]-1+warped_offset[2]
                 # x, y = M * [u, v, 1]
                 x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]
-
+                x, y = x-offset[1]+1, y-offset[2]+1
                 fx, fy = floor(Int64, x), floor(Int64, y)
                 wx, wy = x-fx, y-fy
 
-                if 1 <= fy && fy+1 <= size(img, 1) && 1 <= fx && fx+1 <= size(img, 2)
+                if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
                     # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-                    p = ((1-wy)*img[fy,fx] + wy*img[fy+1,fx]) * (1-wx) + ((1-wy)*img[fy,fx+1] + wy*img[fy+1,fx+1]) * wx
-                    warped_img[v, u] = p
+                    p = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1]) * (1-wx) + ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1]) * wx
+                    warped_img[u, v] = p
                 end
             end
         else
@@ -90,8 +92,8 @@ function meshwarp{N}(img::Array{Float64, N},
                 # x, y = M * [u, v, 1]
                 x = round(Int64, M[1,1]*u + M[1,2]*v + M[1,3])
                 y = round(Int64, M[2,1]*u + M[2,2]*v + M[2,3])
-                if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
-                    warped_img[v, u] = img[y, x]
+                if 1 <= x && x <= size(img, 1) && 1 <= y && y <= size(img, 2)
+                    warped_img[u, v] = img[x, y]
                 end
             end
         end
@@ -106,9 +108,9 @@ function poly2source(px, py)
     top, bottom = floor(Int64,minimum(py)), ceil(Int64,maximum(py))
     mask = zeros(Bool, bottom-top+1, right-left+1)
     fill = fillpoly2!(mask, px-left+1, py-top+1, true)
-    vs, us = findn(fill)
-    vs += top-1
-    us += left-1
+    us, vs = findn(fill)
+    vs += left-1
+    us += top-1
     return vs, us
 end
 
