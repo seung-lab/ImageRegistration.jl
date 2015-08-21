@@ -2,11 +2,14 @@ using Julimaps
 using Params
 using HDF5
 using JLD
+using Images
+using ImageView
 importall IO
 include("Mesh.jl")
 include("Matches.jl")
 include("MeshSolve.jl")
 
+export save, load
 
 type MeshSet
 	N::Int64						# number of meshes in the set
@@ -150,7 +153,22 @@ function solveMeshSet!(Ms, match_coeff, eta_gradient, eta_newton, ftol_grad, fto
 
 end
 
-function MeshSet2JLD(filename, Ms)
+function save(filename::String, Ms::MeshSet)
+	jldopen(filename, "w") do file
+		write(file, "MeshSet", Ms);
+	end
+end
+
+function save(Ms::MeshSet)
+	firstindex = Ms.meshes[1].index;
+	lastindex = Ms.meshes[Ms.N].index;
+
+	if firstindex[1:2] == lastindex[1:2]
+		filename = joinpath(MONTAGE_DIR, string(firstindex[1:2], "_montage.jld"));
+	else
+		filename = joinpath(ALIGNMENT_DIR, string(firstindex[1:2], "-", lastindex[1:2], "_alignment.jld"));
+	end
+
 	jldopen(filename, "w") do file
 		write(file, "MeshSet", Ms);
 	end
@@ -233,6 +251,27 @@ function loadSection(session, section_num)
 	return Ms, imageArray;
 end
 
+
+function printResidualStats(Ms)
+	residuals_t = Points(0);
+	for k in 1:Ms.M
+		for i in 1:Ms.matches[k].n
+			w = Ms.matches[k].dst_weights[i];
+			t = Ms.matches[k].dst_triangles[i];
+			p = Ms.matches[k].src_pointIndices[i];
+			src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
+			dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+			p1 = src.nodes_t[p];
+			p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
+			push!(residuals_t, p2-p1);
+		end
+	end
+	res_norm = map(norm, residuals_t);
+	avg = mean(res_norm);
+	sig = std(res_norm);
+	max = maximum(res_norm);
+	println("Residuals after solving elastically: mean: $avg, sigma = $sig, max = $max");
+end
 
 
 
