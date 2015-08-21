@@ -50,11 +50,11 @@ Snap bounding box to the nearest exterior pixels
 """
 function snap_bb(bb)
   r = bb2pts(bb)
-  bb.i = floor(bb.i)
-  bb.j = floor(bb.j)
-  h = ceil(r[2,1]) - bb.i
-  w = ceil(r[3,2]) - bb.j
-  return BoundingBox(bb.i, bb.j, h, w)
+  i = floor(bb.i)
+  j = floor(bb.j)
+  h = ceil(r[2,1]) - i
+  w = ceil(r[3,2]) - j
+  return BoundingBox(i, j, h, w)
 end
 
 """
