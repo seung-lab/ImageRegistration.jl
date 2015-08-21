@@ -54,8 +54,8 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 
 	src_index = Am.index;
 	dst_index = Bm.index;
-	p1 = Am.path;
-	p2 = Bm.path;
+	p1 = Am.name;
+	p2 = Bm.name;
 
 	n = 0;
 	n_total = 0;
