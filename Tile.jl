@@ -2,7 +2,6 @@ using Julimaps
 using Params
 
 include("Mesh.jl")
-include("SpatialRef.jl")
 using MeshModule
 
 
