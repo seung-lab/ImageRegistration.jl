@@ -3,43 +3,52 @@
 
 include("BoundingBox.jl")
 
-function source_point_mat(X, Y)
-    x1, x2, x3 = X
-    y1, y2, y3 = Y    
-    F = [x1 x2 x3; y1 y2 y3; 1 1 1]
-    F
+function create_affine(X, Y, U, V)
+    F = [X[1] X[2] X[3]; 
+        Y[1] Y[2] Y[3]; 
+        1 1 1]
+    T = [U[1] U[2] U[3]; 
+        V[1] V[2] V[3]]
+    return T * inv(F) # F*A=T => T*F^-1=A
 end
 
-function target_point_mat(U, V)
-    u1, u2, u3 = U
-    v1, v2, v3 = V
-    T = [u1 u2 u3; v1 v2 v3]
-    T
-end
+"""
+Find the extrema of a mesh, and generate a bounding box
 
-function affine_params(X, Y, U, V)
-    F = source_point_mat(X, Y)
-    T = target_point_mat(U, V)
-    M = T * inv(F)
-    M
+Args:
+
+* nodes: 2xN array of coordinates for a mesh
+
+Returns:
+
+* BoundingBox containing all of the mesh nodes
+
+    BoundingBox(xlow, ylow, xlow+xhigh, ylow+yhigh) = find_bounds(nodes)
+"""
+function find_mesh_bb(nodes)
+    xlow = Int64(floor(minimum(nodes[:,1])))-1
+    ylow = Int64(floor(minimum(nodes[:,2])))-1
+    xhigh = Int64(ceil(maximum(nodes[:,1])))
+    yhigh = Int64(ceil(maximum(nodes[:,2])))
+    return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
 end
 
 function meshwarp{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
-                    trigs::Matrix{Int64}, bb = BoundingBox(), interp = true)
-    println(dst)
-    wbb = snap_bb(find_mesh_bb(dst))
-    println(wbb)
-    low, high = bounds2padding(size(img), minsandmax(wbb)...)
-    println(low, high)
-    img = padimage(img, low..., high...)
-    src = src .+ low'
-    dst = dst .+ low'
-    wbb = BoundingBox(bb.x-low[1], bb.y-low[2], size(img)...)
-    warped = zeros(eltype(img), size(img))
-
-    # wbb = snap_bb(find_mesh_bb(dst))
-    # warped = similar(img, Int64(bb.h), Int64(bb.w))
+                    trigs::Matrix{Int64}, offset=[0,0], padded=true, interp=true)
+    if padded
+        wbb = snap_bb(find_mesh_bb(dst))
+        low, high = bounds2padding(size(img), minsandmax(wbb)...)
+        img = padimage(img, low..., high...)
+        src = src .+ low'
+        dst = dst .+ low'
+        bb = BoundingBox(offset.-low..., size(img)...)
+        warped = zeros(eltype(img), size(img))
+    else
+        bb = snap_bb(find_mesh_bb(dst))
+        warped_img = similar(img, Int64(bb.h), Int64(bb.w))
+        dst = dst .- [bb.i, bb.j]'
+    end
 
     if interp
         println("w interpolation")
@@ -55,7 +64,7 @@ function meshwarp{N}(img::Array{Float64, N},
         U = dst[tr, 2]
                
         # warp parameters from target (U, V) to source (X, Y)
-        M = affine_params(U, V, X, Y)
+        M = create_affine(U, V, X, Y)
         vs, us = poly2source(U, V)
         
         # for every pixel in target triangle we find corresponding pixel in source
@@ -72,7 +81,7 @@ function meshwarp{N}(img::Array{Float64, N},
                 if 1 <= fy && fy+1 <= size(img, 1) && 1 <= fx && fx+1 <= size(img, 2)
                     # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
                     p = ((1-wy)*img[fy,fx] + wy*img[fy+1,fx]) * (1-wx) + ((1-wy)*img[fy,fx+1] + wy*img[fy+1,fx+1]) * wx
-                    warped[v, u] = p
+                    warped_img[v, u] = p
                 end
             end
         else
@@ -82,13 +91,13 @@ function meshwarp{N}(img::Array{Float64, N},
                 x = round(Int64, M[1,1]*u + M[1,2]*v + M[1,3])
                 y = round(Int64, M[2,1]*u + M[2,2]*v + M[2,3])
                 if 1 <= y && y <= size(img, 1) && 1 <= x && x <= size(img, 2)
-                    warped[v, u] = img[y, x]
+                    warped_img[v, u] = img[y, x]
                 end
             end
         end
         
     end
-    return warped, wbb
+    return warped_img, [bb.i, bb.j]
 end
 
 function poly2source(px, py)
@@ -140,7 +149,7 @@ function warp_pts(affine, pts)
     return tpts[:,1:2]
 end
 
-function test_mesh_warp()
+function test_meshwarp()
     img = reshape(float(collect(1:121).%2), 11, 11) # 11x11 checkerboard
     # incidence = [1 1 0;
     #             -1 0 1;
@@ -154,12 +163,15 @@ function test_mesh_warp()
             8.0 2.0;
             6.0 10.0]
     offset = [0, 0]
-    img_warped, bb = meshwarp(img, src, dst, triangles)
-    @test bb == BoundingBox(0,0,11,12)
+    pimg_warped, warped_offset = meshwarp(img, src, dst, triangles, offset, true)
+    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset, false)
+    view(img_warped)
+    view(pimg_warped)
+    @test warped_offset == [0,0]
 
     offset = [10, 10]
-    iimg_warped, bb = meshwarp(img, src, dst, triangles, BoundingBox(10, 10, 11, 11))
-    @test bb == BoundingBox(10,10,11,12)   
+    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
+    @test warped_offset == [9,9]
 
     # tform = [cos(pi/6) -sin(pi/6) 0;
     #         sin(pi/6) cos(pi/6) 0;
@@ -169,7 +181,7 @@ function test_mesh_warp()
     #         6.0 40.0]    
     # dst = warp_pts(tform, src)
     # offset = [0, 0]
-    # iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    # img_warped, bb = meshwarp(img, src, dst, triangles)
     # @test bb == BoundingBox(0,0,11,11)
 
     tform = [1 0 0;
@@ -179,17 +191,23 @@ function test_mesh_warp()
             0.0 10.0;
             10.0 0.0]   
     dst = warp_pts(tform, src)
-    iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    pimg_warped, warped_offset = meshwarp(img, src, dst, triangles, offset, true)
+    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset, false)
+    view(img_warped)
+    view(pimg_warped)
     @test bb == BoundingBox(0,0,20,20) 
 
     tform = [1 0 0;
             0 1 0;
             -4 -4 1]
-    src = [1.0 1.0;
-            1.0 4.0;
-            4.0 0.0]   
+    src = [0.0 0.0;
+            0.0 10.0;
+            10.0 0.0]    
     dst = warp_pts(tform, src)
-    iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    pimg_warped, warped_offset = meshwarp(img, src, dst, triangles, offset, true)
+    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset, false)
+    view(img_warped)
+    view(pimg_warped)
     @test bb == BoundingBox(-4,-5,16,15) 
 
     src = [0.0 0.0;
@@ -198,7 +216,7 @@ function test_mesh_warp()
     dst = [0.0 0.0;
             0.0 10.0;
             10.0 10.0]
-    iimg_warped, bb = meshwarp(img, src, dst, triangles)
+    img_warped, bb = meshwarp(img, src, dst, triangles)
     @test bb == BoundingBox(-1,-1,12,12) 
 
     src = [-10.0 0.0;

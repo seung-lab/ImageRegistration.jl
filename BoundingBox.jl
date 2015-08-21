@@ -1,10 +1,10 @@
 using Base.Test
 
 type BoundingBox
-  x::Float64
-  y::Float64
-  h::Float64
-  w::Float64
+  i::Float64
+  j::Float64
+  h::Float64 # height
+  w::Float64 # width
 end
 
 BoundingBox() = BoundingBox(0,0,0,0)
@@ -13,36 +13,36 @@ BoundingBox() = BoundingBox(0,0,0,0)
 Add bounding boxes by finding BoundingBox that encompasses both
 """
 function +(bbA::BoundingBox, bbB::BoundingBox)
-  x = min(bbA.x, bbB.x)
-  y = min(bbA.y, bbB.y)
-  w = max(bbA.w+bbA.x, bbB.w+bbB.x) - x
-  h = max(bbA.h+bbA.y, bbB.h+bbB.y) - y
-  return BoundingBox(x,y,w,h)
+  i = min(bbA.i, bbB.i)
+  j = min(bbA.j, bbB.j)
+  h = max(bbA.h+bbA.i, bbB.h+bbB.i) - i
+  w = max(bbA.w+bbA.j, bbB.w+bbB.j) - j
+  return BoundingBox(i,j,h,w)
 end
 
 """
 Test if BoundingBoxes have the same origin and dimensions
 """
 function ==(bbA::BoundingBox, bbB::BoundingBox)
-  return bbA.x == bbB.x && bbA.y == bbB.y && bbA.w == bbB.w && bbA.h == bbB.h
+  return bbA.i == bbB.i && bbA.j == bbB.j && bbA.w == bbB.w && bbA.h == bbB.h
 end
 
 """
 Convert bounding box object to a polygon point list (counter-clockwise)
 """
 function bb2pts(r)
-  return [r.x r.y;
-          r.x+r.h r.y;
-          r.x+r.h r.y+r.w;
-          r.x r.y+r.w;
-          r.x r.y];
+  return [r.i r.j;
+          r.i+r.h r.j;
+          r.i+r.h r.j+r.w;
+          r.i r.j+r.w;
+          r.i r.j];
 end
 
 """
 Return xmin, ymin, xmax, ymax of a bounding box (opposing corner definition)
 """
 function minsandmax(bb)
-  return bb.x, bb.y, bb.x+bb.w, bb.y+bb.h
+  return bb.i, bb.j, bb.i+bb.h, bb.j+bb.w
 end
 
 """
@@ -50,51 +50,30 @@ Snap bounding box to the nearest exterior pixels
 """
 function snap_bb(bb)
   r = bb2pts(bb)
-  bb.x = floor(bb.x)
-  bb.y = floor(bb.y)
-  h = ceil(r[2,1]) - bb.x
-  w = ceil(r[3,2]) - bb.y
-  return BoundingBox(bb.x, bb.y, h, w)
+  bb.i = floor(bb.i)
+  bb.j = floor(bb.j)
+  h = ceil(r[2,1]) - bb.i
+  w = ceil(r[3,2]) - bb.j
+  return BoundingBox(bb.i, bb.j, h, w)
 end
 
 """
 Apply affine transform to points in a bounding box & find new bounding box
 """
 function tform_bb(bb, tform)
-  tform_pts = tform * [bb2pts(bb) ones(size(bb2pts(bb),1),1)]'
-  i = minimum(tform_pts[1,:])
-  j = minimum(tform_pts[2,:])
-  w = maximum(tform_pts[2,:]) - j
-  h = maximum(tform_pts[1,:]) - i
-  return BoundingBox(i, j, w, h)
+  tform_pts = [bb2pts(bb) ones(size(bb2pts(bb),1),1)] * tform
+  i = minimum(tform_pts[:,1])
+  j = minimum(tform_pts[:,2])
+  h = maximum(tform_pts[:,1]) - i
+  w = maximum(tform_pts[:,2]) - j
+  return BoundingBox(i, j, h, w)
 end
 
 """
 Convert Tuple for image size into a BoundingBox at (0,0)
 """
 function sz2bb(sz)
-  return BoundingBox(0, 0, sz...);  # should origin be at 1,1, 0,0, or 0.5,0.5?
-end
-
-"""
-Find the extrema of a mesh, and generate a bounding box
-
-Args:
-
-* nodes: 2xN array of coordinates for a mesh
-
-Returns:
-
-* BoundingBox containing all of the mesh nodes
-
-    BoundingBox(xlow, ylow, xlow+xhigh, ylow+yhigh) = find_bounds(nodes)
-"""
-function find_mesh_bb(nodes)
-    xlow = Int64(floor(minimum(nodes[:,1])))-1
-    ylow = Int64(floor(minimum(nodes[:,2])))-1
-    xhigh = Int64(ceil(maximum(nodes[:,1])))
-    yhigh = Int64(ceil(maximum(nodes[:,2])))
-    return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
+  return BoundingBox(0, 0, sz[1]-1, sz[2]-1);  # should origin be at 1,1, 0,0, or 0.5,0.5?
 end
 
 function test_bb_operations()
