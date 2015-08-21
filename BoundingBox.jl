@@ -1,10 +1,10 @@
 using Base.Test
 
 type BoundingBox
-  i::Float64
-  j::Float64
-  h::Float64 # height
-  w::Float64 # width
+  i::Real
+  j::Real
+  h::Real # height
+  w::Real # width
 end
 
 BoundingBox() = BoundingBox(0,0,0,0)
@@ -46,14 +46,15 @@ function minsandmax(bb)
 end
 
 """
-Snap bounding box to the nearest exterior pixels
+Snap bounding box to integer values (smallest rectangle containing original)
+Returns BoundingBox of integers
 """
 function snap_bb(bb)
   r = bb2pts(bb)
-  i = floor(bb.i)
-  j = floor(bb.j)
-  h = ceil(r[2,1]) - i
-  w = ceil(r[3,2]) - j
+  i = floor(Int,bb.i)
+  j = floor(Int,bb.j)
+  h = ceil(Int,r[2,1]) - i
+  w = ceil(Int,r[3,2]) - j
   return BoundingBox(i, j, h, w)
 end
 
