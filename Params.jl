@@ -31,32 +31,37 @@ end
 
 bucket_dir_path = "/usr/people/dih/seungmount";
 affine_dir_path = "~";
-dataset_dir_path = "./datasets/piriform"
+datasets_dir_path = "./datasets";
+cur_dataset = "piriform";
+montage_dir_path = "meshsets_montage";
+alignment_dir_path = "meshsets_alignment";
 wafer_filename = "wafer_paths.txt";
 rough_align_filename = "rough_align_test1-10.txt";
 
-export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, SESSION
+export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, SESSION, MONTAGE_DIR, ALIGNMENT_DIR
 
 global BUCKET = bucket_dir_path;
 global AFFINE_DIR = affine_dir_path;
-global DATASET_DIR = dataset_dir_path;
-global WAFER_DIR_DICT = waferpaths2dict(joinpath(dataset_dir_path, wafer_filename));
-global SESSION = parseRoughAlign(joinpath(dataset_dir_path, rough_align_filename));
+global DATASET_DIR = joinpath(datasets_dir_path, cur_dataset);
+global MONTAGE_DIR = joinpath(datasets_dir_path, cur_dataset, montage_dir_path);
+global ALIGNMENT_DIR = joinpath(datasets_dir_path, cur_dataset, alignment_dir_path);
+global WAFER_DIR_DICT = waferpaths2dict(joinpath(datasets_dir_path, cur_dataset, wafer_filename));
+global SESSION = parseRoughAlign(joinpath(datasets_dir_path, cur_dataset, rough_align_filename));
 
 export tile_size, block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols;
 
 tile_size = 8000;
-block_size = 60;
+block_size = 40;
 search_r = 80;
-min_r = 0.80;
-mesh_length = 140;
+min_r = 0.75;
+mesh_length = 200;
 mesh_coeff = 1;
-match_coeff = 10;
+match_coeff = 20;
 eta_grad = 0.01;
 eta_newton = .5; 
 show_plot = false;
 num_procs = length(procs());
-ftol_grad = 1/1000;
+ftol_grad = 1/500;
 ftol_newton = 1/1000000;
 num_tiles = 16;
 num_rows = 4;

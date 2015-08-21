@@ -85,6 +85,11 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 		end
 	end
 
+	if length(dispVectors_mags) == 0
+	return Void;
+	end
+
+
 	mu = mean(dispVectors_mags);
 	sig = std(dispVectors_mags);
 	max = maximum(dispVectors_mags);
@@ -106,8 +111,8 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 		push!(dst_triangles, dst_triangle);
 		push!(dst_weights, getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]));
 		#=if !isnan(sum(xc))
-			imwrite(xcorr2Image(xc), joinpath(".","output_images", "normxcorr", string(join(Am.index, "_"), "_", join(Bm.index, "_"), "_", n, ".jpg")))
-		end
+		#	imwrite(xcorr2Image(xc), joinpath(".","output_images", "normxcorr", string(join(Am.index, "_"), "_", join(Bm.index, "_"), "_", n, ".jpg")))
+		#end
 		=#
 	end
 
@@ -115,7 +120,7 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 	return Void;
 	end
 
-	println("$p1 -> $p2: $n_upperbound in mesh, $n_total in overlap. Rejections: $n_lowr (low r), $n_outlier (outliers), $n_noTriangle (outside triangles). $n accepted matches. Maximum disp: $max pixels.");
+	println("###\n$p1 -> $p2: $n_upperbound in mesh, $n_total in overlap, $n accepted.\nRejections: $n_lowr (low r), $n_outlier (outliers), $n_noTriangle (outside triangles).\nDisplacement mean = $mu, sigma = $sig, max = $max\n###");
 
 	matches = Matches(src_index, dst_index, n, src_pointIndices, dst_points, dst_triangles, dst_weights, dispVectors);
 	return matches;
