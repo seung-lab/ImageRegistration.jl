@@ -1,7 +1,7 @@
 using Images
 using ImageView
 using TestImages
-using AffineTransforms
+# using AffineTransforms    # incompatible with MATLAB convention
 using Base.Test
 using Color
 include("BoundingBox.jl")
@@ -64,13 +64,13 @@ Returns:
 """
 function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # img bb set at offset, with width and height matching the image
-  bb = BoundingBox(offset..., size(img, 1), size(img, 2))
+  bb = BoundingBox(offset..., size(img, 1)-1, size(img, 2)-1)
   # transform initial bb, and generate new bb (may contain continous values)
   wbb = tform_bb(bb, tform)
   # snap transformed bb to the nearest exterior int values for pixel handling
   tbb = snap_bb(wbb)
   # set warped_img to be zeros (same Type as img), with dimensions of tbb
-  warped_img = similar(img, Int64(tbb.h), Int64(tbb.w))
+  warped_img = similar(img, Int64(tbb.h)+1, Int64(tbb.w)+1)
 
   # offset of warped_img from the global origin
   warped_offset = [Int64(tbb.i), Int64(tbb.j)]
@@ -108,7 +108,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
         end
     end
   end
-  return warped_img, [tbb.i, tbb.j]
+  return warped_img, [tbb.i, tbb.j], bb, wbb, tbb
 end
 
 function test_imwarp()
