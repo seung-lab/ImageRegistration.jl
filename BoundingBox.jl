@@ -1,10 +1,10 @@
 using Base.Test
 
-type BoundingBox
-  i::Real
-  j::Real
-  h::Real # height
-  w::Real # width
+type BoundingBox{T<:Real}
+  i::T
+  j::T
+  h::T    # height
+  w::T    # width
 end
 
 BoundingBox() = BoundingBox(0,0,0,0)
