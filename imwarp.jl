@@ -6,70 +6,70 @@ using Base.Test
 using Color
 include("BoundingBox.jl")
 
-"""
-IMWARP - Apply affine transform to image using bilinear interpolation
+@doc """
+`IMWARP` - Apply affine transform to image using bilinear interpolation
 
-## Definitions
+    warped_img, warped_offset = imwarp(img, tform, offset)
 
-Position in 2D space of an image pixel:
-[1,1] pixel has position (offset[1], offset[2])
-[i,j] pixel has position (offset[1]+i-1, offset[2]+j-1)
-
-Affine transform of a position:
-    [x, y, 1] -> [ax + by + c, dx + ey + f, 1]
-or equivalently 
-    [x, y, 1] -> [x, y, 1] * T 
-where
-    T = [a d 0;
-         b e 0;
-         c f 1] --> homogeneous coordinates are in 3rd column (T[:,3])
-Note that:
-(1) position is a *row* vector 
-(2) transform is matrix multiplication on the *right* side of the vector.
-(3) meaning of the transform depends on whether the image is in ij or xy format
-
-Affine transform of an image (two equivalent definitions):
-1) The value of the original image at a position is equal to the value of
-the warped image at the transformed position. 
-2) The value of the warped image at a position is equal to the value of the
-original image at the inverse transformed position.  
-We apply (2) as it's compatible with gridding and interpolation.
-
-The bounding box of an image of size (m,n) is the smallest rectangle
-in 2D space that contains the positions of the [1,1] and [m,n] pixels, 
-It is represented by the 4-tuple (offset[1],offset[2],m-1,n-1)
-
-(offset[1],offset[2])  ___________
-                      |           |
-                height|           |
-                 m-1  |           |
-                      |___________|
-                           n-1   (offset[1]+m-1,offset[2]+n-1)
-                          width
-
-Input arguments:
-
-* img: 2D array, image (todo: extend to Image type)
-* tform: 3x3 matrix, affine transform as defined above
-* offset: 2-element array, position of img[1,1] in 2D space
-
-Returns:
-
-* warped_img: with pixel values the same type as original image
-    (for Int type, pixel values are rounded)
-* warped_offset: 2-element array, position of warped_img[1,1] in 2D space
+* `img`: 2D array, image (todo: extend to Image type)
+* `tform`: 3x3 matrix, affine transform (defined as row vector x matrix)
+* `offset`: 2-element array, position of img[1,1] in global space
+* `warped_img`: with pixel values the same type as original image (for Int type, pixel values are rounded)
+* `warped_offset`: 2-element array, position of warped_img[1,1] in global space
 
 The bounding box of the warped image is defined as the smallest
 integer-valued rectangle that contains the affine transform of the
 bounding box of the original image.
 
-This means that warped_offset is constrained to be integer-valued,
-though offset is allowed to have floating point values.  The integer
+This means that `warped_offset` is constrained to be integer-valued,
+though `offset` is allowed to have floating point values.  The integer
 constraint removes the need for further interpolation in any
 subsequent fusing of multiple warped tiles.
 
-    warped_img, warped_offset = imwarp(img, tform, offset)
-"""
+### Definitions
+
+Global position of `img` pixels (analogous definitions for `warped_img`): 
+  
+* [1,1] pixel has position (offset[1], offset[2]) in global space
+* [i,j] pixel has position (offset[1]+i-1, offset[2]+j-1)  
+
+Affine transform of a global position:
+
+* homogeneous coordinates [x, y, 1] -> [ax + by + c, dx + ey + f, 1]
+* or equivalently [x, y, 1] -> [x, y, 1] * tform
+* `tform` = [a d 0;  
+             b e 0;  
+             c f 1]
+
+Note that:
+
+1. position is a *row* vector 
+2. transform is row vector x matrix (right hand side matrix multiplication)
+3. meaning of transform depends on whether the image is in ij or xy format
+
+Affine transform of an image (two equivalent definitions):
+
+1. The value of `img` at a position is equal to the value of
+the `warped_img` at the transformed position. 
+2. The value of `warped_img` at a position is equal to the value of
+`img` at the inverse transformed position.  
+
+We apply definition 2 as it's compatible with gridding and interpolation.
+
+Bounding box of an image of size (m,n):
+
+* smallest rectangle in global space that contains the positions of the [1,1] and [m,n] pixels
+* represented by the 4-tuple (offset[1],offset[2],m-1,n-1)
+
+    (offset[1],offset[2])  ___________
+                          |           |
+                    height|           |
+                     m-1  |           |
+                          |___________|
+                               n-1   (offset[1]+m-1,offset[2]+n-1)
+                              width
+
+""" ->
 function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # img bb rooted at offset, with height and width calculated from image
   bb = BoundingBox(offset..., size(img, 1)-1, size(img, 2)-1)
