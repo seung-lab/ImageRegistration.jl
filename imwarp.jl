@@ -26,6 +26,8 @@ though `offset` is allowed to have floating point values.  The integer
 constraint removes the need for further interpolation in any
 subsequent fusing of multiple warped tiles.
 
+Bilinear interpolation, with extrapolation using zero fill value.
+
 ### Definitions
 
 Global position of `img` pixels (analogous definitions for `warped_img`): 
@@ -37,14 +39,15 @@ Affine transform of a global position:
 
 * homogeneous coordinates [x, y, 1] -> [ax + by + c, dx + ey + f, 1]
 * or equivalently [x, y, 1] -> [x, y, 1] * tform
-* `tform` = [a d 0;  
-             b e 0;  
-             c f 1]
+
+        where `tform` = [a d 0;  
+                         b e 0;  
+                         c f 1]
 
 Note that:
 
-1. position is a *row* vector 
-2. transform is row vector x matrix (right hand side matrix multiplication)
+1. transform is *row* vector x matrix (right hand side matrix multiplication)
+2. definition compatible with [MATLAB](http://www.mathworks.com/help/images/ref/affine2d-class.html), but not AffineTransforms.jl
 3. meaning of transform depends on whether the image is in ij or xy format
 
 Affine transform of an image (two equivalent definitions):
@@ -107,18 +110,18 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
         #        if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
         inside = true
         if 1 <= fx && fx+1 <= size(img, 1)
-            if 1 <= fy && fy+1 <= size(img, 2)
+            if 1 <= fy && fy+1 <= size(img, 2)   # normal case
             # Expansion of p = [1-wx wx] * img[fx:fx+1, fy:fy+1] * [1-wy; wy]
                 p = ((1-wx)*img[fx,fy] + wx*img[fx+1,fy]) * (1-wy) + ((1-wx)*img[fx,fy+1] + wx*img[fx+1,fy+1]) * wy
-            elseif fy == size(img, 2) && wy==0
+            elseif fy == size(img, 2) && wy==0   # edge case
                 p = (1-wx)*img[fx,fy] + wx*img[fx+1,fy]
             else
                 inside=false
             end
         elseif fx == size(img, 1) && wx==0
-            if 1 <= fy && fy+1 <= size(img, 2)
+            if 1 <= fy && fy+1 <= size(img, 2)   # edge case
                 p = img[fx,fy] * (1-wy) + img[fx,fy+1] * wy
-            elseif fy == size(img, 2) && wy==0
+            elseif fy == size(img, 2) && wy==0  # corner case
                 p = img[fx,fy]
             else
                 inside=false
