@@ -1,18 +1,15 @@
 using Julimaps
 using Params
-
-include("Mesh.jl")
 using MeshModule
 
-
 type Tile
-	path::String
+	name::String
 	affine
-	mesh::Mesh
+	mesh
 	id::Index # wafer, section, row, col
 end
 
-Tile(path::String) = Tile(path, nothing, nothing, parsepath(path))
+Tile(name::String) = Tile(name, nothing, nothing, parsename(name))
 
 """
 Create dictionary of waferpaths in bucket from file
@@ -28,7 +25,7 @@ end
 
 const BUCKET = "."
 const AFFINE_DIR = "~/seungmount/research/150502_piriform/affine_transforms"
-const WAFER_DIR = waferpaths2dict("piriform_wafer_paths.txt")
+const WAFER_DIR = waferpaths2dict("./datasets/piriform/wafer_paths.txt")
 
 """
 Extract wafer no, section no, row, and col for tile from filename
@@ -67,7 +64,7 @@ end
 """
 Set affine transformation matrix for tile
 """
-function set_mesh!(tile::Tile, mesh::MeshModule.Mesh)
+function set_mesh!(tile::Tile, mesh)
 	tile.mesh = mesh
 end
 
