@@ -1,21 +1,17 @@
 # Adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
-include("BoundingBox.jl")
+# include("BoundingBox.jl")
 
-"""
-Find the extrema of a mesh, and generate a bounding box
+@doc """
+`FIND_MESH_BB` - Find bounding box around mesh
 
-Args:
+    BoundingBox(xlow, ylow, height, width) = find_mesh_bb(nodes)
 
-* nodes: 2xN array of coordinates for a mesh
+* `nodes`: 2xN matrix of mesh nodes
+* `BoundingBox`: smallest integer-valued rectangle containing all mesh nodes
 
-Returns:
-
-* BoundingBox containing all of the mesh nodes
-
-    BoundingBox(xlow, ylow, height, width) = find_bounds(nodes)
-"""
+""" ->
 function find_mesh_bb(nodes)
     xlow = floor(Int64,minimum(nodes[:,1]))
     ylow = floor(Int64,minimum(nodes[:,2]))
@@ -24,30 +20,32 @@ function find_mesh_bb(nodes)
     return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
 end
 
-"""
-MESHWARP Apply piecewise affine transform to image using bilinear interpolation
+@doc """
+`MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
+
+    warped_img, [bb.i, bb.j] = meshwarp(img, src, dst, trigs, offset, interp)
+
+* `img`: 2D array, image (todo: extend to Image type)
+* `src`: Nx2 array, positions of mesh nodes in `img` (global space)
+* `dst`: Nx2 array, positions of mesh nodes in `warped_img` (global space)
+* `trigs`: Nx3 array, each row contains indices of nodes of a triangle
+* `offset`: 2-element array, position of img[1,1] in global space (optional - default is [0,0])
+* `interp`: bool determining whether to use bilinear interpolation or not
+    (optional - default is true)
+* `warped_img`: with pixel values the same type as original image (for Int type, pixel values are rounded)
+* `warped_offset`: 2-element array, position of warped_img[1,1] in global space 
+
+The bounding box of the warped image is defined as the smallest
+integer-valued rectangle that contains the `dst` mesh.
+
+This means that `warped_offset` is constrained to be integer-valued,
+though `offset` is allowed to have floating point values.  The integer
+constraint removes the need for further interpolation in any
+subsequent fusing of multiple warped tiles.
 
 See definitions in IMWARP documentation for further help.
 
-Args:
-
-* img: 2D array, image (todo: extend to Image type)
-* src: Nx2 array of mesh nodes that will be deformed _defined in global space_
-* dst: Nx2 array of mesh nodes that have been deformed _defined in global space_
-* trigs: Nx3 array defining list of triangles - each row contains indices 
-    defining which nodes compose a triangle
-* offset: 2-element array, position of img[1,1] in 2D space, so also the offset 
-    of the src nodes (optional - default is [0,0])
-* interp: bool determining whether to use bilinear interpolation or not
-    (optional - default is true)
-
-Returns:
-
-* warped_img: with pixel values the same type as original image
-    (for Int type, pixel values are rounded), and contained by the bounding
-    box of the dst mesh
-* warped_offset: 2-element array, position of warped_img[1,1] in 2D space 
-"""
+""" ->
 function meshwarp{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
@@ -114,9 +112,9 @@ function meshwarp{N}(img::Array{Float64, N},
     return warped_img, [bb.i, bb.j]
 end
 
-"""
-Run fillpoly2 and findn over the basic bounding box of a given triangle
-"""
+@doc """
+`POLY2SOURCE` - Run fillpoly2 and findn over the basic bounding box of a given triangle
+""" ->
 function poly2source(pts_i, pts_j)
     # Find bb of vertices (vertices in global space)
     top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
@@ -133,8 +131,8 @@ function poly2source(pts_i, pts_j)
     return us, vs
 end
 
-"""
-Update matrix to value at coordinates contained by the polygon defined by px, py
+@doc """
+`FILLPOLY2` - Update matrix to value at coordinates contained by the polygon defined by px, py
 
 Args:
 
@@ -146,7 +144,7 @@ Args:
 Returns:
 
 * (updated M)
-"""
+""" ->
 function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
     @assert length(py) == length(px)    
     left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
