@@ -4,9 +4,9 @@ using TestImages
 # using AffineTransforms    # incompatible with MATLAB convention
 using Base.Test
 using Color
-include("BoundingBox.jl")
+import Bounding
 
-@doc """
+"""
 `IMWARP` - Apply affine transform to image using bilinear interpolation
 
     warped_img, warped_offset = imwarp(img, tform, offset)

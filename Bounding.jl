@@ -1,4 +1,7 @@
+module Bounding
+
 using Base.Test
+import Base: +, ==
 
 type BoundingBox{T<:Real}
   i::T
@@ -134,15 +137,4 @@ function test_snap_bb()
   @test bb2pts(bb) == bb2pts(tbb)  
 end
 
-function test_img()
-    tfm=tformrotate(0.2)
-    img=testimage("mandrill")
-    view(imwarp(img,tfm),xy=["y","x"])
-end
-
-function test()
-  test_bb_operations()
-  test_find_mesh_bb()
-  test_tform_bb()
-  test_snap_bb()
 end

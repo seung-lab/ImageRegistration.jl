@@ -79,12 +79,6 @@ function meshwarp(path::String, mesh)
     return mesh_warp(img, parse_mesh(mesh)...)
 end
 
-function meshwarp(tile::Tile)
-    @assert tile.mesh != nothing
-    img = load_image(tile)
-    return mesh_warp(img, parse_mesh(tile.mesh)...)
-end
-
 function bounds2padding(sz, xlow, ylow, xhigh, yhigh)
     xlow *= xlow < 0
     ylow *= ylow < 0
@@ -155,21 +149,21 @@ function render_section(tiles)
     for tile in tiles
         img, bb = meshwarp(tile)
         push!(tile_imgs, img)
-        push!(bbs, bb)
+        push!(bbs, BoundingBox(bb..., size(img)...))
     end
     global_ref = sum(bbs)
-    section_img = zeros(global_ref.w, global_ref.h)
+    section_img = zeros(global_ref.h, global_ref.w)
     for (idx, (img, bb)) in enumerate(zip(tile_imgs, bbs))
         println(idx)
-        i = bb.x - global_ref.x+1
-        j = bb.y - global_ref.y+1
+        i = bb.i - global_ref.i+1
+        j = bb.j - global_ref.j+1
         w = bb.w-1
         h = bb.h-1
-        section_img[i:i+w, j:j+h] = max(section_img[i:i+w, j:j+h], img')
+        section_img[i:i+h, j:j+w] = max(section_img[i:i+h, j:j+w], img)
         tile_imgs[idx] = 0
         gc()
     end
-    return section_img
+    return section_img, [global_ref.i, global_ref.j]
 end
 
 # function imfuse_section(tiles)
@@ -367,12 +361,20 @@ function demo_two_tiles_from_mesh_set()
 end
 
 function demo_render_section()
-    fn = "solvedMesh(1, 21,0)_1E-3_1E-3_.5_1E-7"
-    mesh_set = load(joinpath(BUCKET, "input_images", string(fn, ".jld")))["MeshSet"]
+    fn = "(1,2)_montage"
+    mesh_set = load(joinpath(BUCKET, "datasets/piriform/meshsets_montage", string(fn, ".jld")))["MeshSet"]
+	# tiles = []
+	# offsets = []
+	# for mesh in mesh_set.meshes
+	# 	push!(tiles, getFloatImage(mesh))
+	# 	push!(tiles, mesh.disp)
+	# end
     tiles = load_tiles(mesh_set)
-    section_img = render_section(tiles)
+    section_img, offset = render_section(tiles)
     img = grayim(section_img)
-    imwrite(img, joinpath(BUCKET, "output_images", string(fn, "2.jpg")))
+    img["spatialorder"] = ["y", "x"]
+    imwrite(img, joinpath(BUCKET, "output_images", string(fn, ".tif")))
+    return img
 end
 
 function test_padimage()
