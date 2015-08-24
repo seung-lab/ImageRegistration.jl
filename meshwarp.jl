@@ -2,7 +2,7 @@
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
 using Base.Test
-#include("BoundingBox.jl")
+include("BoundingBox.jl")
 
 @doc """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
@@ -116,7 +116,7 @@ function poly2source(pts_i, pts_j)
 end
 
 @doc """
-`FILLPOLY2` - Fill pixels contained inside a polygon
+`FILLPOLY2!` - Fill pixels contained inside a polygon
 
     M = fillpoly2!(M, px, py, value)
 
