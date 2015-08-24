@@ -1,7 +1,7 @@
 using Julimaps
 
 include("Mesh.jl")
-include("convolve.jl")
+include("./convolve.jl")
 
 type Matches
 	src_index::Index					# source mesh index

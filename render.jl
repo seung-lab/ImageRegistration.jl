@@ -9,9 +9,7 @@ using Julimaps
 include("incidence2triangles.jl")
 include("meshwarp.jl")
 include("visualize.jl")
-include("Mesh.jl")
 include("Tile.jl")
-include("BoundingBox.jl")
 
 using JLD
 using Images
@@ -72,11 +70,11 @@ function load_vectors(matches)
     return vcat(dst_pts, src_pts)
 end 
 
-function meshwarp(img::Array, mesh::Mesh)
+function meshwarp(img::Array, mesh)
     return mesh_warp(img, parse_mesh(mesh)...)
 end
 
-function meshwarp(path::String, mesh::Mesh)
+function meshwarp(path::String, mesh)
     img = rawdata(imread(path))
     return mesh_warp(img, parse_mesh(mesh)...)
 end
