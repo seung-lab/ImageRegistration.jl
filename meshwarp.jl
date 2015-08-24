@@ -2,7 +2,7 @@
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
 using Base.Test
-include("BoundingBox.jl")
+#include("BoundingBox.jl")
 
 @doc """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
@@ -182,18 +182,21 @@ end
 * `vi`: 1D array, i-components of polygon vertices, global space
 * `vj`: 1D array, j-components of polygon vertices, global space
 
-mask[i,j]=true iff (i-1+offset[1],j-1+offset[2]) is in the interior or edges of the polygon.
+    mask[i,j]=true iff (i-1+offset[1],j-1+offset[2]) is in the interior or edges of the polygon.
 
-The vertices should be sequentially ordered in vi and vj, either
+The vertices should be sequentially ordered in `vi` and `vj`, either
 clockwise or counterclockwise.  The polygon should *not* be closed,
 i.e., the last vertex should *not* repeat the first.
 
+The bounding box of `mask` is defined as the smallest integer-valued
+rectangle that contains the polygon, so `offset` is always integer-valued.
+
 """ ->
-function poly2mask{Float}(vi::Vector{Float}, vj::Vector{Float})
+function poly2mask(vi::Vector{Float64}, vj::Vector{Float64})
     @assert length(vi) == length(vj)
     # Find bounding box
-    top, bottom = floor(Int64,minimum(vi)), ceil(Int64,maximum(vi))
-    left, right = floor(Int64,minimum(vj)), ceil(Int64,maximum(vj))
+    top, bottom = floor(Int,minimum(vi)), ceil(Int,maximum(vi))
+    left, right = floor(Int,minimum(vj)), ceil(Int,maximum(vj))
     # Create mask and offset
     mask = zeros(Bool, bottom-top+1, right-left+1)
     offset = [top, left]
@@ -201,7 +204,7 @@ function poly2mask{Float}(vi::Vector{Float}, vj::Vector{Float})
     push!(vi,vi[1]); push!(vj,vj[1])  # close polygon
     for i=top:bottom   # loop over grid lines of constant i (horizontal)
         # define set to store intersections between grid line and polygon
-        jinter = Set{Float}() # use set rather than array to eliminate repetitions that occur if i-component of vertex is integral
+        jinter = Set{Float64}() # use set rather than array to eliminate repetitions that occur if i-component of vertex is integral
 
         for n=1:nvertices   # loop over edges (1,2), (2,3),...,(m,1)
             # examine intersection between grid line and each edge
