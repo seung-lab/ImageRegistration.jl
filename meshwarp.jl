@@ -1,10 +1,9 @@
 # Adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
-using Base.Test
-#include("BoundingBox.jl")
+import Bounding: BoundingBox, snap_bb
 
-@doc """
+"""
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
 
     warped_img, [bb.i, bb.j] = meshwarp(img, src, dst, trigs, offset, interp)
@@ -29,11 +28,11 @@ subsequent fusing of multiple warped tiles.
 
 See definitions in IMWARP documentation for further help.
 
-""" ->
+""" 
 function meshwarp{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
-    bb = snap_bb(find_mesh_bb(dst))
+    bb = Bounding.snap_bb(find_mesh_bb(dst))
     warped_img = similar(img, bb.h+1, bb.w+1)
     warped_offset = [bb.i, bb.j]
 
@@ -96,9 +95,9 @@ function meshwarp{N}(img::Array{Float64, N},
     return warped_img, [bb.i, bb.j]
 end
 
-@doc """
+"""
 `POLY2SOURCE` - Run fillpoly2 and findn over the basic bounding box of a given triangle
-""" ->
+""" 
 function poly2source(pts_i, pts_j)
     # Find bb of vertices (vertices in global space)
     top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
@@ -115,7 +114,7 @@ function poly2source(pts_i, pts_j)
     return us, vs
 end
 
-@doc """
+"""
 `FILLPOLY2!` - Fill pixels contained inside a polygon
 
     M = fillpoly2!(M, px, py, value)
@@ -136,7 +135,7 @@ Bugs:
 
 * The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
 * The "corner case" where a grid line intersects a single vertex of the polygon does not appear to be properly treated.  The corner case is nongeneric if px and py are floats.  But the corner case could be common if px and py are ints, which seems encouraged by the parametric typing.
-""" ->
+""" 
 function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
     @assert length(py) == length(px)    
     left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
@@ -172,7 +171,7 @@ function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, val
     return M
 end
 
-@doc """
+"""
 `POLY2MASK` - convert convex polygon into binary image mask
 
     mask, offset = poly2mask(vi, vj)
@@ -191,7 +190,7 @@ i.e., the last vertex should *not* repeat the first.
 The bounding box of `mask` is defined as the smallest integer-valued
 rectangle that contains the polygon, so `offset` is always integer-valued.
 
-""" ->
+""" 
 function poly2mask(vi::Vector{Float64}, vj::Vector{Float64})
     @assert length(vi) == length(vj)
     # Find bounding box
@@ -241,7 +240,7 @@ function poly2mask(vi::Vector{Float64}, vj::Vector{Float64})
     mask, offset
 end
 
-@doc """
+"""
 `FIND_MESH_BB` - Find bounding box around mesh
 
     BoundingBox(xlow, ylow, height, width) = find_mesh_bb(nodes)
@@ -249,7 +248,7 @@ end
 * `nodes`: 2xN matrix of mesh nodes
 * `BoundingBox`: smallest integer-valued rectangle containing all mesh nodes
 
-""" ->
+""" 
 function find_mesh_bb(nodes)
     xlow = floor(Int64,minimum(nodes[:,1]))
     ylow = floor(Int64,minimum(nodes[:,2]))

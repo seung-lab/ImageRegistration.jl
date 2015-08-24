@@ -142,8 +142,3 @@ function test_incidence2dict()
   nd = incidence2dict(D)
   @test node_dict == nd 
 end
-
-function test()
-  test_incidence2triangles()
-  test_incidence2dict()
-end
