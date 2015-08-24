@@ -233,7 +233,7 @@ function loadSection(session, section_num)
 	num_tiles = length(indices);
 	paths = Array{String, 1}(num_tiles);
 
-	imageArray = SharedArray(Float64, tile_size, tile_size, num_tiles);
+	imageArray = SharedArray(Int64, tile_size, tile_size, num_tiles);
 
 	ind = 1;
 
@@ -242,7 +242,7 @@ function loadSection(session, section_num)
 		index = session[i, 2];
 		dx = session[i, 3];
 		dy = session[i, 4];
-		image = getFloatImage(getPath(name));
+		image = getImage(getPath(name));
 		addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
 		imageArray[:, :, ind] = image;
 		ind+=1;

@@ -33,12 +33,14 @@ function getFloatImage(mesh::Mesh)
 	return getFloatImage(mesh.name);
 end
 
-
+function getImage(mesh::Mesh)
+	return getImage(mesh.name);
+end
 
 
 # Tile2Mesh
 function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-	A = getFloatImage(getPath(name));
+	A = getImage(getPath(name));
 	(Ai, Aj) = size(A);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
@@ -87,8 +89,8 @@ function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 	return Mesh(name, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
 end
 
-function Tile2Mesh(name, floatimage, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-	A = floatimage;
+function Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+	A = image;
 	(Ai, Aj) = size(A);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
