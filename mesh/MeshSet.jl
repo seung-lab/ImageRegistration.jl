@@ -93,7 +93,7 @@ function addMesh2MeshSet!(Am, Ms)
 end
 
 function addMatches2MeshSet!(M, Ms)
-	if (typeof(M) == Void) return; end
+	if (typeof(M) == Void || M == Void) return; end
 	push!(Ms.matches, M);
 	push!(Ms.matches_pairs, (findIndex(Ms, M.src_index), findIndex(Ms, M.dst_index)));
 	Ms.M += 1;
