@@ -42,25 +42,29 @@ end
 
 function GenerateMatchPoints(img1::Array{}, img2::Array{})
 	border_ratio = 0.1;
+	radius_ratio = 0.05;
+	grid_size = 10;
+	half_block_size = 40;
 	overlap = [min(size(img1), size(img2))...]
 	#overlap = size(img1)
 
 	border = round(Int, border_ratio * minimum(overlap));
-	search_radius = 200;
-	half_block_size = 40;
+	search_radius = round(Int, minimum(overlap) * radius_ratio);
+	search_radius = search_radius > 200 ? search_radius : 200;
+	println("search_radius: ", search_radius)
 
 	border = border > search_radius + half_block_size ? border : search_radius + half_block_size;
 	println(border)
 
-	grid_size = 10;
-
 	# four corners for now
 	#points = [[x; y] for x = (1+border,size(img1,1)-border), y = (1+border,size(img1,2)-border)]
 	#points = [[x; y] for x = (1+border,overlap[1]-border), y = (1+border,overlap[2]-border)]
-	step = floor(Int, (overlap - 2*border) / (grid_size-1));
+
+	step = floor(Int, (overlap - 2*border - 1) ./ (grid_size-1));
 	points = [[x; y] for x = 1+border:step[1]:overlap[1]-border, y = 1+border:step[2]:overlap[2]-border]
 	points = points[:];
-	println(size(points))
+	println("n points: ", size(points))
+
 	return points, half_block_size, search_radius
 end
 
