@@ -1,24 +1,8 @@
 # Adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
-# include("BoundingBox.jl")
-
-@doc """
-`FIND_MESH_BB` - Find bounding box around mesh
-
-    BoundingBox(xlow, ylow, height, width) = find_mesh_bb(nodes)
-
-* `nodes`: 2xN matrix of mesh nodes
-* `BoundingBox`: smallest integer-valued rectangle containing all mesh nodes
-
-""" ->
-function find_mesh_bb(nodes)
-    xlow = floor(Int64,minimum(nodes[:,1]))
-    ylow = floor(Int64,minimum(nodes[:,2]))
-    xhigh = ceil(Int64,maximum(nodes[:,1]))
-    yhigh = ceil(Int64,maximum(nodes[:,2]))
-    return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
-end
+using Base.Test
+#include("BoundingBox.jl")
 
 @doc """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
@@ -132,45 +116,50 @@ function poly2source(pts_i, pts_j)
 end
 
 @doc """
-`FILLPOLY2` - Update matrix to value at coordinates contained by the polygon defined by px, py
+`FILLPOLY2` - Fill pixels contained inside a polygon
 
-Args:
+    M = fillpoly2!(M, px, py, value)
 
-* M: 2D array
-* px: 1D array of x-components of polygon vertices
-* py: 1D array of y-components of polygon vertices
-* value: the value to set an array element to if its contained in the polygon
+* `M`: 2D array, image
+* `px`: 1D array, x-components of polygon vertices
+* `py`: 1D array, y-components of polygon vertices
+* `value`: fill value
 
-Returns:
+Features:
 
-* (updated M)
+* This seems intended to work for nonconvex polygons.
+* The vertices should be listed sequentially in px and py. Clockwise/counterclockwise ordering doesn't seem to matter.
+* It seems that the polygon is closed automatically if it isn't already, i.e., the last vertex in px, py is not equal to the first.  Does the code work if the input polygon is already closed?
+* The code treats the "edge case," where an edge of the polygon lies exactly on a grid line.
+
+Bugs:
+
+* The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
+* The "corner case" where a grid line intersects a single vertex of the polygon does not appear to be properly treated.  The corner case is nongeneric if px and py are floats.  But the corner case could be common if px and py are ints, which seems encouraged by the parametric typing.
 """ ->
 function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
     @assert length(py) == length(px)    
     left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
     # Scan poly from left to right
-    for x=left:right     
+    for x=left:right     # loop over grid lines
         ys = Set{Int64}()
         m = length(px)
-        for n=1:length(px)
-            # Check if x falls between two successive vertices
-            # Then add minimum y and maximum y of the polygon at that x            
+        for n=1:length(px)  # loop over edges (m,1),(1,2),(2,3),...,(m-1,m)
+            # grid line intersects edge in one of two ways
             if (px[n] <= x && x <= px[m]) || (px[m] <= x && x <= px[n])
-                # Vertices are directly on top of each other - add both y's                           
-                if px[n] == px[m]
+                if px[n] == px[m]  # intersection is entire edge
                     push!(ys, ceil(Int64, py[n]))
                     push!(ys, ceil(Int64, py[m]))
-                else
-                    # Equation of a line between two points, evaluated @ x
-                    y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
+                else # intersection is point
+                      y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
                     push!(ys, ceil(Int64, y))
                 end            
             end
             m = n
         end
-        # ys is now an array defining ordered point pairs defining slices inside
-        # the polygon
-        ys = sort([y for y in ys])
+        # generically, two intersections for a convex polygon
+        # generically, even number of intersections for a nonconvex polygon
+        ys = sort([y for y in ys])  # sort the intersection points
         # if odd number of intersection points, add duplicate end point
         if length(ys) % 2 == 1
             push!(ys, ys[end])
@@ -181,6 +170,89 @@ function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, val
         end
     end
     return M
+end
+
+@doc """
+`POLY2MASK` - convert convex polygon into binary image mask
+
+    mask, offset = poly2mask(vi, vj)
+
+* `mask`: 2D array, binary image of polygon
+* `offset`: 2-element array, position of `mask[1,1]` in global space
+* `vi`: 1D array, i-components of polygon vertices, global space
+* `vj`: 1D array, j-components of polygon vertices, global space
+
+mask[i,j]=true iff (i-1+offset[1],j-1+offset[2]) is in the interior or edges of the polygon.
+
+The vertices should be sequentially ordered in vi and vj, either
+clockwise or counterclockwise.  The polygon should *not* be closed,
+i.e., the last vertex should *not* repeat the first.
+
+""" ->
+function poly2mask{Float}(vi::Vector{Float}, vj::Vector{Float})
+    @assert length(vi) == length(vj)
+    # Find bounding box
+    top, bottom = floor(Int64,minimum(vi)), ceil(Int64,maximum(vi))
+    left, right = floor(Int64,minimum(vj)), ceil(Int64,maximum(vj))
+    # Create mask and offset
+    mask = zeros(Bool, bottom-top+1, right-left+1)
+    offset = [top, left]
+    nvertices = length(vi)  # number of vertices
+    push!(vi,vi[1]); push!(vj,vj[1])  # close polygon
+    for i=top:bottom   # loop over grid lines of constant i (horizontal)
+        # define set to store intersections between grid line and polygon
+        jinter = Set{Float}() # use set rather than array to eliminate repetitions that occur if i-component of vertex is integral
+
+        for n=1:nvertices   # loop over edges (1,2), (2,3),...,(m,1)
+            # examine intersection between grid line and each edge
+            # two possibilities
+            if (vi[n] <= i && i <= vi[n+1]) || (vi[n+1] <= i && i <= vi[n])
+                if vi[n] == vi[n+1]  # (1) intersection is entire edge
+                    push!(jinter, vj[n])
+                    push!(jinter, vj[n+1])
+                    break
+                else # (2) intersection is single point
+                    push!(jinter, vj[n] + (i-vi[n]) * (vj[n+1]-vj[n])/(vi[n+1]-vi[n]))
+                end            
+            end
+        end
+        println(i,' ',jinter)   # for debugging
+        ninter = length(jinter) # number of intersections could be 0,1,2
+        jinter = sort([vals for vals in jinter])
+        if ninter == 2 # intersects two interior points of edges, one vertex and one interior point of edge, or two vertices
+            jleft = ceil(Int,jinter[1])
+            jright = floor(Int,jinter[2])
+            if jleft<=jright
+                mask[i-offset[1]+1,(jleft:jright)-offset[2]+1] = true
+            end
+        elseif ninter==1 # intersects at single vertex only
+            j = floor(Int,jinter[1])
+            if j != jinter[1]
+                error("single intersection should be integer-valued")
+            end
+            mask[i-offset[1]+1,j-offset[2]+1] = true
+        elseif ninter != 0  # 0 is the only other possibility if no bugs
+            error("should be 0 intersections but it isn't")
+        end
+    end
+    mask, offset
+end
+
+@doc """
+`FIND_MESH_BB` - Find bounding box around mesh
+
+    BoundingBox(xlow, ylow, height, width) = find_mesh_bb(nodes)
+
+* `nodes`: 2xN matrix of mesh nodes
+* `BoundingBox`: smallest integer-valued rectangle containing all mesh nodes
+
+""" ->
+function find_mesh_bb(nodes)
+    xlow = floor(Int64,minimum(nodes[:,1]))
+    ylow = floor(Int64,minimum(nodes[:,2]))
+    xhigh = ceil(Int64,maximum(nodes[:,1]))
+    yhigh = ceil(Int64,maximum(nodes[:,2]))
+    return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
 end
 
 function warp_pts(affine, pts)
@@ -237,4 +309,34 @@ function test_meshwarp()
     offset = [0, 0]
     img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
     @test warped_offset == [4,2]
+end
+
+function test_poly2mask()
+    vertices=[1.5 2.5; 2.5 1.5; 3.5 4.5]
+    img, off = poly2mask(vertices[:,1],vertices[:,2])
+    """ off should be [1,1] and img should be:
+    false  false  false  false  false
+    false   true   true  false  false
+    false  false   true   true  false
+    false  false  false  false  false
+    """
+    vertices=[1.5 2.4; 2.5 1.5; 3.5 4.5]
+    img, off = poly2mask(vertices[:,1],vertices[:,2])
+    """ off should be [1,1] and img should be:
+    false  false  false  false  false
+    false   true  false  false  false
+    false  false   true  false  false
+    false  false  false  false  false,
+    """
+    vertices=[1 2; 2.5 1.5; 3.5 4.5]
+    img, off = poly2mask(vertices[:,1],vertices[:,2])
+    """ corner case: off should be [1,1] and img should be:
+    false   true  false  false  false
+    false   true   true  false  false
+    false  false   true   true  false
+    false  false  false  false  false
+    """
+    p=plot(x=vertices[:,1],y=vertices[:,2])
+    display(p)
+    img,off
 end
