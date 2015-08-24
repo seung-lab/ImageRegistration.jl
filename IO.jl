@@ -1,6 +1,6 @@
 module IO
 
-export parseName, getPath, getFloatImage, loadSection, toJLD, parseRoughAlign, waferpaths2dict, loadSectionImages
+export parseName, getPath, getImage, getFloatImage, loadSection, toJLD, parseRoughAlign, waferpaths2dict, loadSectionImages
 
 using Julimaps
 using Params
@@ -11,12 +11,34 @@ function parseName(name::String)
 	return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2]) # wafer, section, row, column
 end
 
+function getName(index::Index)
+	return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2]);
+end
+
+# function getPath()
+# methods: 
+#	  
 # extensions:
 # Mesh.jl: getPath(mesh::Mesh)
-function getPath(name::String)
-	index = parseName(name);
+function getPath(index::Index)
 	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
+	name = getName(index);
 	return joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
+end
+
+function getPath(name::String)
+	return getPath(parseName(name));
+end
+
+
+
+# extensions:
+# Mesh.jl getImage(mesh::Mesh)
+function getImage(path::String)
+	img = imread(path);
+	img = img[:, :, 1];
+	img.properties["timedim"] = 0;
+	return convert(Array{UInt8, 2}, round(convert(Array, img)*255));
 end
 
 # extensions:
@@ -70,23 +92,22 @@ function loadSectionImages(session, section_num)
 	for i in 1:num_tiles
 		name = session[i, 1];
 		paths[i] = getPath(name);
-		image = getFloatImage(paths[i])
+		image = getImage(paths[i])
 		max_size = max(size(image, 1), size(image, 2));
 		if max_tile_size < max_size max_tile_size = max_size; end
 	end
-	imageArray = SharedArray(Float64, max_tile_size, max_tile_size, num_tiles);
+	imageArray = SharedArray(UInt8, max_tile_size, max_tile_size, num_tiles);
 
 	for k in 0:num_procs:num_tiles
 		@sync @parallel for l in 1:num_procs
 		i = k+l;
 		if i > num_tiles return; end;
-		image = getFloatImage(paths[i]);
+		image = getImage(paths[i]);
 		imageArray[1:size(image, 1), 1:size(image, 2), i] = image;
 		end
 	end
 
 	return imageArray;
-
 end
 
 function toJLD()

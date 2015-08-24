@@ -42,7 +42,7 @@ function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
 
 	ind = findfirst(r_max .== xc);
 
-	if ind == 0 return noMatch, xc; end
+	if ind == 0 return noMatch; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
 	if i_max == 0 i_max = size(xc, 1); end
 
