@@ -9,7 +9,7 @@ export montageSection, montageSections
 using Images
 using HDF5
 using JLD
-include("./convolve.jl")
+include("convolve.jl")
 include("Mesh.jl")
 include("Matches.jl")
 include("MeshSet.jl")
