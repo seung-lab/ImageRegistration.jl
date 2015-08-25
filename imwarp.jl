@@ -77,7 +77,7 @@ Bounding box of an image of size (m,n):
 """ 
 function imwarp{T}(img::Array{T}, tform, offset=[0,0])
   # img bb rooted at offset, with height and width calculated from image
-  bb = BoundingBox(offset..., size(img, 1)-1, size(img, 2)-1)
+  bb = BoundingBox(offset..., size(img, 1)-1.0, size(img, 2)-1.0)
   # transform original bb to generate new bb (may contain continuous values)
   wbb = tform_bb(bb, tform)
   # snap transformed bb to the nearest exterior integer values
@@ -88,7 +88,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0,0])
   # Check once if the image type is integer, because we'll need to round
   is_int_image = isa(T, Integer)
   # offset of warped_img from the global origin
-  warped_offset = [Int64(tbb.i), Int64(tbb.j)]
+  warped_offset = [tbb.i, tbb.j]
   M = inv(tform)
   # cycle through all the pixels in warped_img
   for j = 1:size(warped_img,2)
@@ -101,7 +101,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0,0])
         x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
         # shift back from global space to pixel space for the original img
         # (subtract off its offset, then index up to one)
-        x, y = x-offset[1]+1, y-offset[2]+1
+        x, y = x-offset[1]+1.0, y-offset[2]+1.0
 
         # Slow...
         #warped_img[i,j] = round(Uint8, bilinear(img, x, y))
@@ -177,7 +177,7 @@ function test_imwarp()
   tform = [cos(0.5) -sin(0.5) 0;
           sin(0.5) cos(0.5) 0;
           0 0 1]
-  offset = [0, 0]
+  offset = [0.0, 0.0]
   img_warped, warped_offset = imwarp(img, tform, offset)
   @test warped_offset == [0, -5]
 end
