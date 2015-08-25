@@ -32,11 +32,18 @@ function test()
 end
 
 
+"""
+Returns the affine transformation A, such that p_in_B = p_in_A * A, where p is point coordinates in row vector.
+"""
 function AffineAlignSections(img1::Array{}, img2::Array{}, downsample_ratio)
+	# points here are in column vector convention
 	points, half_block_size, search_radius = GenerateMatchPoints(img1, img2)
 	points1, points2 = GetBlockMatches(img1, img2, points, half_block_size, search_radius, 0.3)
 	A = FindAffine(points1, points2)
 	A = AdjustAffineForScaling(A, downsample_ratio)
+
+	# convert column vector convention to row vector convention
+	return A.'
 end
 
 
