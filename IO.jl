@@ -1,18 +1,31 @@
 module IO
 
-export parseName, getPath, getImage, getFloatImage, loadSection, toJLD, parseRoughAlign, waferpaths2dict, loadSectionImages
+export parseName, getName, getPath, getImage, getFloatImage, toJLD, parseRoughAlign, waferpaths2dict, loadSectionImages
 
 using Julimaps
 using Params
 using Images
 
+function issection(index::Index)
+	if index[3:4] == (0, 0)	return true; else return false; end
+end
+
 function parseName(name::String)
 	m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
+	if typeof(m) != Void
 	return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2]) # wafer, section, row, column
+	else
+	m = match(r"(\d*)-(\d*)_montage", name)
+	return parse(Int, m[1]), parse(Int, m[2]), 0, 0; #wafer, section
+	end
 end
 
 function getName(index::Index)
+	if issection(index)
+	return string(index[1], "-", index[2], "_montage");
+	else 
 	return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2]);
+	end
 end
 
 # function getPath()
@@ -21,9 +34,14 @@ end
 # extensions:
 # Mesh.jl: getPath(mesh::Mesh)
 function getPath(index::Index)
+	if issection(index)
+	name = getName(index);
+	return joinpath(MONTAGE_DIR, string(name, ".tif"));
+	else
 	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
 	name = getName(index);
 	return joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
+	end
 end
 
 function getPath(name::String)
