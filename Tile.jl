@@ -2,6 +2,7 @@ using Julimaps
 using Params
 using MeshModule
 using IO
+using Bounding: BoundingBox, snap_bb, find_mesh_bb
 
 type Tile
 	name::String
@@ -32,18 +33,21 @@ const WAFER_DIR = waferpaths2dict("./datasets/piriform/wafer_paths.txt")
 Extract wafer no, section no, row, and col for tile from filename
 """
 function parsename(path)
-	m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", path)
-	return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2]) # wafer, section, row, column
+	# m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", path)
+	m = match(r"(\d*)-(\d*)_montage", path)
+	# return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2]) # wafer, section, row, column
+	return parse(Int, m[1]), parse(Int, m[2]), 0, 0
 end
 
 """
 Load original image for tile, using the WAFER_DIR and filename
 """
 function load_image(tile::Tile)
-	section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
-	path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
-	section_folder = string("W00", tile.id[1], "_Sec", tile.id[2])
-	# path = joinpath(".", "input_images", section_folder, string(tile.name, ".tif"))
+	# section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
+	# path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
+	# section_folder = string("W00", tile.id[1], "_Sec", tile.id[2])
+	path = joinpath(".", "output_images", string("(", tile.id[1], ",", tile.id[2], ")_montage.tif"))
+	# path = joinpath(".", "input_images", "sections", string("S2-W00", tile.id[1], "_Sec", tile.id[2], ".tif"))
 	return getFloatImage(path)
 end
 
@@ -102,6 +106,15 @@ function meshwarp(tile::Tile)
     triangles = dict2triangles(node_dict)
     return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end
+
+function get_meshwarp_bb(tile)
+	nodes = tile.mesh.nodes_t
+	bb = Bounding.snap_bb(Bounding.find_mesh_bb(nodes))
+	bb.h += 1
+	bb.w += 1
+	return bb
+end
+
 
 function load_section(dir_path)
 # Returns:

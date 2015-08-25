@@ -76,7 +76,6 @@ function GenerateMatchPoints(img1::Array{}, img2::Array{})
 end
 
 function GetBlockMatches(img1::Array{}, img2::Array{}, points, half_block_size, search_radius, accept_xcorr = 0.3)
-	accept_xcorr = 0.;
 	points1 = Array{Int,1}[]
 	points2 = Array{Int,1}[]
 	for p = points
