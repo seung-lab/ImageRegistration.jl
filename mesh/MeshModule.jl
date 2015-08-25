@@ -25,11 +25,28 @@ function montageSection(n)
 	gc();
 end
 
-function montageSections(k::UnitRange{Int64})
-	for i in k
-		@time montageSection(i);
+function align_stack(wafer_num, k::UnitRange{Int64})
+	@time Ms, imageArray = load_stack(wafer_num, k);
+	@time addAllMatches!(Ms, imageArray);
+	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
+	printResidualStats(Ms);
+	save(Ms);
+	imageArray = 0;
+	gc();
+end
+
+function montageSections(ran::UnitRange{Int64})
+@time for k in minimum(ran)-1:num_concurrent:maximum(ran)
+	toFetch = @sync @parallel for l in 1:num_concurrent
+	ind = k + l;
+	println(ind);
+	if ind > maximum(ran) return; end
+	println(ind);
+	@time montageSection(ind);
+	end
 	end
 end
+
 
 
 

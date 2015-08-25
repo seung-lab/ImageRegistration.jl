@@ -29,7 +29,7 @@ type MeshSet
 end
 
 function isAdjacent(Am, Bm)
-	if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) == 1 return true; end
+	if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) + abs(Am.index[2] - Bm.index[2]) == 1 return true; end
 	return false;
 end
 
@@ -212,6 +212,20 @@ pairs = getAllOverlaps(Ms)
 	return Ms;
 end
 
+function addAllMatches!(Ms, imageArray::Array{Array{Float64, 2}, 1})
+
+pairs = getAllOverlaps(Ms)
+
+@time for ind in 1:length(pairs)
+	(i, j) = pairs[ind];
+	M = Meshes2Matches(imageArray[i], Ms.meshes[i], imageArray[j], Ms.meshes[j], block_size_alignment, search_r_alignment, min_r_alignment);
+	if typeof(M) == Void continue; end
+	addMatches2MeshSet!(M, Ms);
+	end
+	return Ms;
+end
+
+
 function makeSectionMeshSet(session, section_num)
 	Ms = makeNewMeshSet();
 	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1))
@@ -224,6 +238,18 @@ function makeSectionMeshSet(session, section_num)
 	end
 	return Ms;
 end
+
+function make_stack_meshset(wafer_num, section_range)
+	Ms = makeNewMeshSet();
+	for i in section_range
+	name = getName(wafer_num, i);
+	index = (wafer_num, i, 0, 0);
+	dx = 0;
+	dy = 0;
+	addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length_alignment, mesh_coeff_alignment), Ms);
+	end
+end
+
 
 function loadSection(session, section_num)
 	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1));
@@ -245,6 +271,29 @@ function loadSection(session, section_num)
 		addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
 		imageArray[:, :, ind] = image;
 		ind+=1;
+	end
+
+	return Ms, imageArray;
+end
+
+function load_stack(wafer_num, section_range)
+	Ms = makeNewMeshSet();
+	paths = Array{String, 1}(length(section_range));
+	imageArray = Array{Array{Float64, 2}, 1}(0);# SharedArray(Int64, tile_size, tile_size, num_tiles);
+
+	#ind = 1;
+
+	for i in section_range
+	name = getName((wafer_num, i, 0, 0));
+	index = (wafer_num, i, 0, 0);
+	dx = 0;
+	dy = 0;
+	image = getImage(getPath(name));
+	#addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
+	addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length_alignment, mesh_coeff_alignment), Ms);
+	push!(imageArray, image);
+		#imageArray[:, :, ind] = image;
+		#ind+=1;
 	end
 
 	return Ms, imageArray;
