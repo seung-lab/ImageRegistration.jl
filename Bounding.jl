@@ -11,6 +11,7 @@ type BoundingBox{T<:Real}
 end
 
 BoundingBox() = BoundingBox(0,0,0,0)
+BoundingBox(a, b, c, d) = BoundingBox(promote(a,b,c,d)...)
 
 """
 Add bounding boxes by finding BoundingBox that encompasses both
