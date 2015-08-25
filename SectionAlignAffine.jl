@@ -43,8 +43,8 @@ end
 function GenerateMatchPoints(img1::Array{}, img2::Array{})
 	border_ratio = 0.1;
 	radius_ratio = 0.05;
-	grid_size = 10;
-	half_block_size = 40;
+	grid_size = 3;
+	half_block_size = 150;
 	overlap = [min(size(img1), size(img2))...]
 	#overlap = size(img1)
 

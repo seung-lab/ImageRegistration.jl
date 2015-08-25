@@ -4,7 +4,7 @@ using TestImages
 # using AffineTransforms    # incompatible with MATLAB convention
 using Base.Test
 using Color
-import Bounding
+import Bounding: BoundingBox, snap_bb, tform_bb
 
 """
 `IMWARP` - Apply affine transform to image using bilinear interpolation
@@ -14,7 +14,8 @@ import Bounding
 * `img`: 2D array, image (todo: extend to Image type)
 * `tform`: 3x3 matrix, affine transform (defined as row vector x matrix)
 * `offset`: 2-element array, position of img[1,1] in global space
-* `warped_img`: with pixel values the same type as original image (for Int type, pixel values are rounded)
+* `warped_img`: with pixel values the same type as original image (for Int type, 
+  pixel values are rounded)
 * `warped_offset`: 2-element array, position of warped_img[1,1] in global space
 
 The bounding box of the warped image is defined as the smallest
@@ -37,8 +38,8 @@ Global position of `img` pixels (analogous definitions for `warped_img`):
 
 Affine transform of a global position:
 
-* homogeneous coordinates [x, y, 1] -> [ax + by + c, dx + ey + f, 1]
-* or equivalently [x, y, 1] -> [x, y, 1] * tform
+* homogeneous coordinates [x, y, 1]  [ax + by + c, dx + ey + f, 1]
+* or equivalently [x, y, 1]  [x, y, 1] * tform
 
         where `tform` = [a d 0;  
                          b e 0;  
@@ -61,7 +62,8 @@ We apply definition 2 as it's compatible with gridding and interpolation.
 
 Bounding box of an image of size (m,n):
 
-* smallest rectangle in global space that contains the positions of the [1,1] and [m,n] pixels
+* smallest rectangle in global space that contains the positions of the [1,1] 
+  and [m,n] pixels
 * represented by the 4-tuple (offset[1],offset[2],m-1,n-1)
 
     (offset[1],offset[2])  ___________
@@ -72,8 +74,8 @@ Bounding box of an image of size (m,n):
                                n-1   (offset[1]+m-1,offset[2]+n-1)
                               width
 
-""" ->
-function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
+""" 
+function imwarp{T}(img::Array{T}, tform, offset=[0,0])
   # img bb rooted at offset, with height and width calculated from image
   bb = BoundingBox(offset..., size(img, 1)-1, size(img, 2)-1)
   # transform original bb to generate new bb (may contain continuous values)
@@ -81,11 +83,12 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # snap transformed bb to the nearest exterior integer values
   tbb = snap_bb(wbb)
   # construct warped_img, pixels same Type as img, size calculated from tbb
+  # WARNING: should have zero values, but unclear whether guaranteed by similar
   warped_img = similar(img, tbb.h+1, tbb.w+1)
-  # WARNING: this should have zero values, but unclear whether this is guaranteed by similar
-
+  # Check once if the image type is integer, because we'll need to round
+  is_int_image = isa(T, Integer)
   # offset of warped_img from the global origin
-  warped_offset = [tbb.i, tbb.j]
+  warped_offset = [Int64(tbb.i), Int64(tbb.j)]
   M = inv(tform)
   # cycle through all the pixels in warped_img
   for j = 1:size(warped_img,2)
@@ -94,7 +97,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
         # (we index to zero, then add on the offset)
         u, v = i-1+warped_offset[1], j-1+warped_offset[2]
         # transform from warped image to initial image
-        # x, y = [u, v, 1] * M --> but writing it out moves faster
+        # x, y = [u, v, 1] * M - but writing it out moves faster
         x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
         # shift back from global space to pixel space for the original img
         # (subtract off its offset, then index up to one)
@@ -107,7 +110,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
         # Bilinear interpolation
         fx, fy = floor(Int64, x), floor(Int64, y)
         wx, wy = x-fx, y-fy
-        #        if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
+        # if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
         inside = true
         if 1 <= fx && fx+1 <= size(img, 1)
             if 1 <= fy && fy+1 <= size(img, 2)   # normal case
@@ -130,7 +133,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
             inside=false
         end
         if inside==true
-            if isa(warped_img[1], Integer)
+            if is_int_image
               warped_img[i,j] = round(T, p);
             else
               warped_img[i,j] = p
@@ -140,7 +143,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
         end
     end
   end
-  return warped_img, [tbb.i, tbb.j]
+  return warped_img, warped_offset
 end
 
 function test_imwarp()
@@ -178,7 +181,6 @@ function test_imwarp()
   img_warped, warped_offset = imwarp(img, tform, offset)
   @test warped_offset == [0, -5]
 end
-
 
 # Not used - slow.
 function bilinear(img, x, y)
