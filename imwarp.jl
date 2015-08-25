@@ -3,7 +3,7 @@ using ImageView
 using TestImages
 # using AffineTransforms    # incompatible with MATLAB convention
 using Base.Test
-using Color
+# using Colors
 import Bounding: BoundingBox, snap_bb, tform_bb
 
 """
@@ -75,9 +75,9 @@ Bounding box of an image of size (m,n):
                               width
 
 """ 
-function imwarp{T}(img::Array{T}, tform, offset=[0,0])
+function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # img bb rooted at offset, with height and width calculated from image
-  bb = BoundingBox(offset..., size(img, 1)-1.0, size(img, 2)-1.0)
+  bb = BoundingBox{Float64}(offset..., size(img, 1)-1.0, size(img, 2)-1.0)
   # transform original bb to generate new bb (may contain continuous values)
   wbb = tform_bb(bb, tform)
   # snap transformed bb to the nearest exterior integer values
@@ -85,65 +85,60 @@ function imwarp{T}(img::Array{T}, tform, offset=[0,0])
   # construct warped_img, pixels same Type as img, size calculated from tbb
   # WARNING: should have zero values, but unclear whether guaranteed by similar
   warped_img = similar(img, tbb.h+1, tbb.w+1)
-  # Check once if the image type is integer, because we'll need to round
-  is_int_image = isa(T, Integer)
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
-  M = inv(tform)
+  M = inv(tform)   # inverse transform in global space
+  M[3,1:2] -= offset'-1.0   # include conversion to pixel space of original img
+
   # cycle through all the pixels in warped_img
   for j = 1:size(warped_img,2)
     for i = 1:size(warped_img,1) # cycle through column-first for speed
-        # shift from pixel space to global space before we reverse tform
+        # convert from pixel to global space
         # (we index to zero, then add on the offset)
         u, v = i-1+warped_offset[1], j-1+warped_offset[2]
-        # transform from warped image to initial image
+        # apply inv(tform), conversion back to pixel space included
         # x, y = [u, v, 1] * M - but writing it out moves faster
         x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
-        # shift back from global space to pixel space for the original img
-        # (subtract off its offset, then index up to one)
-        x, y = x-offset[1]+1.0, y-offset[2]+1.0
+#        x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]  # faster but differs by a matrix transpose
 
         # Slow...
         #warped_img[i,j] = round(Uint8, bilinear(img, x, y))
         #warped_img[i,j] = bilinear(img, x, y)
-
         # Bilinear interpolation
         fx, fy = floor(Int64, x), floor(Int64, y)
         wx, wy = x-fx, y-fy
         # if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
-        inside = true
         if 1 <= fx && fx+1 <= size(img, 1)
             if 1 <= fy && fy+1 <= size(img, 2)   # normal case
-            # Expansion of p = [1-wx wx] * img[fx:fx+1, fy:fy+1] * [1-wy; wy]
-                p = ((1-wx)*img[fx,fy] + wx*img[fx+1,fy]) * (1-wy) + ((1-wx)*img[fx,fy+1] + wx*img[fx+1,fy+1]) * wy
+                # Expansion of p = [1-wx wx] * img[fx:fx+1, fy:fy+1] * [1-wy; wy]
+                p = ((1.0-wx)*img[fx,fy] + wx*img[fx+1,fy]) * (1.0-wy) + ((1.0-wx)*img[fx,fy+1] + wx*img[fx+1,fy+1]) * wy
+                writepixel(warped_img,i,j,p)
             elseif fy == size(img, 2) && wy==0   # edge case
-                p = (1-wx)*img[fx,fy] + wx*img[fx+1,fy]
-            else
-                inside=false
+                p = (1.0-wx)*img[fx,fy] + wx*img[fx+1,fy]
+                writepixel(warped_img,i,j,p)
             end
         elseif fx == size(img, 1) && wx==0
             if 1 <= fy && fy+1 <= size(img, 2)   # edge case
-                p = img[fx,fy] * (1-wy) + img[fx,fy+1] * wy
+                p = img[fx,fy] * (1.0-wy) + img[fx,fy+1] * wy
+                writepixel(warped_img,i,j,p)
             elseif fy == size(img, 2) && wy==0  # corner case
                 p = img[fx,fy]
-            else
-                inside=false
-            end
-        else
-            inside=false
-        end
-        if inside==true
-            if is_int_image
-              warped_img[i,j] = round(T, p);
-            else
-              warped_img[i,j] = p
+                writepixel(warped_img,i,j,p)
             end
         #else
         #    warped_img[i,j] = 0 # Fill value set to zero based on similar function above
         end
     end
   end
-  return warped_img, warped_offset
+  warped_img, warped_offset
+end
+
+function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
+    img[i,j]=round(T,pixelvalue)
+end
+
+function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
+    img[i,j]=pixelvalue
 end
 
 function test_imwarp()
