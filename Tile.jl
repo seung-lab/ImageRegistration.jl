@@ -1,6 +1,7 @@
 using Julimaps
 using Params
 using MeshModule
+using IO
 
 type Tile
 	name::String
@@ -39,11 +40,11 @@ end
 Load original image for tile, using the WAFER_DIR and filename
 """
 function load_image(tile::Tile)
-	# section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
-	# path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
+	section_folder = string("S2-W00", tile.id[1], "_Sec", tile.id[2], "_Montage")
+	path = joinpath(homedir(), WAFER_DIR[tile.id[1]], section_folder, string(tile.name, ".tif"))
 	section_folder = string("W00", tile.id[1], "_Sec", tile.id[2])
-	path = joinpath(".", "input_images", section_folder, string(tile.name, ".tif"))
-	return rawdata(imread(path))
+	# path = joinpath(".", "input_images", section_folder, string(tile.name, ".tif"))
+	return getFloatImage(path)
 end
 
 """
@@ -85,11 +86,21 @@ Returns:
 function parse_mesh(mesh)
     src_nodes = hcat(mesh.nodes...)
     dst_nodes = hcat(mesh.nodes_t...)
-    offset = convert(Array{Int64,1}, mesh.disp)
+    offset = mesh.disp
 
-    src_nodes = xy2yx(src_nodes .- offset)
-    dst_nodes = xy2yx(dst_nodes .- offset)
-    return src_nodes, dst_nodes, mesh.edges, offset
+    # src_nodes = xy2yx(src_nodes .- offset)
+    # dst_nodes = xy2yx(dst_nodes .- offset)
+    return src_nodes', dst_nodes', mesh.edges, offset
+end
+
+
+function meshwarp(tile::Tile)
+    @assert tile.mesh != nothing
+    img = load_image(tile)
+	src_nodes, dst_nodes, incidence, offset = parse_mesh(tile.mesh)
+    node_dict = incidence2dict(incidence)
+    triangles = dict2triangles(node_dict)
+    return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end
 
 function load_section(dir_path)
@@ -103,7 +114,7 @@ Create tile array with meshes from mesh_set
 function load_tiles(mesh_set)
 	tiles = []
 	for mesh in mesh_set.meshes
-		t = Tile(mesh.path[13:end-4])
+		t = Tile(mesh.name)
 		set_mesh!(t, mesh)
 		push!(tiles, t)
 	end
