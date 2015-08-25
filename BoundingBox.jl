@@ -55,7 +55,7 @@ function snap_bb(bb)
   j = floor(Int,bb.j)
   h = ceil(Int,r[2,1]) - i
   w = ceil(Int,r[3,2]) - j
-  return BoundingBox(i, j, h, w)
+  return BoundingBox{Int}(i, j, h, w)
 end
 
 """
