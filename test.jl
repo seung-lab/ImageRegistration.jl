@@ -1,9 +1,10 @@
 using Base.Test
 
+using BoundingBox
+
 include("render.jl")
 include("meshwarp.jl")
 include("pt2triangle.jl")
-include("BoundingBox.jl")
 
 function test()
   test_verts2triangle()
