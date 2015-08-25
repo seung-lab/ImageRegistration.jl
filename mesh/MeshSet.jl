@@ -3,7 +3,6 @@ using Params
 using HDF5
 using JLD
 using Images
-using ImageView
 importall IO
 include("Mesh.jl")
 include("Matches.jl")

@@ -21,16 +21,13 @@ function montageSection(n)
 	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
 	printResidualStats(Ms);
 	save(Ms);
+	imageArray = 0;
+	gc();
 end
 
 function montageSections(k::UnitRange{Int64})
-	imageArray = SharedArray(UInt8, tile_size, tile_size, num_tiles);
 	for i in k
-		@time Ms, imageArray = loadSection(SESSION, i);
-		@time addAllMatches!(Ms, imageArray);
-		@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
-		printResidualStats(Ms);
-		save(Ms);
+		@time montageSection(i);
 	end
 end
 
