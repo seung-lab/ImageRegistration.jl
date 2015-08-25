@@ -8,11 +8,20 @@ using Images
 
 function parseName(name::String)
 	m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
+	if typeof(m) != Void
 	return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2]) # wafer, section, row, column
+	else
+	m = match(r"(\d*,\d*)_montage", name)
+	return parse(Int, m[1]), parse(Int, m[2]), 0, 0; #wafer, section
+	end
 end
 
 function getName(index::Index)
+	if index[3] == 0 && index[4] == 0
 	return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2]);
+	else 
+	return string("");
+	end
 end
 
 # function getPath()
