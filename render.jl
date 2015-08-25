@@ -10,6 +10,7 @@ include("incidence2triangles.jl")
 include("meshwarp.jl")
 include("visualize.jl")
 include("Tile.jl")
+include("SectionAlignAffine.jl")
 
 using JLD
 using Images
@@ -61,8 +62,10 @@ Returns:
 * src_pts: 2xN array of original mesh nodes
 * dst_pts: 2xN array of corresponding block matches
 """
-function load_vectors(matches)
-    dst_offset = convert(Array{Int64,1}, matches.dst_mesh.disp)
+function load_vectors(mesh_set, index)
+    matches = mesh_set.matches[index]
+    mesh = matches.dst_index
+    dst_offset = convert(Array{Int64,1}, matches.dspVectors)
     src_nodes = hcat(matches.src_mesh.nodes...) .- dst_offset
     src_idx = matches.src_pointIndices
     src_pts = src_nodes[:,src_idx]
@@ -247,7 +250,9 @@ function imfuse(A, BB_A, B, BB_B)
 end
 
 """
-Pad image exterior to meet new_sz dimensions  
+Pad image exterior to meet new_sz dimensions 
+
+Images are column-major.
 
      _________________________________  
     |                                 |  
@@ -285,6 +290,21 @@ function padimage(img, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64)
     sz = size(img)
     img = hcat(zeros(sz[1], xlow), img)
     return img
+end
+
+function padimage(img, offset)
+    xlow, ylow, xhigh, yhigh = 0, 0, 0, 0
+    if offset[2] > 0
+        xlow = offset[2]
+    elseif offset[2] < 0
+        xhigh = -offset[2]
+    end
+    if offset[1] > 0
+        ylow = offset[1]
+    elseif offset[1] < 0
+        yhigh = -offset[1]
+    end
+    return padimage(img, xlow, ylow, xhigh, yhigh)
 end
 
 function demo_meshwarp()
@@ -363,12 +383,12 @@ end
 function demo_render_section()
     fn = "(1,2)_montage"
     mesh_set = load(joinpath(BUCKET, "datasets/piriform/meshsets_montage", string(fn, ".jld")))["MeshSet"]
-	# tiles = []
-	# offsets = []
-	# for mesh in mesh_set.meshes
-	# 	push!(tiles, getFloatImage(mesh))
-	# 	push!(tiles, mesh.disp)
-	# end
+    # tiles = []
+    # offsets = []
+    # for mesh in mesh_set.meshes
+    #   push!(tiles, getFloatImage(mesh))
+    #   push!(tiles, mesh.disp)
+    # end
     tiles = load_tiles(mesh_set)
     section_img, offset = render_section(tiles)
     img = grayim(section_img)
@@ -376,6 +396,73 @@ function demo_render_section()
     imwrite(img, joinpath(BUCKET, "output_images", string(fn, ".tif")))
     return img
 end
+
+function demo_affine_layers(filenameA, filenameB)
+    # fn = "(1,2)_montage"
+    A = rawdata(imread(joinpath(BUCKET, "output_images", filenameA)))
+    # A = restrict(A)
+    B = rawdata(imread(joinpath(BUCKET, "output_images", filenameB)))
+    # B = restrict(B)
+    @time tform = AffineAlignSections(A, B, 1.0)
+    A = 0
+    gc()
+    @time B, B_offset = imwarp(B, inv(tform), [0.0, 0.0])
+    # @time O, O_offset = imfuse(A, [0,0], B, B_offset)
+    # view(make_isotropic(O))
+    # O["spatialorder"] = ["y", "x"]
+    # imwrite(A, joinpath(BUCKET, "output_images", string(filenameA[1:end-4], "ij_0_0.tif")))
+    imwrite(B, joinpath(BUCKET, "output_images", string(filenameB[1:end-4], "_ij_", B_offset[1], "_", B_offset[2], ".tif")))
+    return B
+end
+
+function demo_demo()
+    filenameA = "(1,1)_montage.tif"
+    filenameB = "(1,2)_montage.tif"
+    O = demo_affine_layers(filenameA, filenameB)
+end
+
+function demo_elastic_layers()
+    fn = "(1,1)-(1,2)_alignment"
+    mesh_set = load(joinpath(BUCKET, "datasets/piriform/meshsets_alignment", string(fn, ".jld")))["MeshSet"]
+    tiles = load_tiles(mesh_set)
+    # bbs = []
+    # for tile in tiles
+    #     bb = get_meshwarp_bb(tile)
+    #     push!(bbs, bb)
+    # end
+    # global_ref = sum(bbs)
+    for tile in tiles[2:end]
+        println(string("Writing ", tile.name, " ", tile.id))
+        @time img, offset = meshwarp(tile)
+        # img = padimage(img, Bounding.BoundingBox(offset..., global_ref.h, global_ref.w))
+        img = padimage(img, offset)
+        img = grayim(img)
+        img["spatialorder"] = ["y", "x"]
+        imwrite(img, joinpath(BUCKET, "output_images", string(fn, "_", tile.id, ".tif")))
+        img = 0
+        gc()
+    end
+end
+
+function demo_layer_matches()
+    fn = "(1,24)-(1,25)_alignment"
+    mesh_set = load(joinpath(BUCKET, "datasets/piriform/meshsets_alignment", string(fn, ".jld")))["MeshSet"]
+    tiles = load_tiles(mesh_set)
+
+    matches = mesh_set.matches[1]
+    src_mesh = mesh_set.meshes[1]
+    dst_mesh = mesh_set.meshes[2]
+    dst_offset = convert(Array{Int64,1}, dst_mesh.disp)
+    src_nodes = hcat(src_mesh.nodes...) .- dst_offset
+    src_idx = matches.src_pointIndices
+    src_pts = src_nodes[:,src_idx]
+    dst_pts = hcat(matches.dst_points...) .- dst_offset
+    vectors = vcat(dst_pts, src_pts)
+    # vectors = load_vectors(mesh_set.matches[2])
+    img = load_image(tiles[2])
+    imgc, img2 = draw_vectors(img, vectors)
+end
+
 
 function test_padimage()
     o = ones(5,2)

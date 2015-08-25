@@ -1,7 +1,7 @@
 # Adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
-import Bounding: BoundingBox, snap_bb
+import Bounding: BoundingBox, snap_bb, find_mesh_bb
 
 """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
@@ -238,23 +238,6 @@ function poly2mask(vi::Vector{Float64}, vj::Vector{Float64})
         end
     end
     mask, offset
-end
-
-"""
-`FIND_MESH_BB` - Find bounding box around mesh
-
-    BoundingBox(xlow, ylow, height, width) = find_mesh_bb(nodes)
-
-* `nodes`: 2xN matrix of mesh nodes
-* `BoundingBox`: smallest integer-valued rectangle containing all mesh nodes
-
-""" 
-function find_mesh_bb(nodes)
-    xlow = floor(Int64,minimum(nodes[:,1]))
-    ylow = floor(Int64,minimum(nodes[:,2]))
-    xhigh = ceil(Int64,maximum(nodes[:,1]))
-    yhigh = ceil(Int64,maximum(nodes[:,2]))
-    return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
 end
 
 function warp_pts(affine, pts)
