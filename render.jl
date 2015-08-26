@@ -444,25 +444,25 @@ function demo_elastic_layers()
     end
 end
 
+function meshwarp(mesh::MeshModule.Mesh)
+    img = getFloatImage(mesh)
+    src_nodes = hcat(mesh.nodes...)'
+    dst_nodes = hcat(mesh.nodes_t...)'
+    offset = mesh.disp
+    node_dict = incidence2dict(mesh.edges)
+    triangles = dict2triangles(node_dict)
+    return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
+end
+
 function demo_layer_matches()
     fn = "(1,1)-(1,2)_alignment"
     mesh_set = load(joinpath(BUCKET, "datasets/piriform/meshsets_alignment", string(fn, ".jld")))["MeshSet"]
-    tiles = load_tiles(mesh_set)
-
-    matches = mesh_set.matches[1]
-    src_mesh = mesh_set.meshes[1]
-    dst_mesh = mesh_set.meshes[2]
-    @time img, dst_offset = meshwarp(tiles[2])
+    @time img, dst_offset = meshwarp(mesh_set.meshes[1])
     img = make_isotropic(restrict(img))
-    # dst_offset = convert(Array{Int64,1}, dst_mesh.disp)
-    src_nodes = hcat(src_mesh.nodes...) .- dst_offset
-    src_idx = matches.src_pointIndices
-    src_pts = src_nodes[:,src_idx]
-    dst_nodes = hcat(dst_mesh.nodes_t...) .- dst_offset
-    dst_idx = matches.src_pointIndices
+    src_nodes, dst_nodes = MeshModule.get_matched_points_t(mesh_set, 1)
+    src_pts = hcat(src_nodes...) .- dst_offset
+    dst_pts = hcat(dst_nodes...) .- dst_offset
     vectors = vcat(dst_pts, src_pts) / 2
-    vectors = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
-    # vectors = load_vectors(mesh_set.matches[2])
     imgc, img2 = draw_vectors(img, vectors)
 end
 

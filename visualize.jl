@@ -82,6 +82,7 @@ function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,
 #   img2: ImageSliced2d object
 #   an_points: annotation object for the points
 #   an_vectors: annotation object for the vectors
+    vectors = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
     an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], color=pt_color))
     an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, coord_order="xxyy", linewidth=3))
     return imgc, img2, an_points, an_vectors

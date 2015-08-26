@@ -30,7 +30,7 @@ function getPath(mesh::Mesh)
 end
 
 function getFloatImage(mesh::Mesh)
-	return getFloatImage(mesh.name);
+	return getFloatImage(getPath(mesh.index));
 end
 
 function getImage(mesh::Mesh)
