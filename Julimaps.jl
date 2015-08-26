@@ -1,5 +1,5 @@
-module Julimaps
-push!(LOAD_PATH, "./mesh")
+#module Julimaps
+#push!(LOAD_PATH, "./mesh")
 
 ### TypeAliases ###############################
 
@@ -37,4 +37,15 @@ export noMatch, noTriangle;
 global noMatch = [0; 0; -1];
 global noTriangle = (0, 0, 0);
 
-end
+using Images
+using HDF5
+using JLD
+include("Params.jl")
+include("IO.jl")
+include("convolve.jl")
+include("Mesh.jl")
+include("Matches.jl")
+include("MeshSet.jl")
+include("MeshSolve.jl")
+
+#end
