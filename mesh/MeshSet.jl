@@ -212,7 +212,7 @@ pairs = getAllOverlaps(Ms)
 	return Ms;
 end
 =#
-#=
+
 function addAllMatches!(Ms, imageArray::SharedArray)
 
 pairs = getAllOverlaps(Ms);
@@ -231,7 +231,9 @@ matchesArray = cell(n);
 							break
 						end
 					(a, b) = pairs[idx];
-					matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, imageArray[:, :, a], Ms.meshes[a], imageArray[:, :, b], Ms.meshes[b], block_size, search_r, min_r);
+					Ma = Ms.meshes[a];
+					Mb = Ms.meshes[b];
+					matchesArray[idx] = remotecall_fetch(p, MeshModule.Meshes2Matches, imageArray[:, :, a], Ma, imageArray[:, :, b], Mb, block_size, search_r, min_r);
 				end
 			end
 		end
@@ -248,7 +250,8 @@ end
 
 
 end
-=#
+
+
 function addAllMatches!(Ms, imageArray)#::Array{Array{Float64, 2}, 1})
 
 pairs = getAllOverlaps(Ms)
@@ -287,10 +290,46 @@ function make_stack_meshset(wafer_num, section_range)
 	end
 end
 
+function get_matched_points(Ms::MeshSet, k)
+
+src_p = Points(0);
+dst_p = Points(0);
+
+for i in 1:Ms.matches[k].n
+		w = Ms.matches[k].dst_weights[i];
+		t = Ms.matches[k].dst_triangles[i];
+		p = Ms.matches[k].src_pointIndices[i];
+		src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
+		dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+		p1 = src.nodes[p];
+		p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3];
+		push!(src_p, p1);
+		push!(dst_p, p2);
+end
+	return src_p, dst_p;
+end
+
+function get_matched_points_t(Ms::MeshSet, k)
+
+src_p = Points(0);
+dst_p = Points(0);
+
+for i in 1:Ms.matches[k].n
+		w = Ms.matches[k].dst_weights[i];
+		t = Ms.matches[k].dst_triangles[i];
+		p = Ms.matches[k].src_pointIndices[i];
+		src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
+		dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+		p1 = src.nodes_t[p];
+		p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3];
+		push!(src_p, p1);
+		push!(dst_p, p2);
+end
+	return src_p, dst_p;
+end
 
 function loadSection(session, section_num)
 	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1));
-
 	Ms = makeNewMeshSet();
 	num_tiles = length(indices);
 	paths = Array{String, 1}(num_tiles);
@@ -313,13 +352,6 @@ function loadSection(session, section_num)
 	return Ms, imageArray;
 end
 
-function get_mesh_set()
-	return Ms;
-end
-
-function set_mesh_set()
-	Ms = remotecall_fetch(1, get_mesh_set());
-end
 
 function load_stack(wafer_num, section_range)
 	Ms = makeNewMeshSet();
