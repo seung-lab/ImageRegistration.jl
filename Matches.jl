@@ -50,7 +50,12 @@ function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
 	
 end
 
-function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
+function Meshes2Matches(channel, A, a::Int64, B, b::Int64, block_size, search_r, min_r)
+Ms = fetch(channel);
+return Meshes2Matches(A, Ms.meshes[a], B, Ms.meshes[b], block_size, search_r, min_r)
+end
+
+function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 
 	src_index = Am.index;
 	dst_index = Bm.index;
@@ -100,7 +105,7 @@ function Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 		n_total +=1	
 		if v[3] < min_r; n_lowr +=1; continue; end
 		dispVector = v[1:2];
-		if norm(dispVector) > mu + 3 * sig; n_outlier +=1; continue; end
+		if norm(dispVector) > mu + 2.5 * sig; n_outlier +=1; continue; end
 		dst_point = Am.nodes[j] + dispVector;
 		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
 		if dst_triangle == noTriangle n_noTriangle +=1; continue; end

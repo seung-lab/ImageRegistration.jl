@@ -74,8 +74,8 @@ function computeMatchesinMeshSet!(Ms, block_size, search_r, min_r)
 	Ms.m = Ms.m_i;
 	Ms.m_e = 0;
 	for i in 1:Ms.N, j in 1:Ms.N
-	M = MeshModule.Meshes2Matches(imageArray[i], Ms.meshes[i], imageArray[j], Ms.meshes[j], block_size, search_r, min_r);
-	MeshModule.addMatches2MeshSet!(M, Ms);
+	M = Meshes2Matches(imageArray[i], Ms.meshes[i], imageArray[j], Ms.meshes[j], block_size, search_r, min_r);
+	addMatches2MeshSet!(M, Ms);
 	end
 end
 =#
@@ -165,9 +165,10 @@ function save(Ms::MeshSet)
 	lastindex = Ms.meshes[Ms.N].index;
 
 	if issection(firstindex)
-		filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montage.jld"));
+filename = joinpath(ALIGNMENT_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_alignment.jld"));
+		
 	else
-		filename = joinpath(ALIGNMENT_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_alignment.jld"));
+	filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montage.jld"));
 	end
 
 	jldopen(filename, "w") do file
@@ -193,7 +194,7 @@ diagonal_pairs = Pairings(0);
 
 	return pairs;
 end
-#=
+
 function addAllMatches!(Ms, imageArray::SharedArray)
 
 pairs = getAllOverlaps(Ms)
@@ -213,9 +214,9 @@ pairs = getAllOverlaps(Ms)
 	end
 	return Ms;
 end
-=#
 
-function addAllMatches!(Ms, imageArray::SharedArray)
+
+#=function addAllMatches!(Ms, images::SharedArray)
 
 pairs = getAllOverlaps(Ms);
 n = length(pairs);
@@ -233,9 +234,7 @@ matchesArray = cell(n);
 							break
 						end
 					(a, b) = pairs[idx];
-					Ma = Ms.meshes[a];
-					Mb = Ms.meshes[b];
-					matchesArray[idx] = remotecall_fetch(p, MeshModule.Meshes2Matches, imageArray[:, :, a], Ma, imageArray[:, :, b], Mb, block_size, search_r, min_r);
+					matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, myid(), images[:, :, a], a, images[:, :, b], b, block_size, search_r, min_r);
 				end
 			end
 		end
@@ -252,7 +251,7 @@ end
 
 
 end
-
+=#
 
 function addAllMatches!(Ms, imageArray)#::Array{Array{Float64, 2}, 1})
 
@@ -301,8 +300,8 @@ for i in 1:Ms.matches[k].n
 		w = Ms.matches[k].dst_weights[i];
 		t = Ms.matches[k].dst_triangles[i];
 		p = Ms.matches[k].src_pointIndices[i];
-		src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
-		dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+		src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
+		dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 		p1 = src.nodes[p];
 		p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3];
 		push!(src_p, p1);
@@ -320,8 +319,8 @@ for i in 1:Ms.matches[k].n
 		w = Ms.matches[k].dst_weights[i];
 		t = Ms.matches[k].dst_triangles[i];
 		p = Ms.matches[k].src_pointIndices[i];
-		src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
-		dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+		src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
+		dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 		p1 = src.nodes_t[p];
 		p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3];
 		push!(src_p, p1);
@@ -354,6 +353,41 @@ function loadSection(session, section_num)
 	return Ms, imageArray;
 end
 
+function load_section(session, section_num)
+	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1));
+	Ms = makeNewMeshSet();
+	num_tiles = length(indices);
+	paths = Array{String, 1}(num_tiles);
+
+	for i in indices
+		name = session[i, 1];
+		index = session[i, 2];
+		dx = session[i, 3];
+		dy = session[i, 4];
+		addMesh2MeshSet!(Tile2Mesh(name, tile_size, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
+	end
+
+	return Ms;
+end
+
+function load_section_images(session, section_num)
+	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1));
+	num_tiles = length(indices);
+	paths = Array{String, 1}(num_tiles);
+
+	imageArray = SharedArray(UInt8, tile_size, tile_size, num_tiles);
+
+	ind = 1;
+
+	for i in indices
+		name = session[i, 1];
+		imageArray[:, :, ind] = getImage(getPath(name));
+		ind+=1;
+	end
+
+	return imageArray;
+end
+
 
 function load_stack(wafer_num, section_range)
 	Ms = makeNewMeshSet();
@@ -367,10 +401,10 @@ function load_stack(wafer_num, section_range)
 	index = (wafer_num, i, 0, 0);
 	dx = 0;
 	dy = 0;
-	if i == 2
-	dx = -465;
-	dy = -408;
-	end
+	#if i == 2
+	#dx = -465;
+	#dy = -408;
+	#end
 	image = getImage(getPath(name));
 	#addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
 	addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length_alignment, mesh_coeff), Ms);
@@ -382,6 +416,9 @@ function load_stack(wafer_num, section_range)
 	return Ms, imageArray;
 end
 
+function get_mesh(id::Int64)
+	return Ms.meshes[id];
+end
 
 function printResidualStats(Ms)
 	residuals_t = Points(0);
@@ -390,8 +427,8 @@ function printResidualStats(Ms)
 			w = Ms.matches[k].dst_weights[i];
 			t = Ms.matches[k].dst_triangles[i];
 			p = Ms.matches[k].src_pointIndices[i];
-			src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
-			dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+			src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
+			dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 			p1 = src.nodes_t[p];
 			p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
 			push!(residuals_t, p2-p1);

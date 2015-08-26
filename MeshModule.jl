@@ -19,6 +19,7 @@ function montageSection(n)
 	gc();
 end
 
+
 function align_stack(wafer_num, k::UnitRange{Int64})
 	@time Ms, imageArray = load_stack(wafer_num, k);
 	@time addAllMatches!(Ms, imageArray);
