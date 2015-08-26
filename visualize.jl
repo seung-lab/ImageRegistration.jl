@@ -60,7 +60,7 @@ function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
             lines = hcat(lines, vcat(a, b))
         end
     end
-    annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="xxyy"))
+    annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="yyxx"))
     return imgc, img2
 end
 
@@ -90,6 +90,21 @@ end
 function draw_vectors(img, vectors)
     imgc, img2 = view(img)
     return draw_vectors(imgc, img2, vectors)
+end
+
+function demo_draw_vectors()
+    a = zeros(10,10)
+    for i in 1:10
+        for j in 1:10
+            if i*j > 20
+                a[i,j] = 1.0
+            end
+        end
+    end
+    vectors = [1.0 1.0 1.0 3.0;
+                3.0 1.0 5.0 1.0]
+    a = make_isotropic(a)
+    draw_vectors(a, vectors')
 end
 
 function draw_points(imgc, img2, pts, color=RGB(0,0,1))

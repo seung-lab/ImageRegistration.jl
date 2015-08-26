@@ -445,21 +445,22 @@ function demo_elastic_layers()
 end
 
 function demo_layer_matches()
-    fn = "(1,24)-(1,25)_alignment"
+    fn = "(1,1)-(1,2)_alignment"
     mesh_set = load(joinpath(BUCKET, "datasets/piriform/meshsets_alignment", string(fn, ".jld")))["MeshSet"]
     tiles = load_tiles(mesh_set)
 
     matches = mesh_set.matches[1]
     src_mesh = mesh_set.meshes[1]
     dst_mesh = mesh_set.meshes[2]
-    dst_offset = convert(Array{Int64,1}, dst_mesh.disp)
+    @time img, dst_offset = meshwarp(tiles[2])
+    img = make_isotropic(restrict(img))
+    # dst_offset = convert(Array{Int64,1}, dst_mesh.disp)
     src_nodes = hcat(src_mesh.nodes...) .- dst_offset
     src_idx = matches.src_pointIndices
     src_pts = src_nodes[:,src_idx]
     dst_pts = hcat(matches.dst_points...) .- dst_offset
-    vectors = vcat(dst_pts, src_pts)
+    vectors = vcat(dst_pts, src_pts) / 2
     # vectors = load_vectors(mesh_set.matches[2])
-    img = load_image(tiles[2])
     imgc, img2 = draw_vectors(img, vectors)
 end
 
