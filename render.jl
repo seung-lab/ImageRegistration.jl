@@ -221,14 +221,14 @@ function imfuse(A, BB_A, B, BB_B)
     # pad to common origin
     BB_C = BB_B - BB_A
     if BB_C[1] > 0
-        B = padimage(B, BB_C[1], 0, 0, 0)
+        B = padimage(B, 0, BB_C[1], 0, 0)
     elseif BB_C[1] < 0
-        A = padimage(A, -BB_C[1], 0, 0, 0)
+        A = padimage(A, 0, -BB_C[1], 0, 0)
     end 
     if BB_C[2] > 0
-        B = padimage(B, 0, BB_C[2], 0, 0)
+        B = padimage(B, BB_C[2], 0, 0, 0)
     elseif BB_C[2] < 0
-        A = padimage(A, 0, -BB_C[2], 0, 0)
+        A = padimage(A, -BB_C[2], 0, 0, 0)
     end 
     # pad to match sizes
     szA = collect(size(A))
