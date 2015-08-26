@@ -34,7 +34,7 @@ function align_stack(wafer_num, k::UnitRange{Int64})
 	imageArray = 0;
 	gc();
 end
-
+#=
 function montageSections(ran::UnitRange{Int64})
 @time for k in minimum(ran)-1:num_concurrent:maximum(ran)
 	toFetch = @sync @parallel for l in 1:num_concurrent
@@ -46,7 +46,7 @@ function montageSections(ran::UnitRange{Int64})
 	end
 	end
 end
-
+=#
 
 
 

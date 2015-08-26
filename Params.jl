@@ -48,25 +48,23 @@ global ALIGNMENT_DIR = joinpath(datasets_dir_path, cur_dataset, alignment_dir_pa
 global WAFER_DIR_DICT = waferpaths2dict(joinpath(datasets_dir_path, cur_dataset, wafer_filename));
 global SESSION = parseRoughAlign(joinpath(datasets_dir_path, cur_dataset, rough_align_filename));
 
-export tile_size, block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols, num_concurrent, num_procs_total;
+export tile_size, block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols, mesh_length_alignment, min_r_alignment, search_r_alignment, block_size_alignment;
 
 tile_size = 8000;
 block_size = 40;
 search_r = 80;
 min_r = 0.75;
 mesh_length = 200;
-block_size_alignment = 200;
-search_r_alignment = 1200;
+block_size_alignment = 100;
+search_r_alignment = 400;
 min_r_alignment = 0.25;
-mesh_length_alignment = 4000;
+mesh_length_alignment = 2000;
 mesh_coeff = 1;
 match_coeff = 20;
 eta_grad = 0.01;
 eta_newton = .5; 
 show_plot = false;
-num_procs_total = maximum([length(procs())-1; 1]);
-num_concurrent = 2;
-num_procs = maximum([1, fld(num_procs_total, num_concurrent)]);
+num_procs = nprocs();
 ftol_grad = 1/500;
 ftol_newton = 1/1000000;
 num_tiles = 16;
