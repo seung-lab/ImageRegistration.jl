@@ -4,7 +4,7 @@ include("convolve.jl")
 using Images
 include("imwarp.jl")
 include("visualize.jl")
-include("render.jl")
+#include("render.jl")	# cyclic inclusion
 
 
 function test()
