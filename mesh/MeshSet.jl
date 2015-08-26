@@ -1,4 +1,4 @@
-using Julimaps
+#=using Julimaps
 using Params
 using HDF5
 using JLD
@@ -9,6 +9,8 @@ include("Matches.jl")
 include("MeshSolve.jl")
 
 export save, load
+
+=#
 
 type MeshSet
 	N::Int64						# number of meshes in the set
@@ -162,10 +164,10 @@ function save(Ms::MeshSet)
 	firstindex = Ms.meshes[1].index;
 	lastindex = Ms.meshes[Ms.N].index;
 
-	if firstindex[1:2] == lastindex[1:2]
-		filename = joinpath(MONTAGE_DIR, string(firstindex[1:2], "_montage.jld"));
+	if issection(firstindex)
+		filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montage.jld"));
 	else
-		filename = joinpath(ALIGNMENT_DIR, string(firstindex[1:2], "-", lastindex[1:2], "_alignment.jld"));
+		filename = joinpath(ALIGNMENT_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_alignment.jld"));
 	end
 
 	jldopen(filename, "w") do file

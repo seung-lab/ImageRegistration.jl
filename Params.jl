@@ -1,5 +1,3 @@
-module Params
-
 function parseName(name::String)
 	m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
 	return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2]) # wafer, section, row, column
@@ -30,11 +28,14 @@ end
 
 
 bucket_dir_path = "/usr/people/dih/seungmount";
-affine_dir_path = "~";
-datasets_dir_path = "./datasets";
+datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
-montage_dir_path = "meshsets_montage";
-alignment_dir_path = "meshsets_alignment";
+affine_dir_path = "~";
+
+pre_montage_dir_path = "1_pre-montage";
+montage_dir_path = "2_montage";
+pre_alignment_dir_path = "3_pre-alignment";
+alignment_dir_path = "4_alignment";
 wafer_filename = "wafer_paths.txt";
 rough_align_filename = "rough_align.txt";
 
@@ -42,11 +43,13 @@ export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, SESSION, MONTAGE_DIR, AL
 
 global BUCKET = bucket_dir_path;
 global AFFINE_DIR = affine_dir_path;
-global DATASET_DIR = joinpath(datasets_dir_path, cur_dataset);
-global MONTAGE_DIR = joinpath(datasets_dir_path, cur_dataset, montage_dir_path);
-global ALIGNMENT_DIR = joinpath(datasets_dir_path, cur_dataset, alignment_dir_path);
-global WAFER_DIR_DICT = waferpaths2dict(joinpath(datasets_dir_path, cur_dataset, wafer_filename));
-global SESSION = parseRoughAlign(joinpath(datasets_dir_path, cur_dataset, rough_align_filename));
+global DATASET_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset);
+global PRE_MONTAGE_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_montage_dir_path);
+global MONTAGE_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montage_dir_path);
+global PRE_ALIGNMENT_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_alignment_dir_path);
+global ALIGNMENT_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, alignment_dir_path);
+global WAFER_DIR_DICT = waferpaths2dict(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename));
+global SESSION = parseRoughAlign(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, rough_align_filename));
 
 export tile_size, block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols, mesh_length_alignment, min_r_alignment, search_r_alignment, block_size_alignment;
 
@@ -72,6 +75,5 @@ num_rows = 4;
 num_cols = 4;
 
 
-end
 
 
