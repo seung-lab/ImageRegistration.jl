@@ -191,7 +191,7 @@ diagonal_pairs = Pairings(0);
 
 	return pairs;
 end
-
+#=
 function addAllMatches!(Ms, imageArray::SharedArray)
 
 pairs = getAllOverlaps(Ms)
@@ -211,8 +211,45 @@ pairs = getAllOverlaps(Ms)
 	end
 	return Ms;
 end
+=#
+#=
+function addAllMatches!(Ms, imageArray::SharedArray)
 
-function addAllMatches!(Ms, imageArray::Array{Array{Float64, 2}, 1})
+pairs = getAllOverlaps(Ms);
+n = length(pairs);
+i = 1;
+nextidx() = (idx=i; i+=1; idx);
+matchesArray = cell(n);
+
+@sync begin
+	for p in 1:num_procs
+		if p != myid() || num_procs == 1
+			@async begin
+				while true
+					idx = nextidx();
+						if idx > n
+							break
+						end
+					(a, b) = pairs[idx];
+					matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, imageArray[:, :, a], Ms.meshes[a], imageArray[:, :, b], Ms.meshes[b], block_size, search_r, min_r);
+				end
+			end
+		end
+	end
+end
+
+
+for k in 1:n
+		M = fetch(matchesArray[k])
+		if typeof(M) == Void || M == Void continue; end
+		addMatches2MeshSet!(M, Ms);
+end
+	return Ms;
+
+
+end
+=#
+function addAllMatches!(Ms, imageArray)#::Array{Array{Float64, 2}, 1})
 
 pairs = getAllOverlaps(Ms)
 
@@ -258,7 +295,7 @@ function loadSection(session, section_num)
 	num_tiles = length(indices);
 	paths = Array{String, 1}(num_tiles);
 
-	imageArray = SharedArray(Int64, tile_size, tile_size, num_tiles);
+	imageArray = SharedArray(UInt8, tile_size, tile_size, num_tiles);
 
 	ind = 1;
 
@@ -276,10 +313,18 @@ function loadSection(session, section_num)
 	return Ms, imageArray;
 end
 
+function get_mesh_set()
+	return Ms;
+end
+
+function set_mesh_set()
+	Ms = remotecall_fetch(1, get_mesh_set());
+end
+
 function load_stack(wafer_num, section_range)
 	Ms = makeNewMeshSet();
 	paths = Array{String, 1}(length(section_range));
-	imageArray = Array{Array{Float64, 2}, 1}(0);# SharedArray(Int64, tile_size, tile_size, num_tiles);
+	imageArray = Array{Array{UInt8, 2}, 1}(0);# SharedArray(Int64, tile_size, tile_size, num_tiles);
 
 	#ind = 1;
 
@@ -288,9 +333,13 @@ function load_stack(wafer_num, section_range)
 	index = (wafer_num, i, 0, 0);
 	dx = 0;
 	dy = 0;
+	if i == 2
+	dx = -465;
+	dy = -408;
+	end
 	image = getImage(getPath(name));
 	#addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
-	addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length_alignment, mesh_coeff_alignment), Ms);
+	addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length_alignment, mesh_coeff), Ms);
 	push!(imageArray, image);
 		#imageArray[:, :, ind] = image;
 		#ind+=1;
