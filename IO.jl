@@ -1,10 +1,10 @@
-module IO
+#module IO
 
-export parseName, getName, getPath, getImage, getFloatImage, toJLD, parseRoughAlign, waferpaths2dict, loadSectionImages
+#=export parseName, getName, getPath, getImage, getFloatImage, toJLD, parseRoughAlign, waferpaths2dict, loadSectionImages
 
 using Julimaps
 using Params
-using Images
+using Images=#
 
 function issection(index::Index)
 	if index[3:4] == (0, 0)	return true; else return false; end
@@ -26,7 +26,7 @@ end
 
 function getName(index::Index)
 	if issection(index)
-	return string(index[1], "-", index[2], "_montage");
+	return string(index[1], ",", index[2], "_montage");
 	elseif isoverview(index)
 	return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2]);
 	else
@@ -147,7 +147,7 @@ function toJLD()
 end
 
 
-end #module
+#end #module
 
 
 #=

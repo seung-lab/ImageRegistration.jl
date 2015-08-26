@@ -1,4 +1,4 @@
-function convolve{T,n}(A::SubArray{T, n},B::Array{T, n},dims)
+function convolve{T, n}(A::SubArray{T, n},B::Array{T, n},dims)
     common_size=tuple(map(max,size(A),size(B))...)
     pA=zeros(Complex{T},common_size)
     pB=zeros(Complex{T},common_size)
@@ -10,9 +10,21 @@ function convolve{T,n}(A::SubArray{T, n},B::Array{T, n},dims)
     real(ifft!(fft!(pA,dims).*fft!(pB,dims),dims))
 end
 
+function convolve_Float64(A,B,dims)
+    common_size=tuple(map(max,size(A),size(B))...)
+    pA=zeros(Complex{Float64},common_size)
+    pB=zeros(Complex{Float64},common_size)
+    rangesA=[1:x for x in size(A)]
+    rangesB=[1:x for x in size(B)]
+    pA[rangesA...]=A
+    pB[rangesB...]=B
+    
+    real(ifft!(fft!(pA,dims).*fft!(pB,dims),dims))
+end
+
 function valid_convolve(A,B,dims)
     ranges=[min(a,b):max(a,b) for (a,b) in zip(size(A),size(B))]
-    convolve(A,B,dims)[ranges...]
+    convolve_Float64(A,B,dims)[ranges...]
 end
 
 function cumsum2{T,ndim}(A::Array{T,ndim})
