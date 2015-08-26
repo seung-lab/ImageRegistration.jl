@@ -10,6 +10,10 @@ function issection(index::Index)
 	if index[3:4] == (0, 0)	return true; else return false; end
 end
 
+function isoverview(index::Index)
+	if index[3:4] == (-1, -1)	return true; else return false; end
+end
+
 function parseName(name::String)
 	m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
 	if typeof(m) != Void
@@ -23,7 +27,9 @@ end
 function getName(index::Index)
 	if issection(index)
 	return string(index[1], "-", index[2], "_montage");
-	else 
+	elseif isoverview(index)
+	return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2]);
+	else
 	return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2]);
 	end
 end
@@ -57,6 +63,10 @@ function getImage(path::String)
 	img = img[:, :, 1];
 	img.properties["timedim"] = 0;
 	return convert(Array{UInt8, 2}, round(convert(Array, img)*255));
+end
+
+function getImage(index::Index)
+	return getImage(getPath(index));
 end
 
 # extensions:
@@ -126,6 +136,10 @@ function loadSectionImages(session, section_num)
 	end
 
 	return imageArray;
+end
+
+function load_overview(session, section_num)
+
 end
 
 function toJLD()
