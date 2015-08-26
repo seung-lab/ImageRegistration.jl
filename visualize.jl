@@ -102,9 +102,9 @@ function demo_draw_vectors()
         end
     end
     vectors = [1.0 1.0 1.0 3.0;
-                3.0 1.0 5.0 1.0]
+                3.0 1.0 5.0 1.0]'
     a = make_isotropic(a)
-    draw_vectors(a, vectors')
+    draw_vectors(a, vectors)
 end
 
 function draw_points(imgc, img2, pts, color=RGB(0,0,1))

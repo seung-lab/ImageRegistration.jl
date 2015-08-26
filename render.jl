@@ -458,8 +458,10 @@ function demo_layer_matches()
     src_nodes = hcat(src_mesh.nodes...) .- dst_offset
     src_idx = matches.src_pointIndices
     src_pts = src_nodes[:,src_idx]
-    dst_pts = hcat(matches.dst_points...) .- dst_offset
+    dst_nodes = hcat(dst_mesh.nodes_t...) .- dst_offset
+    dst_idx = matches.src_pointIndices
     vectors = vcat(dst_pts, src_pts) / 2
+    vectors = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
     # vectors = load_vectors(mesh_set.matches[2])
     imgc, img2 = draw_vectors(img, vectors)
 end
