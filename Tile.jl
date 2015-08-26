@@ -48,6 +48,7 @@ function load_image(tile::Tile)
 	# section_folder = string("W00", tile.id[1], "_Sec", tile.id[2])
 	path = joinpath(".", "output_images", string("(", tile.id[1], ",", tile.id[2], ")_montage.tif"))
 	# path = joinpath(".", "input_images", "sections", string("S2-W00", tile.id[1], "_Sec", tile.id[2], ".tif"))
+	println(path)
 	return getFloatImage(path)
 end
 
