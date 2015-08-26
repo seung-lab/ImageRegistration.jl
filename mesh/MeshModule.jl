@@ -4,7 +4,7 @@ importall Julimaps
 importall Params
 importall IO
 
-export montageSection, montageSections
+export montageSection, montageSections, get_mesh_set, set_mesh_set, sync_mesh_set
 
 using Images
 using HDF5
@@ -31,10 +31,27 @@ function align_stack(wafer_num, k::UnitRange{Int64})
 	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
 	printResidualStats(Ms);
 	save(Ms);
-	imageArray = 0;
-	gc();
+	return Ms, imageArray
 end
 
+@everywhere function get_mesh_set()
+	return Ms;
+end
+
+@everywhere function sync_mesh_set()
+	id = myid()
+	@sync @parallel for i in 1:num_procs
+		if i == id continue; end
+		 remotecall(i, set_mesh_set(id));
+	end
+end
+
+@everywhere function set_mesh_set(id)
+	Ms = remotecall_fetch(id, get_mesh_set);
+	return Ms;
+end
+
+#=
 function montageSections(ran::UnitRange{Int64})
 @time for k in minimum(ran)-1:num_concurrent:maximum(ran)
 	toFetch = @sync @parallel for l in 1:num_concurrent
@@ -46,7 +63,7 @@ function montageSections(ran::UnitRange{Int64})
 	end
 	end
 end
-
+=#
 
 
 
