@@ -17,22 +17,28 @@ type Matches
 	dispVectors::Points					# displacement vector src->dest
 end
 
-# i, j are in world coordinates (as per the mesh coordinate specification)
-function getBlockMatchAtPoint(A, A_rr::RemoteRef, i, j, B, B_rr::RemoteRef, block_size, search_r)
-Am = take!(A_rr);
-Bm = take!(B_rr);
-return getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r);
+function get_max_xc_vector(A, B)
+	xc = normxcorr2(A, B);
+	r_max = maximum(xc); 
+
+	ind = findfirst(r_max .== xc);
+
+	if ind == 0 return noMatch; end
+	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
+	if i_max == 0 i_max = size(xc, 1); end
+	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max];
 end
 
-function getBlockMatchAtPoint(A, Am::Mesh, i, j, B, Bm::Mesh, block_size, search_r)
+# i, j are in world coordinates (as per the mesh coordinate specification)
+function getBlockMatchAtPoint(A, A_disp, i, j, B, B_disp, block_size, search_r)
 	b_rad = block_size + search_r;
 
 	# convert to matrix coordinates
-	Ai = round(Int64, i - Am.disp[1]);
-	Aj = round(Int64, j - Am.disp[2]);
+	Ai = round(Int64, i - A_disp[1]);
+	Aj = round(Int64, j - A_disp[2]);
 
-	Bi = round(Int64, i - Bm.disp[1]);
-	Bj = round(Int64, j - Bm.disp[2]);
+	Bi = round(Int64, i - B_disp[1]);
+	Bj = round(Int64, j - B_disp[2]);
 
 	if (!isInternal(A, Ai, Aj, block_size) || !isInternal(B, Bi, Bj, b_rad))
 		return noMatch;
@@ -43,17 +49,11 @@ function getBlockMatchAtPoint(A, Am::Mesh, i, j, B, Bm::Mesh, block_size, search
 	Bi_range = ceil(Bi)-b_rad:ceil(Bi)+b_rad;
 	Bj_range = ceil(Bj)-b_rad:ceil(Bj)+b_rad;
 
-	xc = normxcorr2(sub(A, Ai_range, Aj_range), sub(B, Bi_range, Bj_range));
-	r_max = maximum(xc); 
-
-	ind = findfirst(r_max .== xc);
-
-	if ind == 0 return noMatch; end
-	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
-	if i_max == 0 i_max = size(xc, 1); end
-
-	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max];
-	
+	return get_max_xc_vector(A[Ai_range, Aj_range], B[Bi_range, Bj_range]);
+end
+function getBlockMatchAtPoint(A, Am::Mesh, i, j, B, Bm::Mesh, block_size, search_r)
+		
+	getBlockMatchAtPoint(A, Am.disp, i, j, B, Bm.disp, block_size, search_r)
 end
 
 function Meshes2Matches(A, A_rr::RemoteRef, B, B_rr::RemoteRef, block_size, search_r, min_r)
@@ -88,31 +88,47 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 		return Void;
 	end
 
-	#=if (is_pre_aligned(Am.index) && is_pre_aligned(Bm.index))
-	j = 1;
-	nextidx() = (idx=j; j+=1; idx);
-	images = SharedArray(UInt8, size(A, 1), size(A, 2), 2);
-	images[:, :, 1] = A;
-	images[:, :, 2] = B;
+	if (is_pre_aligned(Am.index) && is_pre_aligned(Bm.index))
+	k = 1;
+	nextidx() = (idx=k; k+=1; idx);
+	#images = SharedArray(UInt8, size(A, 1), size(A, 2), 2);
+#	images[:, :, 1] = A;
+#	images[:, :, 2] = B;
 	dispVectors_raw_par = Array{Array{Float64, 1}, 1}(n_upperbound);
 	@sync begin
 	for p in 1:num_procs
-		if p != myid() && isodd(p-myid()) || num_procs == 1
+		if p != myid() && iseven(p-myid()) || num_procs == 1
 			@async begin
 				while true
 					idx = nextidx();
 						if idx > n_upperbound
 							break
 						end
-					(Ai, Aj) = Am.nodes[j];
-					A_rr = RemoteRef();
-					B_rr = RemoteRef();
-					put!(A_rr, Am);
-					put!(B_rr, Bm);
-					dispVectors_raw_par[j] = remotecall_fetch(p, getBlockMatchAtPoint, images[:, :, 1], A_rr, Ai, Aj, images[:, :, 2], B_rr, block_size, search_r);
-					#not in correct order
-					
-					
+					(i, j) = Am.nodes[idx];
+
+					b_rad = block_size + search_r;
+
+					# convert to matrix coordinates
+					Ai = round(Int64, i - Am.disp[1]);
+					Aj = round(Int64, j - Am.disp[2]);
+
+					Bi = round(Int64, i - Bm.disp[1]);
+					Bj = round(Int64, j - Bm.disp[2]);
+
+					if (!isInternal(A, Ai, Aj, block_size) || !isInternal(B, Bi, Bj, b_rad))
+					dispVectors_raw_par[idx] = noMatch;
+				      else
+					Ai_range = ceil(Ai)-block_size:ceil(Ai)+block_size;
+					Aj_range = ceil(Aj)-block_size:ceil(Aj)+block_size;
+					Bi_range = ceil(Bi)-b_rad:ceil(Bi)+b_rad;
+					Bj_range = ceil(Bj)-b_rad:ceil(Bj)+b_rad;
+					if maximum(A[Ai_range, Aj_range]) / minimum(A[Ai_range,Aj_range]) < MIN_DYNAMIC_RANGE_RATIO
+						println("$idx: failed dynamic range ratio requirement.");
+						dispVectors_raw_par[idx] = noMatch;
+					else dispVectors_raw_par[idx] = remotecall_fetch(p, get_max_xc_vector, A[Ai_range, Aj_range], B[Bi_range, Bj_range]);
+					println("$idx: matched by worker $p");
+				      end
+					end
 				end
 			end
 		end
@@ -125,7 +141,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 	push!(dispVectors_mags, norm(v));
 	end
 	end
-	else=#
+	else
 	for j in 1:n_upperbound
 		(Ai, Aj) = Am.nodes[j];
 		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);
@@ -135,7 +151,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 		end
 	end
 
-	#end
+	end
 
 	if length(dispVectors_mags) == 0
 	return Void;
