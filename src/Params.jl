@@ -139,7 +139,10 @@ end
 
 bucket_dir_path = ""
 if isfile("bucket_dir_path.txt")
-	bucket_dir_path = readall("bucket_dir_path.txt")
+	bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n');
+end
+if isfile("../bucket_dir_path.txt")
+	bucket_dir_path = rstrip(readall("../bucket_dir_path.txt"), '\n');
 end
 datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
@@ -174,14 +177,15 @@ global PRE_ALIGNED_OFFSETS = parse_offsets(joinpath(bucket_dir_path, datasets_di
 
 export tile_size, block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols, mesh_length_alignment, min_r_alignment, search_r_alignment, block_size_alignment;
 
+MIN_DYNAMIC_RANGE_RATIO = 4.5;
 tile_size = 8000;
 block_size = 40;
 search_r = 80;
 min_r = 0.75;
 mesh_length = 200;
-block_size_alignment = 150;
-search_r_alignment = 500;
-min_r_alignment = 0.15;
+block_size_alignment = 100;
+search_r_alignment = 400;
+min_r_alignment = 0.25;
 mesh_length_alignment = 1500;
 mesh_coeff = 1;
 match_coeff = 20;
