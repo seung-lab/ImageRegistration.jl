@@ -84,15 +84,25 @@ function AffineAlignSections(img1::Array{}, img2::Array{}, downsample_ratio = 1,
 	points1, points2 = GetBlockMatches(img1, img2, points, half_block_size, search_radius, accept_xcorr)
 	A = FindAffine(points1, points2)
 	residualIn2 = A*points1 - points2;
+	rmsIn2 = mean( sum(residualIn2.^2, 1) )^0.5
 	points2in1 = inv(A)*points2;
 	residualIn1 = points2in1 - points1;
+	rmsIn1 = mean( sum(residualIn1.^2, 1) )^0.5
+
+	tolerance_ratio = 0.001
+	rmsThres = tolerance_ratio * mean([size(img1)..., size(img2)...])
+	rmsTotal = mean([rmsIn1, rmsIn2].^2)^0.5
+	if  rmsTotal > rmsThres
+		println("WARNING [AffineAlignSections]: high residual. RMS error: ", rmsTotal)
+	end
+
 	A = AdjustAffineForScaling(A, downsample_ratio)
 
 	# convert column vector convention to row vector convention
 	A = A.'
 
 	if return_points
-		return A, points1, points2, residualIn1, residualIn2
+		return A, points1, points2, residualIn1, residualIn2, rmsIn1, rmsIn2
 	else
 		return A
 	end
