@@ -68,17 +68,6 @@ function makeNewMeshSet()
 	return MeshSet(N, M, indices, n, m, m_i, m_e, meshes, nodes_indices, matches, matches_pairs);
 end
 
-#=
-function computeMatchesinMeshSet!(Ms, block_size, search_r, min_r)
-	Ms.M = 0;
-	Ms.m = Ms.m_i;
-	Ms.m_e = 0;
-	for i in 1:Ms.N, j in 1:Ms.N
-	M = Meshes2Matches(imageArray[i], Ms.meshes[i], imageArray[j], Ms.meshes[j], block_size, search_r, min_r);
-	addMatches2MeshSet!(M, Ms);
-	end
-end
-=#
 
 function addMesh2MeshSet!(Am, Ms)
 	push!(Ms.indices, Am.index);
@@ -164,11 +153,10 @@ function save(Ms::MeshSet)
 	firstindex = Ms.meshes[1].index;
 	lastindex = Ms.meshes[Ms.N].index;
 
-	if issection(firstindex)
-filename = joinpath(ALIGNMENT_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_alignment.jld"));
-		
+	if is_pre_aligned(firstindex)
+filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_aligned.jld"));
 	else
-	filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montage.jld"));
+	filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
 	end
 
 	jldopen(filename, "w") do file
@@ -194,7 +182,7 @@ diagonal_pairs = Pairings(0);
 
 	return pairs;
 end
-
+#=
 function addAllMatches!(Ms, imageArray::SharedArray)
 
 pairs = getAllOverlaps(Ms)
@@ -214,9 +202,9 @@ pairs = getAllOverlaps(Ms)
 	end
 	return Ms;
 end
+=#
 
-
-#=function addAllMatches!(Ms, images::SharedArray)
+function addAllMatches!(Ms, images::SharedArray)
 
 pairs = getAllOverlaps(Ms);
 n = length(pairs);
@@ -234,7 +222,15 @@ matchesArray = cell(n);
 							break
 						end
 					(a, b) = pairs[idx];
-					matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, myid(), images[:, :, a], a, images[:, :, b], b, block_size, search_r, min_r);
+					A_rr = RemoteRef();
+					B_rr = RemoteRef();
+					put!(A_rr, Ms.meshes[a]);
+					put!(B_rr, Ms.meshes[b]);
+					if is_pre_aligned(Ms.meshes[a].index)
+matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, images[:, :, a], A_rr, images[:, :, b], B_rr, block_size_alignment, search_r_alignment, min_r_alignment);
+					else
+					matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, images[:, :, a], A_rr, images[:, :, b], B_rr, block_size, search_r, min_r);
+					end
 				end
 			end
 		end
@@ -243,16 +239,16 @@ end
 
 
 for k in 1:n
-		M = fetch(matchesArray[k])
+		M = matchesArray[k]
 		if typeof(M) == Void || M == Void continue; end
 		addMatches2MeshSet!(M, Ms);
 end
 	return Ms;
-
-
 end
-=#
 
+
+
+#=
 function addAllMatches!(Ms, imageArray)#::Array{Array{Float64, 2}, 1})
 
 pairs = getAllOverlaps(Ms)
@@ -265,7 +261,7 @@ pairs = getAllOverlaps(Ms)
 	end
 	return Ms;
 end
-
+=#
 
 function makeSectionMeshSet(session, section_num)
 	Ms = makeNewMeshSet();
@@ -389,35 +385,39 @@ function load_section_images(session, section_num)
 end
 
 
-function load_stack(wafer_num, section_range)
+function load_stack(offsets, wafer_num, section_range)
+	indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
 	Ms = makeNewMeshSet();
-	paths = Array{String, 1}(length(section_range));
 	imageArray = Array{Array{UInt8, 2}, 1}(0);# SharedArray(Int64, tile_size, tile_size, num_tiles);
 
-	#ind = 1;
+	i_max = 0;
+	j_max = 0;
 
-	for i in section_range
-	name = getName((wafer_num, i, 0, 0));
-	index = (wafer_num, i, 0, 0);
-	dx = 0;
-	dy = 0;
-	#if i == 2
-	#dx = -465;
-	#dy = -408;
-	#end
+	for i in indices
+	name = offsets[i, 1];
+	index = offsets[i, 2];
+	dx = offsets[i, 4];
+	dy = offsets[i, 3];
 	image = getImage(getPath(name));
-	#addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
 	addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length_alignment, mesh_coeff), Ms);
+	
 	push!(imageArray, image);
-		#imageArray[:, :, ind] = image;
-		#ind+=1;
+	i_l = size(imageArray[i], 1);
+	j_l = size(imageArray[i], 2);
+	if i_max < i_l i_max = i_l end;
+	if j_max < j_l j_max = j_l end;
+	end
+	
+
+	images = SharedArray(UInt8, i_max, j_max, length(imageArray));
+
+	for i in 1:length(imageArray)
+	i_l = size(imageArray[i], 1);
+	j_l = size(imageArray[i], 2);
+	images[1:i_l, 1:j_l, i] = imageArray[i];
 	end
 
-	return Ms, imageArray;
-end
-
-function get_mesh(id::Int64)
-	return Ms.meshes[id];
+	return Ms, images;
 end
 
 function printResidualStats(Ms)

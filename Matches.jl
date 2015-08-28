@@ -18,7 +18,13 @@ type Matches
 end
 
 # i, j are in world coordinates (as per the mesh coordinate specification)
-function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
+function getBlockMatchAtPoint(A, A_rr::RemoteRef, i, j, B, B_rr::RemoteRef, block_size, search_r)
+Am = take!(A_rr);
+Bm = take!(B_rr);
+return getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r);
+end
+
+function getBlockMatchAtPoint(A, Am::Mesh, i, j, B, Bm::Mesh, block_size, search_r)
 	b_rad = block_size + search_r;
 
 	# convert to matrix coordinates
@@ -50,9 +56,10 @@ function getBlockMatchAtPoint(A, Am, i, j, B, Bm, block_size, search_r)
 	
 end
 
-function Meshes2Matches(channel, A, a::Int64, B, b::Int64, block_size, search_r, min_r)
-Ms = fetch(channel);
-return Meshes2Matches(A, Ms.meshes[a], B, Ms.meshes[b], block_size, search_r, min_r)
+function Meshes2Matches(A, A_rr::RemoteRef, B, B_rr::RemoteRef, block_size, search_r, min_r)
+Am = take!(A_rr);
+Bm = take!(B_rr);
+return Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r)
 end
 
 function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
@@ -81,6 +88,44 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 		return Void;
 	end
 
+	#=if (is_pre_aligned(Am.index) && is_pre_aligned(Bm.index))
+	j = 1;
+	nextidx() = (idx=j; j+=1; idx);
+	images = SharedArray(UInt8, size(A, 1), size(A, 2), 2);
+	images[:, :, 1] = A;
+	images[:, :, 2] = B;
+	dispVectors_raw_par = Array{Array{Float64, 1}, 1}(n_upperbound);
+	@sync begin
+	for p in 1:num_procs
+		if p != myid() && isodd(p-myid()) || num_procs == 1
+			@async begin
+				while true
+					idx = nextidx();
+						if idx > n_upperbound
+							break
+						end
+					(Ai, Aj) = Am.nodes[j];
+					A_rr = RemoteRef();
+					B_rr = RemoteRef();
+					put!(A_rr, Am);
+					put!(B_rr, Bm);
+					dispVectors_raw_par[j] = remotecall_fetch(p, getBlockMatchAtPoint, images[:, :, 1], A_rr, Ai, Aj, images[:, :, 2], B_rr, block_size, search_r);
+					#not in correct order
+					
+					
+				end
+			end
+		end
+	end
+	end
+	for j in 1:n_upperbound
+	v = dispVectors_raw_par[j];
+	push!(dispVectors_raw, v);
+	if v != noMatch && v[3] >= min_r
+	push!(dispVectors_mags, norm(v));
+	end
+	end
+	else=#
 	for j in 1:n_upperbound
 		(Ai, Aj) = Am.nodes[j];
 		v = getBlockMatchAtPoint(A, Am, Ai, Aj, B, Bm, block_size, search_r);
@@ -89,6 +134,8 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 			push!(dispVectors_mags, norm(v));
 		end
 	end
+
+	#end
 
 	if length(dispVectors_mags) == 0
 	return Void;

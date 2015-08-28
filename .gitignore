@@ -1,3 +1,4 @@
-input_images/
-output_images/
+_archive/
+EM_images/
 *.pyc
+*.jl~
