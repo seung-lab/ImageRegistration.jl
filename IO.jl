@@ -5,30 +5,68 @@
 using Julimaps
 using Params
 using Images=#
-
-function issection(index::Index)
-	if index[3:4] == (0, 0)	return true; else return false; end
+#=
+function is_overview(index::Index)
+	if index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX)	return true; else return false; end
 end
 
-function isoverview(index::Index)
-	if index[3:4] == (-1, -1)	return true; else return false; end
+function is_montaged(index::Index)
+	if index[3:4] == (MONTAGED_INDEX, MONTAGED_INDEX)	return true; else return false; end
 end
+
+function is_pre_aligned(index::Index)
+	if index[3:4] == (PRE_ALIGNED_INDEX, PRE_ALIGNED_INDEX)	return true; else return false; end
+end
+
+function is_aligned(index::Index)
+	if index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX)	return true; else return false; 
+end
+end
+
 
 function parseName(name::String)
+	# singleton tile
 	m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
 	if typeof(m) != Void
-	return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2]) # wafer, section, row, column
-	else
-	m = match(r"(\d*)-(\d*)_montage", name)
-	return parse(Int, m[1]), parse(Int, m[2]), 0, 0; #wafer, section
+	return parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2])
 	end
+
+	# overview image
+	m = match(r"MontageOverviewImage_S2-W00(\d*)_sec(\d*)", name);
+	if typeof(m) != Void
+	return parse(Int, m[1]), parse(Int, m[2]), OVERVIEW_INDEX, OVERVIEW_INDEX; 	
+	end
+
+	# montaged section
+	m = match(r"(\d*)-(\d*)_montaged", name)
+	if typeof(m) != Void
+	return parse(Int, m[1]), parse(Int, m[2]), MONTAGED_INDEX, MONTAGED_INDEX; 	
+	end
+
+	# pre-aligned section
+	m = match(r"(\d*)-(\d*)_pre-aligned", name)
+	if typeof(m) != Void
+	return parse(Int, m[1]), parse(Int, m[2]), PRE_ALIGNED_INDEX, PRE_ALIGNED_INDEX; 
+	end
+
+	# aligned-section
+	m = match(r"(\d*)-(\d*)_aligned", name)
+	if typeof(m) != Void
+	return parse(Int, m[1]), parse(Int, m[2]), ALIGNED_INDEX, ALIGNED_INDEX; 
+	end
+
+	
 end
 
 function getName(index::Index)
-	if issection(index)
-	return string(index[1], ",", index[2], "_montage");
-	elseif isoverview(index)
+	if is_overview(index)
 	return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2]);
+	elseif is_montaged(index)
+	return string(index[1], ",", index[2], "_montaged");
+	elseif is_pre_aligned(index)
+	return string(index[1], ",", index[2], "_pre-aligned");
+	elseif is_aligned(index)
+	return string(index[1], ",", index[2], "_aligned")
 	else
 	return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2]);
 	end
@@ -40,12 +78,23 @@ end
 # extensions:
 # Mesh.jl: getPath(mesh::Mesh)
 function getPath(index::Index)
-	if issection(index)
 	name = getName(index);
-	return joinpath(MONTAGE_DIR, string(name, ".tif"));
+
+	if is_overview(index)
+	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
+	return joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
+
+	elseif is_montaged(index)
+	return joinpath(MONTAGED_DIR, string(name, ".tif"));
+	
+	elseif is_pre_aligned(index)
+	return joinpath(PRE_ALIGNED_DIR, string(name, ".tif"));
+
+	elseif is_aligned(index)
+	return joinpath(ALIGNED_DIR, string(name, ".tif"));
+
 	else
 	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
-	name = getName(index);
 	return joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
 	end
 end
@@ -54,7 +103,7 @@ function getPath(name::String)
 	return getPath(parseName(name));
 end
 
-
+=#
 
 # extensions:
 # Mesh.jl getImage(mesh::Mesh)

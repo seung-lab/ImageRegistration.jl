@@ -37,11 +37,12 @@ function getImage(mesh::Mesh)
 	return getImage(mesh.name);
 end
 
+function Tile2Mesh(name, size::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+	return Tile2Mesh(name, size, size, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+end
 
-# Tile2Mesh
-function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-	A = getImage(getPath(name));
-	(Ai, Aj) = size(A);
+function Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+	(Ai, Aj) = (size_i,size_j);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
 	dims = (convert(Int64, div(Ai, dists[1]) + 1), convert(Int64, div(Aj, dists[2]) + 1));
@@ -89,54 +90,16 @@ function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 	return Mesh(name, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
 end
 
+
+# Tile2Mesh
+function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+	image = getImage(getPath(name));
+	return Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+end
+
 function Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-	A = image;
-	(Ai, Aj) = size(A);
-
-	dists = [mesh_length * sin(pi / 3); mesh_length];
-	dims = (convert(Int64, div(Ai, dists[1]) + 1), convert(Int64, div(Aj, dists[2]) + 1));
- 	offsets = [rem(Ai, dists[1])/2; rem(Aj, dists[2])/2];
-	disp = [dy; dx];
-
-	n = maximum([getMeshIndex(dims, dims[1], dims[2]); getMeshIndex(dims, dims[1], dims[2]-1)]);
-	m = 0;
-	m_upperbound = 3 * n;
-
-	nodes = Points(n);
-	nodes_fixed = BinaryProperty(n); nodes_fixed[:] = tile_fixed;
-	edges = spzeros(Float64, n, m_upperbound);
-	edge_lengths = FloatProperty(m_upperbound); edge_lengths[:] = convert(Float64, mesh_length);
-	edge_coeffs = FloatProperty(m_upperbound); edge_coeffs[:] = convert(Float64, mesh_coeff);
-
-	for i in 1:dims[1], j in 1:dims[2]
-		k = getMeshIndex(dims, i, j); if k == 0 continue; end
-		nodes[k] = getMeshCoord(dims, disp+offsets, dists, i, j);
-		if (j != 1)
-			m += 1;	edges[k, m] = -1; edges[getMeshIndex(dims, i, j-1), m] = 1;
-		end
-
-		if (i != 1)
-			if iseven(i) || j != dims[2]
-				m += 1;	edges[k, m] = -1; edges[getMeshIndex(dims, i-1, j), m] = 1;
-			end
-			if iseven(i) && (j != dims[2]) 			
-				m += 1; edges[k, m] = -1; edges[getMeshIndex(dims, i-1, j+1), m] = 1;
-			end
-			if isodd(i) && (j != 1)
-				m += 1; edges[k, m] = -1; edges[getMeshIndex(dims, i-1, j-1), m] = 1;
-			end
-			if isodd(i) && ((j == 1) || (j == dims[2]))
-				m += 1; edges[k, m] = -1; edges[getMeshIndex(dims, i-2, j), m] = 1;
-				edge_lengths[m] = 2 * dists[1];
-			end
-		end
-	end
-
-	edges = edges[:, 1:m];
-	edge_lengths = edge_lengths[1:m];
-	edge_coeffs = edge_coeffs[1:m];
-
-	return Mesh(name, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
+	(size_i, size_j) = size(image);
+	Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 end
 
 function getMeshIndex(dims, i, j)
