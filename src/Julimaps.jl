@@ -54,5 +54,12 @@ include("Matches.jl")
 include("MeshSet.jl")
 include("MeshSolve.jl")
 include("MeshSession.jl")
+# include("boundingbox.jl")
+include("SectionAlignAffine.jl")
+include("incidence2triangles.jl")
+include("imwarp.jl")
+include("meshwarp.jl")
+include("render.jl")
+include("review.jl")
 
 #end

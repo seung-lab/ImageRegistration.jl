@@ -248,7 +248,7 @@ function render_prealignment_for_directory()
 end
 
 function render_alignment_for_directory()
-	filename = joinpath(ALIGNED_DIR, "1,11-1,12_aligned.jld")
+	filename = joinpath(ALIGNED_DIR, "1,11-1,12_aligned_EDITED_20150828115837.jld")
     println("Rendering meshes in ", filename[1:end-4])
     meshset = load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
     bbs = []
@@ -258,9 +258,11 @@ function render_alignment_for_directory()
     	push!(bbs, snap_bb(find_mesh_bb(nodes)))
     end
     global_bb = sum(bbs)
-    for mesh in meshset.meshes
+    println(global_bb)
+    for mesh in meshset.meshes[1:1]
     	println("Warping ", mesh.name)
 	    @time img, offset = meshwarp(mesh)
+        println(offset)
 	    img = padimage(img, offset, global_bb)
 	    println("Writing ", mesh.name)
 	    @time imwrite(img, joinpath(ALIGNED_DIR, string(mesh.name, ".tif")))

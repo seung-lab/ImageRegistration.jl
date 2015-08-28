@@ -222,8 +222,8 @@ function fix_meshsets_in_dir(dir)
   for fn in jld_filenames[1:1]
     println("Reviewing ", fn[1:end-4])
     meshset = load(joinpath(dir, fn))["MeshSet"]
-    # review_matches_in_matchset(meshset)
-    # @time MeshModule.MeshSet2JLD(joinpath(dir, fn[1:end-4], "_EDITED", now(), ".jld"), meshset)
+    review_matches_in_matchset(meshset)
+    @time save(joinpath(dir, string(fn[1:end-4], "_EDITED_", Dates.format(now(), "yyyymmddHHMMSS"), ".jld")), meshset)
   end
 end
 
@@ -246,7 +246,7 @@ end
 """
 Retrieve 1d array of block match pairs from the original images
 """
-function get_blockmatch_images(meshset, k, radius=block_size)
+function get_blockmatch_images(meshset, k, radius=block_size_alignment)
   matches = meshset.matches[k]
   src_index = matches.src_index
   dst_index = matches.dst_index
@@ -302,7 +302,7 @@ function display_blockmatches(src_imgs, dst_imgs, style="pair", aspect_ratio=1.4
       n += 1
       if n <= length(src_imgs)
         if style=="diff"
-          img = src_imgs[n] - dst_img[n]
+          img = src_imgs[n] - dst_imgs[n]
         elseif style=="yellow"
           A = grayim(Image(src_imgs[n]))
           B = grayim(Image(dst_imgs[n]))
@@ -310,7 +310,8 @@ function display_blockmatches(src_imgs, dst_imgs, style="pair", aspect_ratio=1.4
         else
           img = vcat(src_imgs[n], ones(2, size(src_imgs[n], 2)) .* 255, dst_imgs[n])
         end
-        imgc, img2 = view(c[i,j], make_isotropic(img))
+        # imgc, img2 = view(c[i,j], make_isotropic(img))
+        imgc, img2 = view(c[i,j], img)
         img_canvas = canvas(imgc)
         bind(img_canvas, "<Button-3>", img_canvas->right_click(n))
         win = Tk.toplevel(img_canvas)
