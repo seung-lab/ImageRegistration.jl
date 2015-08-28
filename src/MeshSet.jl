@@ -204,7 +204,7 @@ pairs = getAllOverlaps(Ms)
 end
 =#
 
-function addAllMatches!(Ms, images::SharedArray)
+function addAllMatches!(Ms, images)
 
 pairs = getAllOverlaps(Ms);
 n = length(pairs);
@@ -227,9 +227,9 @@ matchesArray = cell(n);
 					put!(A_rr, Ms.meshes[a]);
 					put!(B_rr, Ms.meshes[b]);
 					if is_pre_aligned(Ms.meshes[a].index)
-matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, images[:, :, a], A_rr, images[:, :, b], B_rr, block_size_alignment, search_r_alignment, min_r_alignment);
+matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, images[a], A_rr, images[b], B_rr, block_size_alignment, search_r_alignment, min_r_alignment);
 					else
-					matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, images[:, :, a], A_rr, images[:, :, b], B_rr, block_size, search_r, min_r);
+					matchesArray[idx] = remotecall_fetch(p, Meshes2Matches, images[a], A_rr, images[b], B_rr, block_size, search_r, min_r);
 					end
 				end
 			end
@@ -331,9 +331,8 @@ function loadSection(session, section_num)
 	num_tiles = length(indices);
 	paths = Array{String, 1}(num_tiles);
 
-	imageArray = SharedArray(UInt8, tile_size, tile_size, num_tiles);
+	images = Array{SharedArray{UInt8, 2}, 1}(0);
 
-	ind = 1;
 
 	for i in indices
 		name = session[i, 1];
@@ -342,8 +341,9 @@ function loadSection(session, section_num)
 		dy = session[i, 4];
 		image = getImage(getPath(name));
 		addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
-		imageArray[:, :, ind] = image;
-		ind+=1;
+		image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
+		image_shared[:, :] = image[:, :];
+		push!(images, image_shared)
 	end
 
 	return Ms, imageArray;
@@ -388,10 +388,7 @@ end
 function load_stack(offsets, wafer_num, section_range)
 	indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
 	Ms = makeNewMeshSet();
-	imageArray = Array{Array{UInt8, 2}, 1}(0);# SharedArray(Int64, tile_size, tile_size, num_tiles);
-
-	i_max = 0;
-	j_max = 0;
+	images = Array{SharedArray{UInt8, 2}, 1}(0);
 
 	for i in indices
 	name = offsets[i, 1];
@@ -401,22 +398,11 @@ function load_stack(offsets, wafer_num, section_range)
 	image = getImage(getPath(name));
 	addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, mesh_length_alignment, mesh_coeff), Ms);
 	
-	push!(imageArray, image);
-	i_l = size(imageArray[i], 1);
-	j_l = size(imageArray[i], 2);
-	if i_max < i_l i_max = i_l end;
-	if j_max < j_l j_max = j_l end;
+	image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
+	image_shared[:, :] = image[:, :];
+	push!(images, image_shared)
 	end
 	
-
-	images = SharedArray(UInt8, i_max, j_max, length(imageArray));
-
-	for i in 1:length(imageArray)
-	i_l = size(imageArray[i], 1);
-	j_l = size(imageArray[i], 2);
-	images[1:i_l, 1:j_l, i] = imageArray[i];
-	end
-
 	return Ms, images;
 end
 
