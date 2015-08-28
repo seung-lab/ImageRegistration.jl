@@ -137,7 +137,10 @@ function parse_offsets(info_path::String)
 	return session;
 end
 
-bucket_dir_path = readall("bucket_dir_path.txt")
+bucket_dir_path = ""
+if isfile("bucket_dir_path.txt")
+	bucket_dir_path = readall("bucket_dir_path.txt")
+end
 datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
 affine_dir_path = "~";

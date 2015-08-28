@@ -7,6 +7,7 @@
 
 using PyCall
 unshift!(PyVector(pyimport("sys")["path"]), "") # include current directory
+unshift!(PyVector(pyimport("sys")["path"]), "src") # include src directory
 @pyimport create_color_plots as ccp
 
 function write_vector_color_plot(mesh_path, write_name, offset=[0,0])
