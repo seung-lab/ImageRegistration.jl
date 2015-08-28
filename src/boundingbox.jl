@@ -1,4 +1,3 @@
-using Base.Test
 import Base: +, ==
 
 type BoundingBox{T}
