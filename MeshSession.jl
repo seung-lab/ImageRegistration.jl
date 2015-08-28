@@ -1,23 +1,29 @@
-importall IO
-using Julimaps
-using Params
-using MeshModule
-using ImageView
+
+function montageSection(n)
+	@time Ms, imageArray = loadSection(PRE_MONTAGED_OFFSETS, n);
+	@time addAllMatches!(Ms, imageArray);
+	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
+	printResidualStats(Ms);
+	save(Ms);
+	imageArray = 0;
+	gc();
+end
 
 
-################################# SCRIPT FOR TESTING ###################################
-tic();
+function align_stack(wafer_num, k::UnitRange{Int64})
+	@time Ms, imageArray = load_stack(PRE_ALIGNED_OFFSETS, wafer_num, k);
+	@time addAllMatches!(Ms, imageArray);
+	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
+	printResidualStats(Ms);
+	save(Ms);
+	return Ms, imageArray
+end
+
+
 #=
-@time MeshModule.montageSections(1:10);
-
-@time Ms, imageArray = MeshModule.loadSection(SESSION, 1);
-@time MeshModule.addAllMatches!(Ms, imageArray);
-@time MeshModule.solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
-@time MeshModule.MeshSet2JLD("solvedMesh(1,21,0).jld", Ms);
-=#
 
 ### show matches
-function show_matches(Ms)
+function show_matches(Ms, k)
 src_p = Points(0);
 dst_p = Points(0);
 k = 1
@@ -81,34 +87,6 @@ view(sbs_total);
 
 end
 
-
-
-@time MeshModule.MeshSet2JLD("solvedMesh(1,21,0).jld", Ms);
-
-
-####### LEGACY CODE FOR PAIR TESTING #############
-
-#Ap = "./EM_images/Tile_r4-c2_S2-W001_sec20.tif";
-#dAi = 21906;
-#dAj = 36429;
-
-#Bp = "./EM_images/Tile_r4-c3_S2-W001_sec20.tif";
-#dBi = 10000#29090; # 2908.6;
-#dBj = 10000#36251; # 3624.3;
-
-
-#=
-
-Ms = makeNewMeshSet();
-@time Am = MeshModule.Tile2Mesh(Ap, (1, 2, 42), (4, 2), dAi, dAj, false, mesh_length, mesh_coeff);
-@time Bm = MeshModule.Tile2Mesh(Bp, (1, 2, 43), (4, 3), dBi, dBj, false, mesh_length, mesh_coeff);
-@time A = MeshModule.getMeshImage(Am);
-@time B = MeshModule.getMeshImage(Bm);
-@time Mab = MeshModule.Meshes2Matches(A, Am, B, Bm, block_size, search_r, min_r);
-@time Mba = MeshModule.Meshes2Matches(B, Bm, A, Am, block_size, search_r, min_r);
-
-@time MeshModule.addMesh2MeshSet!(Am, Ms);
-@time MeshModule.addMesh2MeshSet!(Bm, Ms);
-@time MeshModule.addMatches2MeshSet!(Mab, Ms);
-@time MeshModule.addMatches2MeshSet!(Mba, Ms);
 =#
+
+

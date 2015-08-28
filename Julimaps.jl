@@ -37,6 +37,12 @@ export noMatch, noTriangle;
 global noMatch = [0; 0; -1];
 global noTriangle = (0, 0, 0);
 
+global OVERVIEW_INDEX = -1;
+global MONTAGED_INDEX = -2;
+global PRE_ALIGNED_INDEX = -3;
+global ALIGNED_INDEX = -4;
+
+
 using Images
 using HDF5
 using JLD
@@ -47,5 +53,6 @@ include("Mesh.jl")
 include("Matches.jl")
 include("MeshSet.jl")
 include("MeshSolve.jl")
+include("MeshSession.jl")
 
 #end
