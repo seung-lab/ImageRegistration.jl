@@ -162,7 +162,11 @@ global PRE_MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_datas
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path);
 global PRE_ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_aligned_dir_path);
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path);
-global WAFER_DIR_DICT = waferpaths2dict(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename));
+waferpath = Dict()
+if isfile(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename))
+	waferpath = waferpaths2dict(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename))
+end
+global WAFER_DIR_DICT = waferpath;
 global PRE_MONTAGED_OFFSETS = parse_offsets(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_montaged_dir_path, pre_montaged_offsets_filename));
 global PRE_ALIGNED_OFFSETS = parse_offsets(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_aligned_dir_path, pre_aligned_offsets_filename));
 
