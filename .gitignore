@@ -2,3 +2,4 @@ _archive/
 EM_images/
 *.pyc
 *.jl~
+*.swp
