@@ -137,7 +137,7 @@ function parse_offsets(info_path::String)
 	return session;
 end
 
-bucket_dir_path = "/usr/people/dih/seungmount";
+bucket_dir_path = readall("bucket_dir_path.txt")
 datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
 affine_dir_path = "~";
