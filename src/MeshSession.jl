@@ -31,8 +31,8 @@ for i in 1:Ms.matches[k].n
 		w = Ms.matches[k].dst_weights[i];
 		t = Ms.matches[k].dst_triangles[i];
 		p = Ms.matches[k].src_pointIndices[i];
-		src = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].src_index)]
-		dst = Ms.meshes[MeshModule.findIndex(Ms, Ms.matches[k].dst_index)]
+		src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
+		dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 		p1 = src.nodes[p];
 		p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3]
 		push!(src_p, p1);
@@ -42,9 +42,8 @@ end
 #src_im = imageArray[:, :, Ms.matches_pairs[k][1]];
 #dst_im = imageArray[:, :, Ms.matches_pairs[k][2]];
 
-src_im = imageArray[Ms.matches_pairs[k][1]];
-dst_im = imageArray[Ms.matches_pairs[k][2]];
-
+src_im = images[Ms.matches_pairs[k][1]];
+dst_im = images[Ms.matches_pairs[k][2]];
 
 square_size = 2*block_size + 1;
 cols = round(Int64, sqrt(Ms.matches[k].n) * 2);
@@ -83,7 +82,7 @@ lastrow = hcat(lastrow, zeros(UInt8, 2 * square_size+2, row_size-size(lastrow, 2
 
 sbs_total = vcat(sbs_total, lastrow);
 
-view(sbs_total);
+view(sbs_total / 255);
 
 end
 

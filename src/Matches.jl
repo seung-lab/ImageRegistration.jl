@@ -23,8 +23,12 @@ function get_max_xc_vector(A, B)
 
 	ind = findfirst(r_max .== xc);
 
+	println(size(xc, 1))
+	println(size(xc, 2))
+
 	if ind == 0 return noMatch; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
+	println(i_max, j_max);
 	if i_max == 0 i_max = size(xc, 1); end
 	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max];
 end
@@ -138,7 +142,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 	v = dispVectors_raw_par[j];
 	push!(dispVectors_raw, v);
 	if v != noMatch && v[3] >= min_r
-	push!(dispVectors_mags, norm(v));
+	push!(dispVectors_mags, norm(v[1:2]));
 	end
 	end
 	else
