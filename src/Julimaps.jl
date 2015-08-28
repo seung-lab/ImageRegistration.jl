@@ -54,7 +54,9 @@ include("Matches.jl")
 include("MeshSet.jl")
 include("MeshSolve.jl")
 include("MeshSession.jl")
-include("boundingbox.jl")
+if !isdefined(:BoundingBox) # haaaaack
+	include("boundingbox.jl")
+end
 include("SectionAlignAffine.jl")
 include("incidence2triangles.jl")
 include("imwarp.jl")

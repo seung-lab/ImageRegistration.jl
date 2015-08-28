@@ -3,3 +3,4 @@ EM_images/
 *.pyc
 *.jl~
 *.swp
+bucket_dir_path.txt
