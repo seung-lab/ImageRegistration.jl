@@ -233,6 +233,7 @@ Return first JLD file in provided directory
 function load_sample_meshset(dir)
   jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
   fn = jld_filenames[1]
+  println(joinpath(dir, fn))
   return load(joinpath(dir, fn))["MeshSet"]
 end
 
@@ -281,44 +282,86 @@ function select_blockmatch(imgc, img2, k)
     bind(c, "<Button-3>", path->return k)
 end
 
-function right_click(k)
-  println(k)
-  # push!(blockmatch_ids, k)
+"""
+Edit blockmatches with paging
+"""
+function edit_blockmatches(images)
+  max_images_to_display = 60
+  no_of_images = length(images)
+  pages = ceil(Int, no_of_images / max_images_to_display)
+  blockmatch_ids = Set()
+  for page in 1:pages
+    start = (page-1)*max_images_to_display + 1
+    finish = start + min(max_images_to_display, length(images) - start)
+    page_ids = display_blockmatches(images[start:finish], true, start)
+    blockmatch_ids = union(blockmatch_ids, page_ids)
+  end
+  return blockmatch_ids
+end
+
+"""
+Make one image from two blockmatch images, their difference, & their overlay
+"""
+function create_filtered_images(src_imgs, dst_imgs)
+  images = []
+  for (src_img, dst_img) in zip(src_imgs, dst_imgs)
+    diff_img = convert(Image{RGB}, src_img - dst_img)
+    imgA = grayim(Image(src_img))
+    imgB = grayim(Image(dst_img))
+    yellow_img = Overlay((imgA,imgB), (RGB(1,0,0), RGB(0,1,0)))
+    pairA = convert(Image{RGB}, src_img*1)
+    pairB = convert(Image{RGB}, dst_img*1)
+    left_img = vcat(pairA, pairB)
+    right_img = vcat(diff_img, yellow_img)
+    img = hcat(left_img, right_img)
+    push!(images, img)
+  end
+  return images
 end
 
 """
 Display blockmatch images in a grid to be clicked on
 """
-function display_blockmatches(src_imgs, dst_imgs, style="pair", aspect_ratio=1.4)
-  a = ceil(Int, sqrt(length(src_imgs)/aspect_ratio))
-  b = ceil(Int, aspect_ratio*a)
-  c = canvasgrid(a, b, pad=5)
-  n = 0
-  blockmatch_ids = []
+function display_blockmatches(images, edit_mode_on=false, start_index=1)
+  no_of_images = length(images)
+  grid_height = 6
+  grid_width = 10
+  # aspect_ratio = 1.6
+  # grid_height = ceil(Int, sqrt(no_of_images/aspect_ratio))
+  # grid_width = ceil(Int, aspect_ratio*grid_height)
+  img_canvas_grid = canvasgrid(grid_height, grid_width, pad=1)
+  match_index = 0
+  blockmatch_ids = Set()
   e = Condition()
 
-  for j = 1:b
-    for i = 1:a
-      n += 1
-      if n <= length(src_imgs)
-        if style=="diff"
-          img = src_imgs[n] - dst_imgs[n]
-        elseif style=="yellow"
-          A = grayim(Image(src_imgs[n]))
-          B = grayim(Image(dst_imgs[n]))
-          img = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
-        else
-          img = vcat(src_imgs[n], ones(2, size(src_imgs[n], 2)) .* 255, dst_imgs[n])
-        end
-        # imgc, img2 = view(c[i,j], make_isotropic(img))
-        imgc, img2 = view(c[i,j], img)
+  function right_click(k)
+    if in(k, blockmatch_ids)
+      blockmatch_ids = setdiff(blockmatch_ids, Set(k))
+    else
+      push!(blockmatch_ids, k)
+    end
+    println(collect(blockmatch_ids))
+  end
+
+  for j = 1:grid_width
+    for i = 1:grid_height
+      match_index += 1
+      n = match_index + start_index - 1
+      if n <= no_of_images
+        img = images[n]
+        # imgc, img2 = view(img_canvas_grid[i,j], make_isotropic(img))
+        imgc, img2 = view(img_canvas_grid[i,j], img)
         img_canvas = canvas(imgc)
-        bind(img_canvas, "<Button-3>", img_canvas->right_click(n))
-        win = Tk.toplevel(img_canvas)
-        bind(win, "<Destroy>", path->notify(e))
+        if edit_mode_on
+          bind(img_canvas, "<Button-3>", path->right_click(n))
+          win = Tk.toplevel(img_canvas)
+          bind(win, "<Destroy>", path->notify(e))
+        end
       end
     end
   end
-  wait(e)
-  return blockmatch_ids 
+  if edit_mode_on
+    wait(e)
+  end
+  return collect(blockmatch_ids )
 end
