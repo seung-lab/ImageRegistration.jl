@@ -4,6 +4,16 @@
 JULia IMAge Processing Suite:
 A set of tools for elastic image registration in Julia.
 
+# Process
+(time in seconds per section)
+
+| Step | Read | Match | Solve | Render | Write | Total | Review Method | Intervene Method |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| premontage | 30 | 10 | 10 | 0 | 30 | 80 | (overlay tiles on overview) | NA |
+| montage | 30 | 100 | 20 | 60 | 30 | 240 | (section overlay as checkerboard) | blockmatch image select |
+| prealignment | 30 | 25 | 5 | 30 | 30 | 120 | overlay sections | blockmatch image select |
+| alignment | 30 | 100 | 20 | 60 | 30 | 240 | movie of sections in FIJI | blockmatch image select |
+
 # Milestones
 * 8/7 Stitch two tiles (8/9)
 * 8/14 Stitch one section (8/16)
