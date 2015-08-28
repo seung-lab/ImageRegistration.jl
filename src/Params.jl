@@ -141,6 +141,9 @@ bucket_dir_path = ""
 if isfile("bucket_dir_path.txt")
 	bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n');
 end
+if isfile("../bucket_dir_path.txt")
+	bucket_dir_path = rstrip(readall("../bucket_dir_path.txt"), '\n');
+end
 datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
 affine_dir_path = "~";
@@ -176,9 +179,9 @@ block_size = 40;
 search_r = 80;
 min_r = 0.75;
 mesh_length = 200;
-block_size_alignment = 150;
-search_r_alignment = 500;
-min_r_alignment = 0.15;
+block_size_alignment = 100;
+search_r_alignment = 400;
+min_r_alignment = 0.25;
 mesh_length_alignment = 1500;
 mesh_coeff = 1;
 match_coeff = 20;
