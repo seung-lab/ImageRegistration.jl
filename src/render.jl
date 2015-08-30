@@ -248,8 +248,8 @@ function render_prealignment_for_directory()
 end
 
 function render_alignment_for_directory()
-	filename = joinpath(ALIGNED_DIR, "1,11-1,12_aligned_EDITED_20150828115837.jld")
-    println("Rendering meshes in ", filename[1:end-4])
+	filename = joinpath(ALIGNED_DIR, "1,11-1,12_aligned_EDITED_20150829193424.jld")
+    println("Rendering meshes in ", filename)
     meshset = load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
     bbs = []
     println("Calculating global bounding box")
@@ -259,7 +259,7 @@ function render_alignment_for_directory()
     end
     global_bb = sum(bbs)
     println(global_bb)
-    for mesh in meshset.meshes[1:1]
+    for mesh in meshset.meshes[2:2]
     	println("Warping ", mesh.name)
 	    @time img, offset = meshwarp(mesh)
         println(offset)
