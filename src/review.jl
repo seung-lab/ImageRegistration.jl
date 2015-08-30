@@ -208,7 +208,7 @@ end
 Review all matches in a meshset
 """
 function review_matches_in_matchset(meshset)
-  for (idx, mesh) in enumerate(meshset.meshes)
+  for (idx, matches) in enumerate(meshset.matches)
     review_matches_side_by_side(meshset, idx)
   end
   resolve_meshset(meshset)
@@ -227,12 +227,50 @@ function fix_meshsets_in_dir(dir)
   end
 end
 
+function review_blockmatch_imgs(meshset, dir)
+  for (k, matches) in enumerate(meshset.matches)
+    src_bm_imgs, dst_bm_imgs = get_blockmatch_images(meshset, k)
+    filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
+    blockmatch_ids = edit_blockmatches(filtered_imgs)
+    save_blockmatch_imgs(blockmatch_ids, meshset, k, joinpath(dir, "blockmatches"))
+    remove_matches_from_meshset!(collect(blockmatch_ids), k, meshset)
+  end
+  resolve_meshset(meshset)
+  @time save(joinpath(dir, string(fn[1:end-4], "_EDITED_", Dates.format(now(), "yyyymmddHHMMSS"), ".jld")), meshset)
+end
+
+function xcorr2Image(xc)
+  return grayim((xc .+ 1)./2)
+end
+
+function save_blockmatch_imgs(blockmatch_ids, meshset, k, path)
+  src_imgs, ignore = get_blockmatch_images(meshset, k, block_size_alignment)
+  ignore, dst_imgs = get_blockmatch_images(meshset, k, search_r_alignment+block_size_alignment)
+  ignore = 0
+  gc()
+  println("save_blockmatch_imgs")
+  for (idx, (src_img, dst_img)) in enumerate(zip(src_imgs, dst_imgs))
+    println(idx, "/", length(src_imgs))
+    xc = normxcorr2(src_img, dst_img)
+    n = @sprintf("%03d", idx)
+    img_mark = "good"
+    if idx in blockmatch_ids
+      img_mark = "bad"
+    end
+    imwrite(src_img, joinpath(path, string(img_mark, "_", n , "_src_", k, ".jpg")))
+    imwrite(dst_img, joinpath(path, string(img_mark, "_", n , "_dst_", k, ".jpg")))
+    if !isnan(sum(xc))
+      imwrite(xcorr2Image(xc), joinpath(path, string(img_mark, "_", n , "_xc_", k, ".jpg")))
+    end
+  end
+end
+
 """
 Return first JLD file in provided directory
 """
 function load_sample_meshset(dir)
   jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
-  fn = jld_filenames[1]
+  fn = jld_filenames[2]
   println(joinpath(dir, fn))
   return load(joinpath(dir, fn))["MeshSet"]
 end
@@ -241,7 +279,7 @@ function sliceimg(img, point, radius)
   point = ceil(Int64, point)
   i_range = point[1]-radius:point[1]+radius
   j_range = point[2]-radius:point[2]+radius
-  return sub(img, i_range, j_range)
+  return img[i_range, j_range]
 end
 
 """
@@ -267,7 +305,7 @@ function get_blockmatch_images(meshset, k, radius=block_size_alignment)
 
   # block_size in Params
   # search_r in Params
-  for (src_pt, dst_pt) in zip(src_points, dst_points)
+  for (idx, (src_pt, dst_pt)) in enumerate(zip(src_points, dst_points))
     push!(src_bm_imgs, sliceimg(src_img, src_pt-src_offset, radius))
     push!(dst_bm_imgs, sliceimg(dst_img, dst_pt-dst_offset, radius))
   end
@@ -275,11 +313,24 @@ function get_blockmatch_images(meshset, k, radius=block_size_alignment)
 end
 
 """
-Allow selecting of blockmatch images to remove correspondence
+Make one image from two blockmatch images, their difference, & their overlay
 """
-function select_blockmatch(imgc, img2, k)
-    c = canvas(imgc)
-    bind(c, "<Button-3>", path->return k)
+function create_filtered_images(src_imgs, dst_imgs)
+  images = []
+  for (n, (src_img, dst_img)) in enumerate(zip(src_imgs, dst_imgs))
+    println(n, "/", length(src_imgs))
+    diff_img = convert(Image{RGB}, src_img-dst_img)
+    imgA = grayim(Image(src_img))
+    imgB = grayim(Image(dst_img))
+    yellow_img = Overlay((imgA,imgB), (RGB(1,0,0), RGB(0,1,0)))
+    pairA = convert(Image{RGB}, src_img)
+    pairB = convert(Image{RGB}, dst_img)
+    left_img = vcat(pairA, pairB)
+    right_img = vcat(diff_img, yellow_img)
+    img = hcat(left_img, right_img)
+    push!(images, img)
+  end
+  return images
 end
 
 """
@@ -292,7 +343,8 @@ function edit_blockmatches(images)
   blockmatch_ids = Set()
   for page in 1:pages
     start = (page-1)*max_images_to_display + 1
-    finish = start + min(max_images_to_display, length(images) - start)
+    finish = start-1 + min(max_images_to_display, length(images)-start-1)
+    println(start, finish)
     page_ids = display_blockmatches(images[start:finish], true, start)
     blockmatch_ids = union(blockmatch_ids, page_ids)
   end
@@ -300,30 +352,11 @@ function edit_blockmatches(images)
 end
 
 """
-Make one image from two blockmatch images, their difference, & their overlay
-"""
-function create_filtered_images(src_imgs, dst_imgs)
-  images = []
-  for (src_img, dst_img) in zip(src_imgs, dst_imgs)
-    diff_img = convert(Image{RGB}, src_img - dst_img)
-    imgA = grayim(Image(src_img))
-    imgB = grayim(Image(dst_img))
-    yellow_img = Overlay((imgA,imgB), (RGB(1,0,0), RGB(0,1,0)))
-    pairA = convert(Image{RGB}, src_img*1)
-    pairB = convert(Image{RGB}, dst_img*1)
-    left_img = vcat(pairA, pairB)
-    right_img = vcat(diff_img, yellow_img)
-    img = hcat(left_img, right_img)
-    push!(images, img)
-  end
-  return images
-end
-
-"""
 Display blockmatch images in a grid to be clicked on
 """
 function display_blockmatches(images, edit_mode_on=false, start_index=1)
   no_of_images = length(images)
+  println("Displaying ", no_of_images, " images")
   grid_height = 6
   grid_width = 10
   # aspect_ratio = 1.6
@@ -347,8 +380,8 @@ function display_blockmatches(images, edit_mode_on=false, start_index=1)
     for i = 1:grid_height
       match_index += 1
       n = match_index + start_index - 1
-      if n <= no_of_images
-        img = images[n]
+      if match_index <= no_of_images
+        img = images[match_index]
         # imgc, img2 = view(img_canvas_grid[i,j], make_isotropic(img))
         imgc, img2 = view(img_canvas_grid[i,j], img)
         img_canvas = canvas(imgc)
@@ -363,5 +396,5 @@ function display_blockmatches(images, edit_mode_on=false, start_index=1)
   if edit_mode_on
     wait(e)
   end
-  return collect(blockmatch_ids )
+  return blockmatch_ids
 end
