@@ -20,17 +20,18 @@ end
 function get_max_xc_vector(A, B)
 	xc = normxcorr2(A, B);
 	r_max = maximum(xc); 
+	rad = round(Int64, xc - 1 / 2)
 
 	ind = findfirst(r_max .== xc);
-
-	println(size(xc, 1))
-	println(size(xc, 2))
+	
+	x1 = size(xc, 1);
+	x2 = size(xc, 2);
 
 	if ind == 0 return noMatch; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
-	println(i_max, j_max);
+	println("In xc ($x1, $x2), max was found at ($i_max, $j_max)");
 	if i_max == 0 i_max = size(xc, 1); end
-	return [i_max - 1 - search_r; j_max - 1 - search_r; r_max];
+	return [i_max - 1 - rad; j_max - 1 - rad; r_max];
 end
 
 # i, j are in world coordinates (as per the mesh coordinate specification)
@@ -108,7 +109,8 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, block_size, search_r, min_r)
 						if idx > n_upperbound
 							break
 						end
-					(i, j) = Am.nodes[idx];
+					i = Am.nodes[idx][1];
+					j = Am.nodes[idx][2];
 
 					b_rad = block_size + search_r;
 
