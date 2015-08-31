@@ -140,8 +140,7 @@ end
 bucket_dir_path = ""
 if isfile("bucket_dir_path.txt")
 	bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n');
-end
-if isfile("../bucket_dir_path.txt")
+elseif isfile("../bucket_dir_path.txt")
 	bucket_dir_path = rstrip(readall("../bucket_dir_path.txt"), '\n');
 end
 datasets_dir_path = "research/Julimaps/datasets";
@@ -165,10 +164,10 @@ global PRE_MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_datas
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path);
 global PRE_ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_aligned_dir_path);
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path);
-waferpath = Dict()
-if isfile(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename))
+#waferpath = Dict()
+#if isfile(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename))
 	waferpath = waferpaths2dict(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename))
-end
+#end
 global WAFER_DIR_DICT = waferpath;
 global PRE_MONTAGED_OFFSETS = parse_offsets(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_montaged_dir_path, pre_montaged_offsets_filename));
 global PRE_ALIGNED_OFFSETS = parse_offsets(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_aligned_dir_path, pre_aligned_offsets_filename));
@@ -183,7 +182,7 @@ block_size = 40;
 search_r = 80;
 min_r = 0.75;
 mesh_length = 200;
-block_size_alignment = 100;
+block_size_alignment = 1000;
 search_r_alignment = 600;
 min_r_alignment = 0.25;
 mesh_length_alignment = 1500;
