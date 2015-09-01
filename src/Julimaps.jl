@@ -32,10 +32,9 @@ typealias FloatProperty Array{Float64, 1}
 
 ### GLOBAL VARIABLES ###########################
  
-export noMatch, noTriangle;
-
-global noMatch = [0; 0; -1];
-global noTriangle = (0, 0, 0);
+global NO_MATCH = [0; 0; -1];
+global NO_TRIANGLE = (0, 0, 0);
+global NO_RANGE = (0:0, 0:0);
 
 global OVERVIEW_INDEX = -1;
 global MONTAGED_INDEX = -2;
@@ -48,6 +47,7 @@ using HDF5
 using JLD
 include("Params.jl")
 include("IO.jl")
+include("Params_session.jl")
 include("convolve.jl")
 include("Mesh.jl")
 include("Matches.jl")

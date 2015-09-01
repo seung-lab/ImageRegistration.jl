@@ -108,7 +108,7 @@ function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
     sparse(II[1:numel],JJ[1:numel],SS[1:numel])
 end
 
-function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gradient, eta_newton, ftol_grad, ftol_newton)
+function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gradient, ftol_gradient, eta_newton, ftol_newton)
     d=size(Vertices,1)
     V=size(Vertices,2)
     E=size(Incidence,2)
@@ -127,7 +127,7 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
         push!(U, Energy(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
         if iter != 1
-    	if (U[iter-1] - U[iter]) / U[iter-1] < ftol_grad
+    	if (U[iter-1] - U[iter]) / U[iter-1] < ftol_gradient
     		println("Switching to Newton's Method:");    iter += 1; break;
     	end
     	end
