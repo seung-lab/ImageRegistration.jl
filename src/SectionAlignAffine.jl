@@ -1,3 +1,4 @@
+#=
 include("convolve.jl")
 
 
@@ -5,16 +6,18 @@ using Images
 include("imwarp.jl")
 include("visualize.jl")
 #include("render.jl")	# cyclic inclusion
-
+=#
 
 function test()
 	getimage(path) = convert(Array{Float64, 2}, convert(Array, imread(path)));
-	sec1 = getimage("./sections/S2-W001_sec24_0.175.tif")
+	sec1 = getimage("../sections/S2-W001_sec24_0.175.tif")
 	#sec2 = getimage("./sections/S2-W001_sec24_0.175.tif")
-	sec2 = getimage("./sections/S2-W001_sec25_0.175.tif")
+	sec2 = getimage("../sections/S2-W001_sec25_0.175.tif")
 	println(size(sec1))
 	println(size(sec2))
 	trans, points1, points2, res1, res2 = AffineAlignSections(sec1, sec2, 0.175, return_points=true)
+	points1 = hcat(points1[:]...)
+	points2 = hcat(points2[:]...)
 
 	println(trans)
 	#out_img, offset = imwarp(sec2, trans)
@@ -35,11 +38,13 @@ end
 
 function test2()
 	getimage(path) = convert(Array{Float64, 2}, convert(Array, imread(path)));
-	sec1 = getimage("./output_images/(1,1)_montage.tif")
-	sec2 = getimage("./output_images/(1,2)_montage.tif")
+	sec1 = getimage("../output_images/(1,1)_montage.tif")
+	sec2 = getimage("../output_images/(1,2)_montage.tif")
 	println(size(sec1))
 	println(size(sec2))
 	trans, points1, points2, res1, res2 = AffineAlignSections(sec1, sec2, 1, 0.3; return_points=true)
+	points1 = hcat(points1[:]...)
+	points2 = hcat(points2[:]...)
 
 	println(trans)
 	downsample = 4
@@ -74,14 +79,27 @@ function test2()
     #ccp.write_image_from_points(points1[1:2,:].', p11[2:-1:1,:].', "test_outputs/write_name.jpg")
 end
 
+function test3()
+	sec1 = "../output_images/(1,1)_montage.tif"
+	sec2 = "../output_images/(1,2)_montage.tif"
+	A, pair = AffineAlignSections(sec1, sec2)
+	return pair
+end
+
 
 """
+`AffineAlignSections`
+
 Returns the affine transformation A, such that p_in_B = p_in_A * A, where p is point coordinates in row vector.
 """
 function AffineAlignSections(img1::Array{}, img2::Array{}, downsample_ratio = 1, accept_xcorr = 0.3; return_points=false)
 	# points here are in column vector convention
 	points, half_block_size, search_radius = GenerateMatchPoints(img1, img2)
-	points1, points2 = GetBlockMatches(img1, img2, points, half_block_size, search_radius, accept_xcorr)
+	points1list, points2list = GetBlockMatches(img1, img2, points, half_block_size, search_radius, accept_xcorr)
+
+	points1 = hcat(points1list[:]...)
+	points2 = hcat(points2list[:]...)
+
 	A = FindAffine(points1, points2)
 	residualIn2 = A*points1 - points2;
 	rmsIn2 = mean( sum(residualIn2.^2, 1) )^0.5
@@ -102,7 +120,7 @@ function AffineAlignSections(img1::Array{}, img2::Array{}, downsample_ratio = 1,
 	A = A.'
 
 	if return_points
-		return A, points1, points2, residualIn1, residualIn2, rmsIn1, rmsIn2
+		return A, points1list, points2list, residualIn1, residualIn2, rmsIn1, rmsIn2, rmsTotal
 	else
 		return A
 	end
@@ -148,8 +166,6 @@ function GetBlockMatches(img1::Array{}, img2::Array{}, points, half_block_size, 
 			push!(points2, [p + offset; 1])
 		end
 	end
-	points1 = hcat(points1[:]...)
-	points2 = hcat(points2[:]...)
 	return points1, points2
 end
 
@@ -196,4 +212,84 @@ function BlockMatchAtPoint(A, pointInA, B, pointInB, half_block_size, search_r)
 
 	return [i_max - 1 - search_r; j_max - 1 - search_r], r_max, xc;
 	
+end
+
+function BlockMatchSections
+end
+
+function RecomputeSectionAffine(pair::MeshSet, downsample_ratio = 1)
+	points1list = pair.meshes[1].nodes
+	points2list = pair.matches[1].dst_points
+	points1 = hcat(points1list[:]...)
+	points2 = hcat(points2list[:]...)
+	if size(points1,1)==2
+		points1 = [points1, zeros(eltype(points1), 1, size(points1,2))]
+	end
+	if size(points2,1)==2
+		points2 = [points2, zeros(eltype(points2), 1, size(points2,2))]
+	end
+	A = FindAffine(points1, points2)
+	A = AdjustAffineForScaling(A, downsample_ratio)
+
+	# convert column vector convention to row vector convention
+	return A.'
+end
+
+function Meshes2SectionMatches!(pair::MeshSet, downsample_ratio = 1, accept_xcorr = 0.3; return_points=false)
+	if pair.N != 2
+		error("Invalid Arguments")
+	end
+
+	img1 = []
+	img2 = []
+	try
+		img1 = getFloatImage(pair.meshes[1])
+		img2 = getFloatImage(pair.meshes[2])
+	catch
+		# mostly for testing purpose where name is the file path
+		img1 = getFloatImage(pair.meshes[1].name)
+		img2 = getFloatImage(pair.meshes[2].name)
+	end
+
+	A, points1, points2, residualIn1, residualIn2, rmsIn1, rmsIn2, rmsTotal = 
+		AffineAlignSections(img1, img2, downsample_ratio, accept_xcorr; return_points=true)
+
+	# in the future this might not be a good idea where nodes could be the fine alignment nodes
+	pair.meshes[1].nodes = points1
+	src_points_indices = 1:length(points1)
+	dst_points = points2
+
+	matches = Matches(pair.meshes[1].index, pair.meshes[2].index, length(points1),
+		src_points_indices, dst_points, [], [], []);
+	pair.matches = [matches]
+
+	return A, pair
+end
+
+
+"""
+`AffineAlignSections`
+
+Arguments:
+
+ * sec1: index or name, that can be used to construct a Mesh object
+ * sec2: same as above
+
+Returns:
+
+ * Affine transform and the MeshSet containing the matches.
+
+"""
+function AffineAlignSections(sec1, sec2, downsample_ratio = 1, accept_xcorr = 0.3)
+	if isa(sec1, Index) && isa(sec2, Index) && length(sec1)==2 && length(sec2)==2
+		sec1 = sec1..., MONTAGED_INDEX, MONTAGED_INDEX
+		sec2 = sec2..., MONTAGED_INDEX, MONTAGED_INDEX
+	end
+
+	pair = makeNewMeshSet(PARAMS_ALIGNMENT)
+	pair.N = 2
+	mesh1 = Mesh(sec1)
+	mesh2 = Mesh(sec2)
+	pair.meshes = [mesh1, mesh2]
+	return Meshes2SectionMatches!(pair, downsample_ratio, accept_xcorr)
 end
