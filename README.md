@@ -10,7 +10,7 @@ A set of tools for elastic image registration in Julia.
 | Step | Read | Match | Solve | Render | Write | Total | Review Method | Intervene Method |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | premontage | 30 | 10 | 10 | 0 | 30 | 80 | (overlay tiles on overview) | NA |
-| montage | 30 | 40 | 20 | 60 | 30 | 280 | (section overlay as checkerboard) | blockmatch image select |
+| montage | 30 | 40 | 20 | 60 | 30 | 180 | (section overlay as checkerboard) | blockmatch image select |
 | prealignment | 30 | 25 | 5 | 30 | 30 | 120 | overlay sections | blockmatch image select |
 | alignment | 30 | 480 | 20 | 80 | 60 | 670 | movie of sections in FIJI | blockmatch image select |
 
