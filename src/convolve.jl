@@ -10,7 +10,7 @@ function convolve{T, n}(A::SubArray{T, n},B::Array{T, n},dims)
     real(ifft!(fft!(pA,dims).*fft!(pB,dims),dims))
 end
 
-function convolve_Float64(A,B,dims)
+function convolve_ComplexFloat64(A,B,dims)
     common_size=tuple(map(max,size(A),size(B))...)
     pA=zeros(Complex{Float64},common_size)
     pB=zeros(Complex{Float64},common_size)
@@ -22,9 +22,23 @@ function convolve_Float64(A,B,dims)
     real(ifft!(fft!(pA,dims).*fft!(pB,dims),dims))
 end
 
-function valid_convolve(A,B,dims)
+# got rid of dims argument
+# using real to complex fft and ifft
+function convolve_Float64(A,B)
+    common_size=tuple(map(max,size(A),size(B))...)
+    pA=zeros(Float64,common_size)
+    pB=zeros(Float64,common_size)
+    rangesA=[1:x for x in size(A)]
+    rangesB=[1:x for x in size(B)]
+    pA[rangesA...]=A
+    pB[rangesB...]=B
+    
+    irfft(rfft(pA).*rfft(pB),common_size[1])
+end
+
+function valid_convolve(A,B)
     ranges=[min(a,b):max(a,b) for (a,b) in zip(size(A),size(B))]
-    convolve_Float64(A,B,dims)[ranges...]
+    convolve_Float64(A,B)[ranges...]
 end
 
 function cumsum2{T,ndim}(A::Array{T,ndim})
@@ -46,6 +60,11 @@ function cumsum2{T,ndim}(A::Array{T,ndim})
     B
 end
 
+function optimize_normxcorr2(img)
+    p=plan_rfft(img,flags=FFTW.MEASURE)
+    q=plan_irfft(rfft(img),flags=FFTW.MEASURE,size(img,1))
+end
+    
 function normxcorr2(template,img)
     # "normalized cross correlation": slide template across img,
     # compute Pearson correlation coefficient for each template location
@@ -63,7 +82,7 @@ function normxcorr2(template,img)
     # sufficient to subtract mean from just one variable
     dt=template-mean(template)
     templatevariance=sum(dt.^2)
-    numerator=valid_convolve(img,dt[end:-1:1,end:-1:1],[1 2])
+    numerator=valid_convolve(img,dt[end:-1:1,end:-1:1])
     
     ##### local statistics of img
     # zero pad image in first row and column
