@@ -91,8 +91,6 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 	min_r = params.min_r;
 	b_rad = block_size + search_r;
 
-	optimize_array = rand(b_rad, b_rad);
-
 	# preprocessing
 	@sync begin
 	  for p in 1:num_procs
@@ -104,7 +102,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 		dst_ranges[idx] = get_range(B, pt, Bm.disp, b_rad);
 		end
 		else
-		remotecall_fetch(p, optimize_normxcorr2, optimize_array);
+		remotecall_fetch(p, optimize_normxcorr2, b_rad);
 		end
 	    end
 	  end
