@@ -95,6 +95,10 @@ function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 	return Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 end
 
+function Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params::Params)
+	return Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
+end
+
 function Tile2Mesh(name, size::Int64, index, dy, dx, tile_fixed, params::Params)
 	return Tile2Mesh(name, size, size, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
 end

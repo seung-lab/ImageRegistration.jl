@@ -46,10 +46,13 @@ function findNode(Ms, mesh_ind, node_ind);
 	return Ms.nodes_indices[mesh_ind] + node_ind;
 end
 
-function findIndex(Ms, mesh_index_tuple)
+function findIndex(Ms, mesh_index_tuple::Index)
 	return findfirst(this -> mesh_index_tuple == this.index, Ms.meshes)
 end
 
+function find_section(Ms, section_num)
+	return findfirst(this -> section_num == this.index[2], Ms.meshes)
+end
 function makeNewMeshSet(params::Params)
 	N = 0;
 	M = 0;
@@ -191,27 +194,23 @@ diagonal_pairs = Pairings(0);
 
 	return pairs;
 end
-#=
-function addAllMatches!(Ms, imageArray::SharedArray)
 
-pairs = getAllOverlaps(Ms)
+function add_pair_matches!(Ms, a, b)
 
-@time for k in 0:num_procs:length(pairs)
-	toFetch = @sync @parallel for l in 1:num_procs
-	ind = k + l;
-	if ind > length(pairs) return; end
-	(i, j) = pairs[ind];
-	return Meshes2Matches(imageArray[:, :, i], Ms.meshes[i], imageArray[:, :, j], Ms.meshes[j], block_size, search_r, min_r);
-	end
-	for i = 1:length(toFetch)
-		M = fetch(toFetch[i])
-		if typeof(M) == Void continue; end
-		addMatches2MeshSet!(M, Ms);
-	end
-	end
+images = load_section_pair(Ms, a, b);
+
+matches_atob = Meshes2Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
+matches_btoa = Meshes2Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
+
+if typeof(matches_atob) != Void && (matches_atob) != Void
+		addMatches2MeshSet!(matches_atob, Ms);
+	      end
+if typeof(matches_btoa) != Void && (matches_btoa) != Void
+		addMatches2MeshSet!(matches_btoa, Ms);
+	      end
 	return Ms;
+
 end
-=#
 
 function add_all_matches!(Ms, images)
 
@@ -221,7 +220,7 @@ i = 1;
 nextidx() = (idx=i; i+=1; idx);
 matches_array = cell(n);
 
-optimize_all_cores(Ms.params);
+#optimize_all_cores(Ms.params);
 
 #if is_pre_aligned(Ms.meshes[1].index)
 				while true
@@ -265,32 +264,7 @@ for k in 1:n
 end
 	return Ms;
 end
-#=
 
-function make_section_meshset(session, section_num)
-	Ms = makeNewMeshSet(PARAMS_MONTAGE);
-	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1))
-	for i in 1:length(indices)
-	name = session[i, 1];
-	index = session[i, 2];
-	dx = session[i, 3];
-	dy = session[i, 4];
-	addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
-	end
-	return Ms;
-end
-
-function make_stack_meshset(wafer_num, section_range)
-	Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
-	for i in section_range
-	name = getName(wafer_num, i);
-	index = (wafer_num, i, 0, 0);
-	dx = 0;
-	dy = 0;
-	addMesh2MeshSet!(Tile2Mesh(name, index, dy, dx, false, mesh_length_alignment, mesh_coeff_alignment), Ms);
-	end
-end
-=#
 function get_matched_points(Ms::MeshSet, k)
 
 src_p = Points(0);
@@ -350,45 +324,42 @@ function load_section(offsets, section_num)
 		push!(images, image_shared)
 	end
 
+
+
 	return Ms, images;
 end
 
-#=
-function load_section(session, section_num)
-	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1));
-	Ms = makeNewMeshSet(PARAMS_MONTAGE);
-	num_tiles = length(indices);
-	paths = Array{String, 1}(num_tiles);
+function make_stack(offsets, wafer_num, section_range)
+	indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
+	Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+
+	dy = 0;
+	dx = 0;
 
 	for i in indices
-		name = session[i, 1];
-		index = session[i, 2];
-		dx = session[i, 3];
-		dy = session[i, 4];
-		addMesh2MeshSet!(Tile2Mesh(name, tile_size, index, dy, dx, false, mesh_length, mesh_coeff), Ms);
+	name = offsets[i, 1];
+	index = offsets[i, 2];
+	dy += offsets[i, 3];
+	dx += offsets[i, 4];
+	size_i = offsets[i, 5]
+	size_j = offsets[i, 6]
+	addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
 	end
+
+	optimize_all_cores(Ms.params);
 
 	return Ms;
 end
 
-function load_section_images(session, section_num)
-	indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1));
-	num_tiles = length(indices);
-	paths = Array{String, 1}(num_tiles);
-
-	imageArray = SharedArray(UInt8, tile_size, tile_size, num_tiles);
-
-	ind = 1;
-
-	for i in indices
-		name = session[i, 1];
-		imageArray[:, :, ind] = getImage(getPath(name));
-		ind+=1;
-	end
-
-	return imageArray;
+function load_section_pair(Ms, a, b)
+	A_image = getImage(getPath(Ms.meshes[find_section(Ms,a)].name));
+	B_image = getImage(getPath(Ms.meshes[find_section(Ms,b)].name));
+		A_im = SharedArray(UInt8, size(A_image, 1), size(A_image, 2));
+		A_im[:, :] = A_image[:, :];
+		B_im = SharedArray(UInt8, size(B_image, 1), size(B_image, 2));
+		B_im[:, :] = B_image[:, :];
+     	return A_im, B_im; 
 end
-=#
 
 function load_stack(offsets, wafer_num, section_range)
 	indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
@@ -407,6 +378,8 @@ function load_stack(offsets, wafer_num, section_range)
 	image_shared[:, :] = image[:, :];
 	push!(images, image_shared)
 	end
+
+	optimize_all_cores(Ms.params);
 
 	return Ms, images;
 end
