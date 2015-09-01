@@ -24,6 +24,10 @@ type Mesh
 	edge_coeffs::FloatProperty	   			# 1-by-m dense vector of floats that stores the spring coefficients.
 end
 
+Mesh() = Mesh("", (0,0,0,0), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+Mesh(index::Index) = Mesh(getName(index), index, [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+Mesh(name::String) = Mesh(name, parseName(name), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+
 ### IO EXTENSIONS
 function getPath(mesh::Mesh)
 	return getPath(mesh.name);
