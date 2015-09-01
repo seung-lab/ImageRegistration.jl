@@ -12,7 +12,7 @@ A set of tools for elastic image registration in Julia.
 | premontage | 30 | 10 | 10 | 0 | 30 | 80 | (overlay tiles on overview) | NA |
 | montage | 30 | 100 | 20 | 60 | 30 | 240 | (section overlay as checkerboard) | blockmatch image select |
 | prealignment | 30 | 25 | 5 | 30 | 30 | 120 | overlay sections | blockmatch image select |
-| alignment | 30 | 100 | 20 | 80 | 60 | 290 | movie of sections in FIJI | blockmatch image select |
+| alignment | 30 | 480 | 20 | 80 | 60 | 670 | movie of sections in FIJI | blockmatch image select |
 
 # Milestones
 * 8/7 Stitch two tiles (8/9)
