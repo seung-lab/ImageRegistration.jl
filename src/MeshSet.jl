@@ -221,6 +221,18 @@ i = 1;
 nextidx() = (idx=i; i+=1; idx);
 matches_array = cell(n);
 
+optimize_all_cores(Ms.params);
+
+#if is_pre_aligned(Ms.meshes[1].index)
+				while true
+					idx = nextidx();
+						if idx > n
+							break
+						end
+					(a, b) = pairs[idx];
+					matches_array[idx] = Meshes2Matches(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params);
+				end
+#=else
 @sync begin
 	for p in 1:num_procs
 		if p != myid() || num_procs == 1
@@ -244,7 +256,8 @@ matches_array = cell(n);
 	end
 end
 
-
+end
+=#
 for k in 1:n
 		M = matches_array[k]
 		if typeof(M) == Void || M == Void continue; end
@@ -394,7 +407,7 @@ function load_stack(offsets, wafer_num, section_range)
 	image_shared[:, :] = image[:, :];
 	push!(images, image_shared)
 	end
-	
+
 	return Ms, images;
 end
 

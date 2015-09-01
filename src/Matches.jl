@@ -91,37 +91,24 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 	min_r = params.min_r;
 	b_rad = block_size + search_r;
 
-	# preprocessing
-	@sync begin
-	  for p in 1:num_procs
-	    @async begin
-	      if p == myid()
-		for idx in 1:n_upperbound
-		pt = Am.nodes[idx];
-		src_ranges[idx] = get_range(A, pt, Am.disp, block_size);
-		dst_ranges[idx] = get_range(B, pt, Bm.disp, b_rad);
-		end
-		else
-		remotecall_fetch(p, optimize_normxcorr2, b_rad);
-		end
-	    end
-	  end
-	end
 	
-	if num_procs == 1
-		optimize_normxcorr2(optimize_array);
+	# preprocessing
+	for idx in 1:n_upperbound
+	pt = Am.nodes[idx];
+	src_ranges[idx] = get_range(A, pt, Am.disp, block_size);
+	dst_ranges[idx] = get_range(B, pt, Bm.disp, b_rad);
 	end
 	
 
 	inc_total() = (n_total += 1;)
 	inc_not_enough_dyn_range() = (n_not_enough_dyn_range += 1;)
 
-	if (is_pre_aligned(Am.index) && is_pre_aligned(Bm.index))
+	#if (is_pre_aligned(Am.index) && is_pre_aligned(Bm.index))
 	k = 1;
 	nextidx() = (idx=k; k+=1; idx);
 	@sync begin
 	for p in 1:num_procs
-		if (p != myid() && iseven(p-myid())) || num_procs == 1
+		if p != myid() || num_procs == 1
 			@async begin
 				while true
 					idx = nextidx();
@@ -145,7 +132,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 		end
 	end
       	end
-	else
+	#=else
 	for idx in 1:n_upperbound
 		if src_ranges[idx] == NO_RANGE || src_range[idx] == NO_RANGE
 			disp_vectors_raw[idx] = NO_MATCH;
@@ -159,7 +146,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 		end
 		disp_vectors_raw[idx] = get_max_xc_vector(A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
 	end
-	end
+	end=#
 
 	for idx in 1:n_upperbound
 	  	v = disp_vectors_raw[idx];
