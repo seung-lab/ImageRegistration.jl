@@ -12,9 +12,9 @@ end
 
 function align_stack(wafer_num, k::UnitRange{Int64})
 	@time Ms, imageArray = load_stack(PRE_ALIGNED_OFFSETS, wafer_num, k);
-	@time addAllMatches!(Ms, imageArray);
-	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
-	printResidualStats(Ms);
+	@time add_all_matches!(Ms, imageArray);
+	@time solve_meshset!(Ms);
+	print_res_stats(Ms);
 	save(Ms);
 	return Ms, imageArray
 end
