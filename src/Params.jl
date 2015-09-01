@@ -125,15 +125,16 @@ end
 
 function parse_offsets(info_path::String)
 	file = readdlm(info_path);
-	session = cell(size(file, 1), 4); # name, index, dx, dy
-	for i in 1:size(file, 1)
+	offsets = cell(size(file, 1), size(file, 2) + 1); # name, index, dx, dy
+	for i in 1:size(offsets, 1)
 	index = parseName(file[i, 1]);
-	session[i, 1] = getName(index);
-	session[i, 2] = index;
-	session[i, 3] = file[i, 2];
-	session[i, 4] = file[i, 3];
-	end
-	return session;
+	offsets[i, 1] = getName(index);
+	offsets[i, 2] = index;
+	for j in 3:size(offsets, 2)
+		offsets[i, j] = file[i, j-1];
+      	end
+      end
+	return offsets;
 end
 
 bucket_dir_path = ""
