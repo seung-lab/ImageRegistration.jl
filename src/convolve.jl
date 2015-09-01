@@ -63,11 +63,22 @@ end
 function optimize_normxcorr2(img)
     p=plan_rfft(img,flags=FFTW.MEASURE)
     q=plan_irfft(rfft(img),flags=FFTW.MEASURE,size(img,1))
+    return Void;
 end
-function optimize_normxcorr2(b_rad::Int64)
-    img = rand(b_rad, b_rad)
-    p=plan_rfft(img,flags=FFTW.MEASURE)
-    q=plan_irfft(rfft(img),flags=FFTW.MEASURE,size(img,1))
+
+# extension:
+# Params_session.jl: optimize_all_cores(params::Params)
+#
+function optimize_all_cores(img_d::Int64)
+    img = rand(img_d, img_d)
+	@sync begin
+	  for p in 1:num_procs
+	    @async begin
+		remotecall_fetch(p, optimize_normxcorr2, img);
+		end
+	    end
+	  end
+    return Void;
 end
     
 function normxcorr2(template,img)
