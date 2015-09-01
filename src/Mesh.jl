@@ -33,6 +33,10 @@ function getFloatImage(mesh::Mesh)
 	return getFloatImage(getPath(mesh.index));
 end
 
+function getFloatImage(index::Index)
+	return getFloatImage(getPath(index));
+end
+
 function getImage(mesh::Mesh)
 	return getImage(mesh.name);
 end

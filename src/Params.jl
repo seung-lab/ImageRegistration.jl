@@ -7,8 +7,8 @@ function is_montaged(index::Index)
 	if index[3:4] == (MONTAGED_INDEX, MONTAGED_INDEX)	return true; else return false; end
 end
 
-function is_pre_aligned(index::Index)
-	if index[3:4] == (PRE_ALIGNED_INDEX, PRE_ALIGNED_INDEX)	return true; else return false; end
+function is_prealigned(index::Index)
+	if index[3:4] == (PREALIGNED_INDEX, PREALIGNED_INDEX)	return true; else return false; end
 end
 
 function is_aligned(index::Index)
@@ -41,7 +41,7 @@ function parseName(name::String)
 	# pre-aligned section
 	m = match(r"(\d*),(\d*)_pre-aligned", name)
 	if typeof(m) != Void
-	ret = parse(Int, m[1]), parse(Int, m[2]), PRE_ALIGNED_INDEX, PRE_ALIGNED_INDEX; 
+	ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, PREALIGNED_INDEX; 
 	end
 
 	# aligned-section
@@ -59,7 +59,7 @@ function getName(index::Index)
 	return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2]);
 	elseif is_montaged(index)
 	return string(index[1], ",", index[2], "_montaged");
-	elseif is_pre_aligned(index)
+	elseif is_prealigned(index)
 	return string(index[1], ",", index[2], "_pre-aligned");
 	elseif is_aligned(index)
 	return string(index[1], ",", index[2], "_aligned")
@@ -75,24 +75,21 @@ end
 # Mesh.jl: getPath(mesh::Mesh)
 function getPath(index::Index)
 	name = getName(index);
-
 	if is_overview(index)
-	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
-	return joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
-
+		section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
+		path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
 	elseif is_montaged(index)
-	return joinpath(MONTAGED_DIR, string(name, ".tif"));
-	
-	elseif is_pre_aligned(index)
-	return joinpath(PRE_ALIGNED_DIR, string(name, ".tif"));
-
+		path = joinpath(MONTAGED_DIR, string(name, ".tif"));
+	elseif is_prealigned(index)
+		path = joinpath(PREALIGNED_DIR, string(name, ".tif"));
 	elseif is_aligned(index)
-	return joinpath(ALIGNED_DIR, string(name, ".tif"));
-
+		path = joinpath(ALIGNED_DIR, string(name, ".tif"));
 	else
-	section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
-	return joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"));
+		section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage");
+		path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
 	end
+	println(path)
+	return path
 end
 
 function getPath(name::String)
@@ -148,32 +145,42 @@ datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
 affine_dir_path = "~";
 
-pre_montaged_dir_path = "1_pre-montaged";
+premontaged_dir_path = "1_pre-montaged";
 montaged_dir_path = "2_montaged";
-pre_aligned_dir_path = "3_pre-aligned";
+prealigned_dir_path = "3_pre-aligned";
 aligned_dir_path = "4_aligned";
 wafer_filename = "wafer_paths.txt";
-pre_montaged_offsets_filename = "pre-montaged_offsets.txt";
-pre_aligned_offsets_filename = "pre-aligned_offsets.txt";
+premontaged_offsets_filename = "premontaged_offsets.txt";
+prealigned_offsets_filename = "prealigned_offsets.txt";
 
-export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PRE_MONTAGED_OFFSETS, PRE_MONTAGE_DIR, ALIGNMENT_DIR
+export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR
 
 global BUCKET = bucket_dir_path;
 global AFFINE_DIR = affine_dir_path;
 global DATASET_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset);
-global PRE_MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_montaged_dir_path);
+global PREMONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path);
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path);
-global PRE_ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_aligned_dir_path);
+global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path);
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path);
+
 waferpath = Dict()
-if isfile(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename))
-	waferpath = waferpaths2dict(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename))
+waferpath_filename = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename)
+if isfile(waferpath_filename)
+	waferpath = waferpaths2dict(waferpath_filename)
 end
 global WAFER_DIR_DICT = waferpath;
-global PRE_MONTAGED_OFFSETS = parse_offsets(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_montaged_dir_path, pre_montaged_offsets_filename));
-global PRE_ALIGNED_OFFSETS = parse_offsets(joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, pre_aligned_dir_path, pre_aligned_offsets_filename));
 
+premontaged_offsets_path = ""
+if isfile(premontaged_offsets_path)
+	premontaged_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_offsets_filename)
+end
+global PREMONTAGED_OFFSETS = parse_offsets(premontaged_offsets_path)
 
+prealigned_offsets_path = ""
+if isfile(prealigned_offsets_path)
+	prealigned_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path, prealigned_offsets_filename)
+end
+global PREALIGNED_OFFSETS = parse_offsets(prealigned_offsets_path)
 
 export tile_size, block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols, mesh_length_alignment, min_r_alignment, search_r_alignment, block_size_alignment;
 
@@ -183,8 +190,8 @@ block_size = 40;
 search_r = 80;
 min_r = 0.75;
 mesh_length = 200;
-block_size_alignment = 100;
-search_r_alignment = 600;
+block_size_alignment = 1000;
+search_r_alignment = 500;
 min_r_alignment = 0.25;
 mesh_length_alignment = 1500;
 mesh_coeff = 1;

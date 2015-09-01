@@ -46,6 +46,10 @@ global ALIGNED_INDEX = -4;
 using Images
 using HDF5
 using JLD
+using Images
+using ImageView
+using Color
+using FixedPointNumbers
 include("Params.jl")
 include("IO.jl")
 include("convolve.jl")

@@ -61,8 +61,8 @@ function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
             lines = hcat(lines, vcat(a, b))
         end
     end
-    annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="yyxx"))
-    return imgc, img2
+    an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="yyxx"))
+    return an_lines
 end
 
 function draw_mesh(img, nodes, node_dict)
@@ -86,7 +86,7 @@ function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,
     vectors = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
     an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], color=pt_color))
     an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, coord_order="xxyy", linewidth=3))
-    return imgc, img2, an_points, an_vectors
+    return an_points, an_vectors
 end    
 
 function draw_vectors(img, vectors)
@@ -121,7 +121,7 @@ function draw_points(imgc, img2, points, color=RGB(0,0,1))
 #   an_points: annotation object for the points
     points = [points[2,:]; points[1,:]]
     an_points = annotate!(imgc, img2, AnnotationPoints(points, color=color))
-    return imgc, img2, an_points
+    return an_points
 end 
 
 function draw_points(img, points)
@@ -145,8 +145,8 @@ function draw_imfuse_meshes(Oc, O2, dst_nodes_A, SR_A, dst_nodes_B, SR_B)
     elseif SR_C[2] < 0
         dst_nodes_A[:, 1] -= SR_C[2]
     end
-    imgc, img2 = draw_mesh(imgc, img2, dst_nodes_B, node_dict_B, RGB(0,0,1))
-    imgc, img2 = draw_mesh(imgc, img2, dst_nodes_A, node_dict_A, RGB(1,0,1))
+    draw_mesh(imgc, img2, dst_nodes_B, node_dict_B, RGB(0,0,1))
+    draw_mesh(imgc, img2, dst_nodes_A, node_dict_A, RGB(1,0,1))
 end
 
 function demo_color_plot()
@@ -171,9 +171,4 @@ function demo_mesh()
 
     println("Original images and shapes")
     draw_mesh(make_isotropic(img), nodes, node_dict)
-end
-
-function demo_vectors()
-# Load matches and display them on a black background
-    vector_path = joinpath(BUCKET, "test_images", "vectors.jld")
 end
