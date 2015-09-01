@@ -64,6 +64,11 @@ function optimize_normxcorr2(img)
     p=plan_rfft(img,flags=FFTW.MEASURE)
     q=plan_irfft(rfft(img),flags=FFTW.MEASURE,size(img,1))
 end
+function optimize_normxcorr2(b_rad::Int64)
+    img = rand(b_rad, b_rad)
+    p=plan_rfft(img,flags=FFTW.MEASURE)
+    q=plan_irfft(rfft(img),flags=FFTW.MEASURE,size(img,1))
+end
     
 function normxcorr2(template,img)
     # "normalized cross correlation": slide template across img,
