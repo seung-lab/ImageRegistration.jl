@@ -121,7 +121,7 @@ function solve_meshset!(Ms)
 		edges_padded = spzeros(Float64, Ms.n, cur_matches.n);
 
 		for j in 1:Ms.matches[i].n
-			edges_padded[findNode(Ms, Ms.matches_pairs[i][1], cur_matches.src_pointIndices[j]), j] = -1;
+			edges_padded[findNode(Ms, Ms.matches_pairs[i][1], cur_matches.src_points_indices[j]), j] = -1;
 			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1];
 			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
 			edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
@@ -259,7 +259,7 @@ dst_p = Points(0);
 for i in 1:Ms.matches[k].n
 		w = Ms.matches[k].dst_weights[i];
 		t = Ms.matches[k].dst_triangles[i];
-		p = Ms.matches[k].src_pointIndices[i];
+		p = Ms.matches[k].src_points_indices[i];
 		src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
 		dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 		p1 = src.nodes[p];
@@ -278,7 +278,7 @@ dst_p = Points(0);
 for i in 1:Ms.matches[k].n
 		w = Ms.matches[k].dst_weights[i];
 		t = Ms.matches[k].dst_triangles[i];
-		p = Ms.matches[k].src_pointIndices[i];
+		p = Ms.matches[k].src_points_indices[i];
 		src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
 		dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 		p1 = src.nodes_t[p];
@@ -376,7 +376,7 @@ function print_res_stats(Ms)
 		for i in 1:Ms.matches[k].n
 			w = Ms.matches[k].dst_weights[i];
 			t = Ms.matches[k].dst_triangles[i];
-			p = Ms.matches[k].src_pointIndices[i];
+			p = Ms.matches[k].src_points_indices[i];
 			src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
 			dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 			p1 = src.nodes_t[p];
