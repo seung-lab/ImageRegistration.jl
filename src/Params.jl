@@ -1,4 +1,3 @@
-
 function is_overview(index::Index)
 	if index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX)	return true; else return false; end
 end
@@ -123,22 +122,22 @@ end
 
 function parse_offsets(info_path::String)
 	file = readdlm(info_path);
-	session = cell(size(file, 1), 4); # name, index, dx, dy
-	for i in 1:size(file, 1)
+	offsets = cell(size(file, 1), size(file, 2) + 1); # name, index, dx, dy
+	for i in 1:size(offsets, 1)
 	index = parseName(file[i, 1]);
-	session[i, 1] = getName(index);
-	session[i, 2] = index;
-	session[i, 3] = file[i, 2];
-	session[i, 4] = file[i, 3];
-	end
-	return session;
+	offsets[i, 1] = getName(index);
+	offsets[i, 2] = index;
+	for j in 3:size(offsets, 2)
+		offsets[i, j] = file[i, j-1];
+      	end
+      end
+	return offsets;
 end
 
 bucket_dir_path = ""
 if isfile("bucket_dir_path.txt")
 	bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n');
-end
-if isfile("../bucket_dir_path.txt")
+elseif isfile("../bucket_dir_path.txt")
 	bucket_dir_path = rstrip(readall("../bucket_dir_path.txt"), '\n');
 end
 datasets_dir_path = "research/Julimaps/datasets";
@@ -149,6 +148,7 @@ premontaged_dir_path = "1_pre-montaged";
 montaged_dir_path = "2_montaged";
 prealigned_dir_path = "3_pre-aligned";
 aligned_dir_path = "4_aligned";
+
 wafer_filename = "wafer_paths.txt";
 premontaged_offsets_filename = "premontaged_offsets.txt";
 prealigned_offsets_filename = "prealigned_offsets.txt";
@@ -182,30 +182,6 @@ if isfile(prealigned_offsets_path)
 end
 global PREALIGNED_OFFSETS = parse_offsets(prealigned_offsets_path)
 
-export tile_size, block_size, search_r, min_r, mesh_length, mesh_coeff, match_coeff, eta_grad, eta_newton, show_plot, num_procs, ftol_grad, ftol_newton, num_tiles, num_rows, num_cols, mesh_length_alignment, min_r_alignment, search_r_alignment, block_size_alignment;
-
-MIN_DYNAMIC_RANGE_RATIO = 4.5;
-tile_size = 8000;
-block_size = 40;
-search_r = 80;
-min_r = 0.75;
-mesh_length = 200;
-block_size_alignment = 1000;
-search_r_alignment = 500;
-min_r_alignment = 0.25;
-mesh_length_alignment = 1500;
-mesh_coeff = 1;
-match_coeff = 20;
-eta_grad = 0.01;
-eta_newton = .5; 
 show_plot = false;
 num_procs = nprocs();
-ftol_grad = 1/500;
-ftol_newton = 1/1000000;
-num_tiles = 16;
-num_rows = 4;
-num_cols = 4;
-
-
-
 

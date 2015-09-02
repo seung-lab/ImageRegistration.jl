@@ -24,6 +24,10 @@ type Mesh
 	edge_coeffs::FloatProperty	   			# 1-by-m dense vector of floats that stores the spring coefficients.
 end
 
+Mesh() = Mesh("", (0,0,0,0), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+Mesh(index::Index) = Mesh(getName(index), index, [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+Mesh(name::String) = Mesh(name, parseName(name), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+
 ### IO EXTENSIONS
 function getPath(mesh::Mesh)
 	return getPath(mesh.name);
@@ -41,9 +45,7 @@ function getImage(mesh::Mesh)
 	return getImage(mesh.name);
 end
 
-function Tile2Mesh(name, size::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-	return Tile2Mesh(name, size, size, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-end
+
 
 function Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 	(Ai, Aj) = (size_i,size_j);
@@ -101,6 +103,19 @@ function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 	return Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 end
 
+function Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params::Params)
+	return Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
+end
+
+function Tile2Mesh(name, size::Int64, index, dy, dx, tile_fixed, params::Params)
+	return Tile2Mesh(name, size, size, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
+end
+
+function Tile2Mesh(name, image, index, dy, dx, tile_fixed, params::Params)
+	(size_i, size_j) = size(image);
+	Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
+end
+
 function Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 	(size_i, size_j) = size(image);
 	Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
@@ -131,12 +146,7 @@ function getMeshCoord(dims, total_offset, dists, i, j)
 	return [pi; pj];
 end
 
-function isInternal(A, i, j, d)
-	if i > d && i <= (size(A, 1) - d) && j > d && j <= (size(A, 2) - d)
-		return true
-	end
-	return false
-end
+
 
 # find the triangular mesh indices for a given point in A
 function findMeshTriangle(Am, i, j)
@@ -157,17 +167,13 @@ function findMeshTriangle(Am, i, j)
 	ind0 = getMeshIndex(Am.dims, i0, j0);
 	
 	if ind0 == 0
-		return noTriangle;
+		return NO_TRIANGLE;
 	end
 
 	node0 = Am.nodes[ind0];
 
-	#println("$i0, $j0 at ($node0)");
-
 	di = i - node0[1];
 	dj = j - node0[2];
-
-	#println("$di, $dj");
 
 	theta = abs(atan(di / dj));
 	if (theta < pi / 3)
@@ -223,7 +229,7 @@ function findMeshTriangle(Am, i, j)
 	end
 
 	if (ind1 == 0 || ind2 == 0)
-		return noTriangle;
+		return NO_TRIANGLE;
 	end
 	return (ind0, ind1, ind2);
 end
