@@ -141,16 +141,16 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 						inc_not_enough_dyn_range();
 						continue;
 					end
-					A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
-					B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
-					#max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
-					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im, B_im); 
+					#A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
+				#	B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
+					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
+				#	max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im, B_im); 
 					disp_vectors_raw[idx] = max_vect_xc[1];
 				#	xc_im_array[idx] = (max_vect_xc[2] .+ 1)./ 2;
 	#				A_im_array[idx] = A_im;	
 	#				B_im_array[idx] = B_im;	
 
-					println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
+					#println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
 				end
 			end
 		end
