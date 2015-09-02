@@ -49,18 +49,18 @@ end
 """
 `FIND_MESH_BB` - Find bounding box around mesh
 
-    BoundingBox(xlow, ylow, height, width) = find_mesh_bb(nodes)
+    BoundingBox(ilow, jlow, height, width) = find_mesh_bb(nodes)
 
 * `nodes`: 2xN matrix of mesh nodes
 * `BoundingBox`: smallest integer-valued rectangle containing all mesh nodes
 
 """ 
 function find_mesh_bb(nodes)
-    xlow = floor(Int64,minimum(nodes[:,1]))
-    ylow = floor(Int64,minimum(nodes[:,2]))
-    xhigh = ceil(Int64,maximum(nodes[:,1]))
-    yhigh = ceil(Int64,maximum(nodes[:,2]))
-    return BoundingBox(xlow, ylow, xhigh-xlow, yhigh-ylow)
+    ilow = floor(Int64,minimum(nodes[:,1]))
+    jlow = floor(Int64,minimum(nodes[:,2]))
+    ihigh = ceil(Int64,maximum(nodes[:,1]))
+    jhigh = ceil(Int64,maximum(nodes[:,2]))
+    return BoundingBox(ilow, jlow, ihigh-ilow, jhigh-jlow)
 end
 
 """
