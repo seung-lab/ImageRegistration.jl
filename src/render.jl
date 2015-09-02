@@ -158,7 +158,8 @@ function padimage(img, offset, bb)
 	xlow = offset[2] - bb.j
     z = zeros(bb.h, bb.w)
     z[ylow+1:ylow+size(img,1), xlow+1:xlow+size(img,2)] = img
-    return z
+    img = z
+    return img
 end
 
 function render_montage_for_directory()
@@ -227,17 +228,17 @@ function warp_pad_write(mesh)
 end
 
 function render_alignment_for_directory()
-	filename = joinpath(ALIGNED_DIR, "1,11-1,12_aligned_1000_500.jld")
+	filename = joinpath(ALIGNED_DIR, "1,11-1,15_aligned.jld")
     println("Rendering meshes in ", filename)
     meshset = load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
     global_bb = get_global_bb(meshset)
     # map(warp_pad_write, meshset.meshes)
-    for mesh in meshset.meshes[2:2]
+    for mesh in meshset.meshes
     	println("Warping ", mesh.name)
 	    @time img, offset = meshwarp(mesh)
         println(offset)
         println(size(img))
-	    img = padimage(img, offset, global_bb)
+	    padimage(img, offset, global_bb)
         println(size(img))
 	    println("Writing ", mesh.name)
 	    @time imwrite(img, joinpath(ALIGNED_DIR, string(mesh.name, ".tif")))
