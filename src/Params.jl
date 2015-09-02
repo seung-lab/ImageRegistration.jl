@@ -147,14 +147,14 @@ datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
 affine_dir_path = "~";
 
-pre_montaged_dir_path = "1_pre-montaged";
+pre_montaged_dir_path = "1_premontaged";
 montaged_dir_path = "2_montaged";
-pre_aligned_dir_path = "3_pre-aligned";
+pre_aligned_dir_path = "3_prealigned";
 aligned_dir_path = "4_aligned";
 
 wafer_filename = "wafer_paths.txt";
-pre_montaged_offsets_filename = "pre-montaged_offsets.txt";
-pre_aligned_offsets_filename = "pre-aligned_offsets.txt";
+pre_montaged_offsets_filename = "premontaged_offsets.txt";
+pre_aligned_offsets_filename = "prealigned_offsets.txt";
 
 export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PRE_MONTAGED_OFFSETS, PRE_MONTAGE_DIR, ALIGNMENT_DIR
 
