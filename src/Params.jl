@@ -37,8 +37,8 @@ function parseName(name::String)
 	ret = parse(Int, m[1]), parse(Int, m[2]), MONTAGED_INDEX, MONTAGED_INDEX; 	
 	end
 
-	# pre-aligned section
-	m = match(r"(\d*),(\d*)_pre-aligned", name)
+	# prealigned section
+	m = match(r"(\d*),(\d*)_prealigned", name)
 	if typeof(m) != Void
 	ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, PREALIGNED_INDEX; 
 	end
@@ -59,7 +59,7 @@ function getName(index::Index)
 	elseif is_montaged(index)
 	return string(index[1], ",", index[2], "_montaged");
 	elseif is_prealigned(index)
-	return string(index[1], ",", index[2], "_pre-aligned");
+	return string(index[1], ",", index[2], "_prealigned");
 	elseif is_aligned(index)
 	return string(index[1], ",", index[2], "_aligned")
 	else
@@ -144,9 +144,9 @@ datasets_dir_path = "research/Julimaps/datasets";
 cur_dataset = "piriform";
 affine_dir_path = "~";
 
-premontaged_dir_path = "1_pre-montaged";
+premontaged_dir_path = "1_premontaged";
 montaged_dir_path = "2_montaged";
-prealigned_dir_path = "3_pre-aligned";
+prealigned_dir_path = "3_prealigned";
 aligned_dir_path = "4_aligned";
 
 wafer_filename = "wafer_paths.txt";

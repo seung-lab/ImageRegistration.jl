@@ -38,7 +38,7 @@ global NO_RANGE = (0:0, 0:0);
 
 global OVERVIEW_INDEX = -1;
 global MONTAGED_INDEX = -2;
-global PRE_ALIGNED_INDEX = -3;
+global PREALIGNED_INDEX = -3;
 global ALIGNED_INDEX = -4;
 
 

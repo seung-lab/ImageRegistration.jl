@@ -103,7 +103,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 	dst_ranges[idx] = get_range(B, pt, Bm.disp, b_rad);
 	end
 
-	if is_pre_aligned(Am.index)
+	if is_prealigned(Am.index)
 	blockmatch_impath = joinpath(ALIGNED_DIR, "blockmatches", string(Am.name, "-", Bm.name));
       else
 	blockmatch_impath = joinpath(MONTAGED_DIR, "blockmatches", string(Am.name, "-", Bm.name));
@@ -114,7 +114,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 	inc_total() = (n_total += 1;)
 	inc_not_enough_dyn_range() = (n_not_enough_dyn_range += 1;)
 
-	#if (is_pre_aligned(Am.index) && is_pre_aligned(Bm.index))
+	#if (is_prealigned(Am.index) && is_prealigned(Bm.index))
 	k = 1;
 	nextidx() = (idx=k; k+=1; idx);
 	@sync begin
