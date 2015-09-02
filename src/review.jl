@@ -123,26 +123,36 @@ end
 """
 Display index k match pair meshes are two frames in movie to scroll between
 """
-function review_matches_movie(meshset, k, downsample=2)
+function review_matches_movie(meshset, k, step="post", downsample=2)
   matches = meshset.matches[k]
   src_index = matches.src_index
   dst_index = matches.dst_index
   println("display_matches_movie: ", (src_index, dst_index))
   src_mesh = meshset.meshes[findIndex(meshset, src_index)]
   dst_mesh = meshset.meshes[findIndex(meshset, dst_index)]
-  src_nodes, dst_nodes = get_matched_points_t(meshset, k)
-  global_bb = get_global_bb(meshset)
-  src_offset = [global_bb.i, global_bb.j]
-  dst_offset = [global_bb.i, global_bb.j]
+
+  if step == "post"
+    src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+    src_index = (src_mesh.index[1], src_mesh.index[2], -4, -4)
+    dst_index = (dst_mesh.index[1], dst_mesh.index[2], -4, -4)
+    global_bb = get_global_bb(meshset)
+    src_offset = [global_bb.i, global_bb.j]
+    dst_offset = [global_bb.i, global_bb.j]
+  else
+    src_nodes, dst_nodes = get_matched_points(meshset, k)
+    src_offset = src_mesh.disp
+    dst_offset = dst_mesh.disp
+  end
+
   src_nodes = hcat(src_nodes...) .- src_offset
   dst_nodes = hcat(dst_nodes...) .- dst_offset
 
-  src_img = getFloatImage((src_mesh.index[1], src_mesh.index[2], -4, -4))
+  src_img = getFloatImage(src_index)
   for i = 1:downsample/2
     src_img = restrict(src_img)
     src_nodes /= 2
   end
-  dst_img = getFloatImage((dst_mesh.index[1], dst_mesh.index[2], -4, -4))
+  dst_img = getFloatImage(dst_index)
   for i = 1:downsample/2
     dst_img = restrict(dst_img)
     dst_nodes /= 2
@@ -153,9 +163,12 @@ function review_matches_movie(meshset, k, downsample=2)
   img = Image(cat(3, src_img[1:i_max, 1:j_max], dst_img[1:i_max, 1:j_max]), timedim=3)
   # imgc, img2 = view(make_isotropic(img))
   imgc, img2 = view(img)
-  imgc, img2, an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,0,0))
-  imgc, img2, an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,1,0))
-  pts_to_remove = edit_matches(imgc, img2, an_dst_pts)
+  vectors = [src_nodes; dst_nodes]
+  an_pts, an_vectors = draw_vectors(imgc, img2, vectors)
+  # an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,0,0))
+  # an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,1,0))
+  # pts_to_remove = edit_matches(imgc, img2, an_dst_pts)
+  pts_to_remove = []
   src_img = 0; dst_img = 0; imgc = 0; img2 = 0;
   gc()
   return pts_to_remove
@@ -430,12 +443,11 @@ end
 """
 Display index k match pair meshes are two frames in movie to scroll between
 """
-function section_movie(meshset, downsample=2)
+function section_movie(meshset, slice_range=(2000:6000, 2000:6000), downsample=2)
   global_bb = get_global_bb(meshset)
   offset = [global_bb.i, global_bb.j]
   all_imgs = []
   all_nodes = []
-  slice_range = (2000:6000, 2000:6000)
   for mesh in meshset.meshes
     img = getFloatImage((mesh.index[1], mesh.index[2], -4, -4))[slice_range...]
     # img = getFloatImage(mesh)
@@ -445,8 +457,67 @@ function section_movie(meshset, downsample=2)
       nodes /= 2
     end
     push!(all_imgs, img)
-    push!(all_nodes, nodes)
+    push!(all_nodes, [nodes])
   end
   imgs = Image(cat(3, all_imgs...), timedim=3)
-  return view(imgs)
+  imgc, img2 = view(imgs)
+  n_groups = length(all_nodes)
+  for (idx, node_group) in enumerate(all_nodes)
+    r = idx*1.0 / n_groups
+    an_pts = draw_points(imgc, img2, node_group, RGB(r,0,0))
+  end
+  return imgc, img2
 end
+
+function scan_section_movie(meshset, divisions=8, downsample=2)
+  global_bb = get_global_bb(meshset)
+  all_nodes = []
+  for mesh in meshset.meshes
+    nodes = hcat(mesh.nodes_t...) .- offset
+    for i = 1:downsample/2
+      nodes /= 2
+    end
+    push!(all_nodes, [nodes])
+  end
+
+  ispan = ceil(Int64, global_bb.h/divisions)
+  jspan = ceil(Int64, global_bb.w/divisions)
+  overlap = 200
+  for j=1:divisions
+    for i=1:divisions
+      imin = min((i-1)*ispan - overlap, 1)
+      jmin = min((j-1)*jspan - overlap, 1)
+      imax = min(i*ispan, global_bb.h)
+      jmax = min(j*jspan, global_bb.w)
+      slice_range = (imin:imax, jmin:jmax)
+
+      all_imgs = []
+      for mesh in meshset.meshes
+        img = getFloatImage((mesh.index[1], mesh.index[2], -4, -4))[slice_range...]
+        # img = getFloatImage(mesh)
+        for i = 1:downsample/2
+          img = restrict(img)
+        end
+        push!(all_imgs, img)
+      end
+      imgs = Image(cat(3, all_imgs...), timedim=3)
+      imgc, img2 = view(imgs)
+      n_groups = length(all_nodes)
+      for (idx, node_group) in enumerate(all_nodes)
+        r = idx*1.0 / n_groups
+        an_pts = draw_points(imgc, img2, node_group, RGB(r,0,0))
+      end
+
+      e = Condition()
+      c = canvas(imgc)
+      win = Tk.toplevel(c)
+      bind(win, "<Destroy>", path->notify(e))
+
+      wait(e)
+    end
+  end
+end
+
+
+
+
