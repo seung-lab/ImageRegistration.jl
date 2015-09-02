@@ -25,6 +25,6 @@ function align_stack(wafer_num, k::UnitRange{Int64})
 	 add_pair_matches!(Ms, a, b); 
 	end
 	solve_meshset!(Ms);
-	printResidualStats(Ms);
+#	printResidualStats(Ms);
 	save(Ms);
 end
