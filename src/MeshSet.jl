@@ -1,17 +1,3 @@
-#=using Julimaps
-using Params
-using HDF5
-using JLD
-using Images
-importall IO
-include("Mesh.jl")
-include("Matches.jl")
-include("MeshSolve.jl")
-
-export save, load
-
-=#
-
 type MeshSet
 	params::Params
 
@@ -165,10 +151,10 @@ function save(Ms::MeshSet)
 	firstindex = Ms.meshes[1].index;
 	lastindex = Ms.meshes[Ms.N].index;
 
-	if is_pre_aligned(firstindex)
-filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_aligned.jld"));
+	if is_prealigned(firstindex)
+		filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_aligned.jld"));
 	else
-	filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
+		filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
 	end
 
 	jldopen(filename, "w") do file
@@ -222,7 +208,7 @@ matches_array = cell(n);
 
 #optimize_all_cores(Ms.params);
 
-#if is_pre_aligned(Ms.meshes[1].index)
+#if is_prealigned(Ms.meshes[1].index)
 				while true
 					idx = nextidx();
 						if idx > n
@@ -404,6 +390,3 @@ function print_res_stats(Ms)
 	max = maximum(res_norm);
 	println("Residuals after solving elastically: mean: $avg, sigma = $sig, max = $max");
 end
-
-
-
