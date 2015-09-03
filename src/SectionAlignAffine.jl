@@ -257,7 +257,6 @@ function Meshes2SectionMatches!(meshset::MeshSet, params; return_points=false)
 	matches = Matches(meshset.meshes[1].index, meshset.meshes[2].index, length(points1),
 		src_points_indices, dst_points, [], [], []);
 	meshset.matches = [matches]
-
 	return A, meshset
 end
 
@@ -296,6 +295,10 @@ function prealign_directory()
             filename_B = img_preceding[1]
             println("Prealigning ", filename_B[1:end-4], " to ", filename_A[1:end-4])
             @time tform, meshset = AffineAlignSections(filename_A, filename_B)
+   	  		# src_index = meshset.meshes[1].index
+			# dst_index = meshset.meshes[2].index
+   			# meshset.meshes[1].index = (src_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
+			# meshset.meshes[2].index = (dst_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
             println("Saving JLD for ", filename_B[1:end-4], " to ", filename_A[1:end-4])
             save(meshset)         
         end

@@ -17,18 +17,24 @@ Returns:
 function remove_matches_from_meshset!(indices_to_remove, match_index, meshset)
   println("Removing ", length(indices_to_remove), " points")
   if length(indices_to_remove) > 0
+    no_pts_removed = length(indices_to_remove)
     matches = meshset.matches[match_index]
     flag = trues(matches.n)
     flag[indices_to_remove] = false
-    matches.src_pointIndices = matches.src_pointIndices[flag]
-    matches.dst_points = matches.dst_points[flag]
-    matches.dst_triangles = matches.dst_triangles[flag]
-    matches.dst_weights = matches.dst_weights[flag]
-    matches.dispVectors = matches.dispVectors[flag]
-    no_pts_removed = length(indices_to_remove)
+    matches.src_points_indices = matches.src_points_indices[flag]
     matches.n -= no_pts_removed
-    meshset.m -= no_pts_removed
-    meshset.m_e -= no_pts_removed
+    matches.dst_points = matches.dst_points[flag]
+    if is_prealigned(meshset.meshes[1].index)
+      matches.dst_triangles = matches.dst_triangles[flag]
+      matches.dst_weights = matches.dst_weights[flag]
+      matches.disp_vectors = matches.disp_vectors[flag]
+      meshset.m -= no_pts_removed
+      meshset.m_e -= no_pts_removed
+    else
+      src_mesh = meshset.meshes[1]
+      src_mesh.nodes = src_mesh.nodes[flag]
+      src_mesh.n -= no_pts_removed
+    end
   end
 end
 
@@ -84,8 +90,6 @@ function edit_matches(imgc, img2, annotation)
     c = canvas(imgc)
     win = Tk.toplevel(c)
     bind(c, "<Button-3>", (c, x, y)->right_click(parse(Int, x), parse(Int, y)))
-    bind(win, "<Return>", path->end_edit())
-    bind(win, "<KP_Enter>", path->end_edit())
     bind(win, "<Destroy>", path->end_edit())
 
     function right_click(x, y)
@@ -109,12 +113,10 @@ function edit_matches(imgc, img2, annotation)
         println("End edit")
         notify(e)
         bind(c, "<Button-3>", path->path)
-        bind(win, "<Return>", path->path)
-        bind(win, "<KP_Enter>", path->path)
         bind(win, "<Destroy>", path->path)
     end
 
-    println("Right click to remove correspondences, then press enter.")
+    println("Right click to remove correspondences, then exit window.")
     wait(e)
 
     return pts_to_remove
@@ -181,11 +183,8 @@ Determine appropriate meshset solution method for meshset
 function resolve!(meshset::MeshSet)
   index = meshset.meshes[1].index
   if is_montaged(index)
-    solveMeshSet!(meshset)
   elseif is_prealigned(index)
-    continue
-  elseif is_aligned(index)
-    solveMeshSet!(meshset)
+    solve_meshset!(meshset)
   end
 end
 
@@ -203,30 +202,40 @@ function review_matches(dir, method="movie")
   jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
   for fn in jld_filenames[1:1]
     println(joinpath(dir, fn))
+    is_file_changed = false
     meshset = load(joinpath(dir, fn))["MeshSet"]
+    # src_index = meshset.meshes[1].index
+    # dst_index = meshset.meshes[2].index
+    # meshset.meshes[1].index = (src_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
+    # meshset.meshes[2].index = (dst_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
     new_path = update_filename(fn)
     log_file = open(joinpath(dir, string(new_path[1:end-4], ".txt")), "w")
     write(log_file, "Meshset from ", joinpath(dir, fn), "\n")
     for (k, matches) in enumerate(meshset.matches)
       println("Inspecting matches at index ", k,)
       if method=="images"
-        src_bm_imgs = get_blockmatch_images(meshset, k, "src", meshset.params.block_size)
-        dst_bm_imgs = get_blockmatch_images(meshset, k, "dst", meshset.params.block_size)
-        filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
-        pts_to_remove = edit_blockmatches(filtered_imgs)
+        @time src_bm_imgs = get_blockmatch_images(meshset, k, "src", meshset.params.block_size-400)
+        @time dst_bm_imgs = get_blockmatch_images(meshset, k, "dst", meshset.params.block_size-400)
+        @time filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
+        pts_to_remove = collect(edit_blockmatches(filtered_imgs))
       else
-        pts_to_remove = review_matches_movie(meshset, k, "pre", 3)
+        pts_to_remove = review_matches_movie(meshset, k, "post")
       end
-      save_blockmatch_imgs(pts_to_remove, meshset, k, joinpath(dir, "blockmatches"))
+      if length(pts_to_remove) > 0
+        is_file_changed = true
+        # save_blockmatch_imgs(meshset, k, pts_to_remove, joinpath(dir, "blockmatches"))
+      end
       remove_matches_from_meshset!(pts_to_remove, k, meshset)
       log_line = string("Removed following matches from index ", k, ":\n")
       log_line = string(log_line, join(pts_to_remove, "\n"))
       write(log_file, log_line, "\n")
     end
-    resolve!(meshset)
-    println("Saving JLD here: ", path)
+    if is_file_changed
+      resolve!(meshset)
+      println("Saving JLD here: ", new_path)
+      @time save(joinpath(dir, new_path), meshset)
+    end
     close(log_file)
-    @time save(joinpath(dir, path), meshset)
   end
 end
 
@@ -249,7 +258,8 @@ end
 """
 Save match pair images w/ search & block radii at k index in meshset
 """
-function save_blockmatch_imgs(blockmatch_ids, meshset, k, path)
+function save_blockmatch_imgs(meshset, k, blockmatch_ids, path)
+  gc(); gc();
   dir_path = joinpath(path, matches2filename(meshset, k))
   if !isdir(dir_path)
     mkdir(dir_path)
@@ -279,11 +289,11 @@ end
 """
 Return first JLD file in provided directory
 """
-function load_sample_meshset(dir)
+function load_sample_meshset(dir, idx=1)
   jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
-  fn = jld_filenames[4]
+  fn = jld_filenames[idx]
   println(joinpath(dir, fn))
-  return load(joinpath(dir, fn))["MeshSet"]
+  return load(joinpath(dir, fn))["MeshSet"], fn
 end
 
 """
@@ -291,8 +301,8 @@ Excerpt image in radius around given point
 """
 function sliceimg(img, point, radius::Int64)
   point = ceil(Int64, point)
-  imin = min(point[1]-radius, 1)
-  jmin = min(point[2]-radius, 1)
+  imin = max(point[1]-radius, 1)
+  jmin = max(point[2]-radius, 1)
   imax = min(point[1]+radius, size(img,1))
   jmax = min(point[2]+radius, size(img,2))
   i_range = imin:imax
@@ -318,15 +328,24 @@ end
 Retrieve 1d array of block match pairs from the original images
 """
 function get_blockmatch_images(meshset, k, mesh_type, radius)
+  gc(); gc();
   matches = meshset.matches[k]
   index = matches.(symbol(mesh_type, "_index"))
   mesh = meshset.meshes[findIndex(meshset, index)]
-  points = get_matched_points(meshset, k)
+  src_points, dst_points = get_matched_points(meshset, k)
   # src_points_t, dst_points_t = get_matched_points_t(meshset, k)
   offset = mesh.disp
   img = getFloatImage(mesh)
+  scaling_factor = meshset.params.scaling_factor
+  downsample = round(Int, log(1/scaling_factor)/log(2))
+  for i = 1:downsample
+    img = restrict(img)
+    src_points /= 2
+    dst_points /= 2
+    offset /= 2
+  end
   bm_imgs = []
-  for pt in (mesh_type == "src" ? points[1] : points[2])
+  for pt in (mesh_type == "src" ? src_points : dst_points)
     push!(bm_imgs, sliceimg(img, pt-offset, radius))
   end
   return bm_imgs
@@ -336,9 +355,11 @@ end
 Make one image from two blockmatch images, their difference, & their overlay
 """
 function create_filtered_images(src_imgs, dst_imgs)
+  gc(); gc();
   images = []
   for (n, (src_img, dst_img)) in enumerate(zip(src_imgs, dst_imgs))
     println(n, "/", length(src_imgs))
+    src_img, dst_img = padimages(src_img, dst_img)
     diff_img = convert(Image{RGB}, src_img-dst_img)
     imgA = grayim(Image(src_img))
     imgB = grayim(Image(dst_img))

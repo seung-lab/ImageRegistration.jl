@@ -8,6 +8,11 @@ function getImage(path::String)
 	return convert(Array{UInt8, 2}, round(convert(Array, img)*255));
 end
 
+function getUInt8Image(path::String)
+	img = imread(path)
+	return reinterpret(UInt8, data(img)[:,:,1])
+end
+
 function getImage(index::Index)
 	return getImage(getPath(index));
 end
@@ -23,6 +28,11 @@ function getFloatImage(path::String)
 	img.properties["timedim"] = 0;
 	return convert(Array{Float64, 2}, convert(Array, img));
 	#end
+end
+
+function getUfixed8Image(path::String)
+	img = imread(path)
+	return convert(Array{Ufixed8}, data(img)[:,:,1])
 end
 
 function loadAffine(path::String)
