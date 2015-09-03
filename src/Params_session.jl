@@ -19,7 +19,7 @@ type Params
 	ftol_newton::Float64
 end
 
-function print_params(p::Params)
+function print(p::Params)
   	println("#Params:#######################")
 	println("    scaling_factor: $(p.scaling_factor)")
 	println("- Mesh parameters:")
@@ -46,11 +46,11 @@ MIN_DYN_RANGE_RATIO_MONTAGE = 5
 BLOCK_SIZE_MONTAGE = 48
 SEARCH_R_MONTAGE = 100
 MIN_R_MONTAGE = 0.75
-MATCH_COEFF_MONTAGE = 20
+MATCH_COEFF_MONTAGE = 10
 ETA_GRADIENT_MONTAGE = 0.01
-FTOL_GRADIENT_MONTAGE = 1/1000
-ETA_NEWTON_MONTAGE = 0.5
-FTOL_NEWTON_MONTAGE = 1/1000000
+FTOL_GRADIENT_MONTAGE = 1/2
+ETA_NEWTON_MONTAGE = 0.8
+FTOL_NEWTON_MONTAGE = 1/10000000
 
 SCALING_FACTOR_PREALIGNMENT = 0.5
 MESH_LENGTH_PREALIGNMENT = 3200

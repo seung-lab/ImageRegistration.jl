@@ -18,7 +18,7 @@
 # 'Moving' - integer vector containing indices of moving vertices
 # could be changed to 1xE binary vector
 
-import PyPlot
+#import PyPlot
 
 global eps = 1E-8
 
@@ -127,7 +127,7 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
         push!(U, Energy(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
         if iter != 1
-    	if (U[iter-1] - U[iter]) / U[iter-1] < ftol_gradient
+    	if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_gradient
     		println("Switching to Newton's Method:");    iter += 1; break;
     	end
     	end
@@ -141,11 +141,13 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
         Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
     	push!(U, Energy(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
-        if (U[iter-1] - U[iter]) / U[iter-1] < ftol_newton
+        if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_newton
             println("Converged below ", ftol_newton); break;
         end
         iter+=1;
     end
+    print(Ms.params);
+    stats(Ms);
 end
 
 #=
