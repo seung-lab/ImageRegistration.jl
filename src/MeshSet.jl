@@ -156,7 +156,7 @@ function save(Ms::MeshSet)
 	elseif is_prealigned(firstindex)
 		filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_aligned.jld"));
 	else
-		filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
+		filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
 	end
 
 	jldopen(filename, "w") do file
@@ -286,7 +286,8 @@ function load_section(offsets, section_num)
 	num_tiles = length(indices);
 	paths = Array{String, 1}(num_tiles);
 
-	images = Array{SharedArray{UInt8, 2}, 1}(0);
+#	images = Array{SharedArray{UInt8, 2}, 1}(0);
+	images = Array{Array{UInt8, 2}, 1}(0);
 
 
 	for i in indices
@@ -296,9 +297,9 @@ function load_section(offsets, section_num)
 		dy = offsets[i, 4];
 		image = getImage(getPath(name));
 		addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
-		image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
-		image_shared[:, :] = image[:, :];
-		push!(images, image_shared)
+		#image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
+		#image_shared[:, :] = image[:, :];
+		push!(images, image)
 	end
 
 
@@ -331,11 +332,12 @@ end
 function load_section_pair(Ms, a, b)
 	A_image = getImage(getPath(Ms.meshes[find_section(Ms,a)].name));
 	B_image = getImage(getPath(Ms.meshes[find_section(Ms,b)].name));
-		A_im = SharedArray(UInt8, size(A_image, 1), size(A_image, 2));
-		A_im[:, :] = A_image[:, :];
-		B_im = SharedArray(UInt8, size(B_image, 1), size(B_image, 2));
-		B_im[:, :] = B_image[:, :];
-     	return A_im, B_im; 
+	#	A_im = SharedArray(UInt8, size(A_image, 1), size(A_image, 2));
+	#	A_im[:, :] = A_image[:, :];
+	#	B_im = SharedArray(UInt8, size(B_image, 1), size(B_image, 2));
+	#	B_im[:, :] = B_image[:, :];
+#     	return A_im, B_im; 
+     	return A_image, B_image; 
 end
 
 function load_stack(offsets, wafer_num, section_range)

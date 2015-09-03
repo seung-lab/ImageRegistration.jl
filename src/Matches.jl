@@ -81,6 +81,9 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 	disp_vectors = Points(0);
 	disp_vectors_raw = Array{Array{Float64, 1}, 1}(n_upperbound);
 	disp_vectors_mags = Array{Float64, 1}(0);
+	disp_vectors_mags_i = Array{Float64, 1}(0);
+	disp_vectors_mags_j = Array{Float64, 1}(0);
+	disp_vectors_mags_f = Array{Float64, 1}(0);
 #=
 	A_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
 	B_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
@@ -138,16 +141,16 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 						inc_not_enough_dyn_range();
 						continue;
 					end
-					A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
-					B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
-					#max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
-					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im, B_im); 
+					#A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
+				#	B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
+					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
+				#	max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im, B_im); 
 					disp_vectors_raw[idx] = max_vect_xc[1];
 				#	xc_im_array[idx] = (max_vect_xc[2] .+ 1)./ 2;
 	#				A_im_array[idx] = A_im;	
 	#				B_im_array[idx] = B_im;	
 
-					println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
+					#println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
 				end
 			end
 		end
@@ -201,7 +204,7 @@ end=#
 		continue; end
 
 		disp_vector = v[1:2];
-		if norm(disp_vector) > mu + 2.5 * sigma; 
+		if norm(disp_vector) > mu + 3.5 * sigma; 
 		n_outlier +=1; 
 	      
 #=	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_src.jpg")));
@@ -231,16 +234,29 @@ if (!isnan(sum(xc_im_array[idx])))
 	      end=#
 		push!(src_points_indices, idx);
 		push!(disp_vectors, disp_vector);
+		push!(disp_vectors_mags_f, norm(disp_vector));
+		push!(disp_vectors_mags_i, disp_vector[1]);
+		push!(disp_vectors_mags_j, disp_vector[2]);
 		push!(dst_points, dst_point);
 		push!(dst_triangles, dst_triangle);
 		push!(dst_weights, getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]));
 	end
 
+	mu_f = mean(disp_vectors_mags_f);
+	sigma_f = std(disp_vectors_mags_f);
+	max_f = maximum(disp_vectors_mags_f);
+	mu_i = mean(disp_vectors_mags_i);
+	sigma_i = std(disp_vectors_mags_i);
+	max_i = maximum(disp_vectors_mags_i);
+	mu_j = mean(disp_vectors_mags_j);
+	sigma_j = std(disp_vectors_mags_j);
+	max_j = maximum(disp_vectors_mags_j);
+
 	if n == 0
 	return Void;
 	end
 
-	println("###\n$p1 -> $p2: $n_upperbound in mesh, $n_total in overlap, $n accepted.\nRejections: $n_not_enough_dyn_range (low dynamic range), $n_low_r (low r), $n_outlier (outliers), $n_no_triangle (outside triangles).\nDisplacement mean = $mu, sigma = $sigma, max = $max\n###");
+	println("###\n$p1 -> $p2: $n_upperbound in mesh, $n_total in overlap, $n accepted.\nRejections: $n_not_enough_dyn_range (low dynamic range), $n_low_r (low r), $n_outlier (outliers), $n_no_triangle (outside triangles).\nDisplacement statistics:\nNorms, before filtering: mean = $mu, sigma = $sigma, max = $max\nNorms, after filtering: mean = $mu_f, sigma = $sigma_f, max = $max_f\ni-coord. after filtering: mean = $mu_i, sigma = $sigma_i, max = $max_i\nj-coord. after filtering: mean = $mu_j, sigma = $sigma_j, max = $max_j\n###");
 
 	matches = Matches(src_index, dst_index, n, src_points_indices, dst_points, dst_triangles, dst_weights, disp_vectors);
 	return matches;
