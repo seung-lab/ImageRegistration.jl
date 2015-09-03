@@ -18,7 +18,7 @@
 # 'Moving' - integer vector containing indices of moving vertices
 # could be changed to 1xE binary vector
 
-import PyPlot
+#import PyPlot
 
 global eps = 1E-8
 
@@ -146,6 +146,8 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
         end
         iter+=1;
     end
+    print(Ms.params);
+    stats(Ms);
 end
 
 #=
