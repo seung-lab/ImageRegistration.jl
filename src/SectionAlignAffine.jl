@@ -26,9 +26,9 @@ function test()
 	#imwrite(out_img, joinpath(".","test_outputs", string("warped_", offset[1], "_", offset[2], ".tif")));
 	p22 = points2 + res2;
 	p11 = points1 + res1;
-	points1 = [points1[2,:]; points1[1,:]]
-	points2 = [points2[2,:]; points2[1,:]]
-	draw_vectors(sec2, vcat(points2[1:2,:], p22[2:-1:1,:]))
+	points1 = points1[1:2,:]
+	points2 = points2[1:2,:]
+	draw_vectors(sec2, vcat(points2[1:2,:], p22[1:2,:]))
 	#ccp.write_image_from_points(points1[1:2,:].', p11[2:-1:1,:].', "test_outputs/write_name.jpg")
 	draw_points(sec1, points1)
 	draw_points(sec2, points2)
@@ -54,10 +54,10 @@ function test2()
 	p11 = points1 + res1;
 	p22 = points2 + res2;
 
-	p11 = p11[2:-1:1,:]
-	p22 = p22[2:-1:1,:]
-	points1 = points1[2:-1:1,:]
-	points2 = points2[2:-1:1,:]
+	p11 = p11[1:2,:]
+	p22 = p22[1:2,:]
+	points1 = points1[1:2,:]
+	points2 = points2[1:2,:]
 
 	p11 = p11/downsample;
 	p22 = p22/downsample;
@@ -69,7 +69,6 @@ function test2()
 	println(offset)
 	fused, fused_offset = imfuse(sec1, [0,0], out_img, offset)
 	println(fused_offset)
-	fused_offset = fused_offset[2:-1:1]
 
 	block_radius = 150;
 	scalebar = [1; 1; 2*block_radius/downsample; 2*block_radius/downsample]
