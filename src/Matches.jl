@@ -7,7 +7,7 @@ type Matches
 	src_points_indices::Array{Int64, 1}			# index of points in src_mesh.points
 	dst_points::Points					# location of points in the destination
 	dst_triangles::Triangles				# index of the triangles
-	dst_weights::Weights					# weights at each
+	dst_weights::Weights 	# barycentric weights for respective triangle index
 
 	disp_vectors::Points					# displacement vector src->dest
 end

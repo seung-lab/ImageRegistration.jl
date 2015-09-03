@@ -1,3 +1,10 @@
+function imwarp(meshset::MeshSet)
+  tform = recompute_affine(meshset)
+  img = getFloatImage(meshset.meshes[2])
+  @time img, offset = imwarp(img, inv(tform))
+  return img, offset
+end
+
 """
 `IMWARP` - Apply affine transform to image using bilinear interpolation
 
