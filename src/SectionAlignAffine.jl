@@ -15,9 +15,9 @@ function test()
 	sec2 = getimage("../sections/S2-W001_sec25_0.175.tif")
 	println(size(sec1))
 	println(size(sec2))
-	trans, points1, points2, res1, res2 = AffineAlignSections(sec1, sec2, 0.175, return_points=true)
-	points1 = hcat(points1[:]...)
-	points2 = hcat(points2[:]...)
+	trans, points1, points2, res1, res2 = AffineAlignSections(sec1, sec2, PARAMS_PREALIGNMENT; return_points=true)
+	points1 = points_to_3xN_matrix(points1)
+	points2 = points_to_3xN_matrix(points2)
 
 	println(trans)
 	#out_img, offset = imwarp(sec2, trans)
@@ -42,12 +42,12 @@ function test2()
 	sec2 = getimage("../output_images/(1,2)_montage.tif")
 	println(size(sec1))
 	println(size(sec2))
-	trans, points1, points2, res1, res2 = AffineAlignSections(sec1, sec2, 1, 0.3; return_points=true)
-	points1 = hcat(points1[:]...)
-	points2 = hcat(points2[:]...)
+	trans, points1, points2, res1, res2 = AffineAlignSections(sec1, sec2, PARAMS_PREALIGNMENT; return_points=true)
+	points1 = points_to_3xN_matrix(points1)
+	points2 = points_to_3xN_matrix(points2)
 
 	println(trans)
-	downsample = 4
+	downsample = 1./4
 	sec1 = sec1[1:downsample:end, 1:downsample:end];
 	sec2 = sec2[1:downsample:end, 1:downsample:end];
 
@@ -71,8 +71,8 @@ function test2()
 	println(fused_offset)
 	fused_offset = fused_offset[2:-1:1]
 
-	half_block_size = 150;
-	scalebar = [1; 1; 2*half_block_size/downsample; 2*half_block_size/downsample]
+	block_radius = 150;
+	scalebar = [1; 1; 2*block_radius/downsample; 2*block_radius/downsample]
 	draw_vectors(make_isotropic(sec1), hcat(vcat(points1, p11), scalebar))
 	draw_vectors(make_isotropic(sec2), hcat(vcat(points2, p22), scalebar+100))
 	draw_vectors(make_isotropic(fused), hcat(vcat(points1.-fused_offset, p11.-fused_offset), scalebar)) # todo: check offset
@@ -82,23 +82,30 @@ end
 function test3()
 	sec1 = "../output_images/(1,1)_montage.tif"
 	sec2 = "../output_images/(1,2)_montage.tif"
-	A, pair = AffineAlignSections(sec1, sec2)
-	return pair
+	A, meshset = AffineAlignSections(sec1, sec2)
+	return meshset
 end
 
+function points_to_3xN_matrix(points)
+	points = hcat(points...)
+	if size(points,1)==2
+		points = [points; ones(eltype(points), 1, size(points,2))]
+	end
+	return points
+end
 
 """
 `AffineAlignSections`
 
 Returns the affine transformation A, such that p_in_B = p_in_A * A, where p is point coordinates in row vector.
 """
-function AffineAlignSections(img1::Array{}, img2::Array{}, downsample_ratio = 1, accept_xcorr = 0.3; return_points=false)
+function AffineAlignSections(img1::Array{}, img2::Array{}, params=PARAMS_PREALIGNMENT; return_points=false)
 	# points here are in column vector convention
-	points, half_block_size, search_radius = GenerateMatchPoints(img1, img2)
-	points1list, points2list = GetBlockMatches(img1, img2, points, half_block_size, search_radius, accept_xcorr)
+	points = GenerateMatchPoints(img1, img2, params)
+	points1list, points2list = GetBlockMatches(img1, img2, points, params)
 
-	points1 = hcat(points1list[:]...)
-	points2 = hcat(points2list[:]...)
+	points1 = points_to_3xN_matrix(points1list)
+	points2 = points_to_3xN_matrix(points2list)
 
 	A = FindAffine(points1, points2)
 	residualIn2 = A*points1 - points2;
@@ -114,7 +121,7 @@ function AffineAlignSections(img1::Array{}, img2::Array{}, downsample_ratio = 1,
 		println("WARNING [AffineAlignSections]: high residual. RMS error: ", rmsTotal)
 	end
 
-	A = AdjustAffineForScaling(A, downsample_ratio)
+	A = AdjustAffineForScaling(A, params.scaling_factor)
 
 	# convert column vector convention to row vector convention
 	A = A.'
@@ -127,20 +134,16 @@ function AffineAlignSections(img1::Array{}, img2::Array{}, downsample_ratio = 1,
 end
 
 
-function GenerateMatchPoints(img1::Array{}, img2::Array{})
+function GenerateMatchPoints(img1::Array{}, img2::Array{}, params=PARAMS_PREALIGNMENT)
 	border_ratio = 0.1;
-	radius_ratio = 0.05;
-	grid_size = 3;
-	half_block_size = 150;
+	grid_size = minimum(floor(Int, collect(size(img1))/params.mesh_length))
+	block_radius = params.block_size
+	search_radius = params.search_r
 	overlap = [min(size(img1), size(img2))...]
 	#overlap = size(img1)
 
-	border = round(Int, border_ratio * minimum(overlap));
-	search_radius = round(Int, minimum(overlap) * radius_ratio);
-	search_radius = search_radius > 200 ? search_radius : 200;
-	println("search_radius: ", search_radius)
-
-	border = border > search_radius + half_block_size ? border : search_radius + half_block_size;
+	border = round(Int, border_ratio * minimum(overlap))
+	border = border > search_radius + block_radius ? border : search_radius + block_radius
 	println("border excluded: ", border)
 
 	# four corners for now
@@ -151,19 +154,18 @@ function GenerateMatchPoints(img1::Array{}, img2::Array{})
 	points = [[x; y] for x = 1+border:step[1]:overlap[1]-border, y = 1+border:step[2]:overlap[2]-border]
 	points = points[:];
 	println("n points: ", size(points))
-
-	return points, half_block_size, search_radius
+	return points
 end
 
-function GetBlockMatches(img1::Array{}, img2::Array{}, points, half_block_size, search_radius, accept_xcorr = 0.3)
-	points1 = Array{Int,1}[]
-	points2 = Array{Int,1}[]
+function GetBlockMatches(img1::Array{}, img2::Array{}, points, params=PARAMS_PREALIGNMENT)
+	points1 = []
+	points2 = []
 	for p = points
-		offset,r = BlockMatchAtPoint(img1, p, img2, p, half_block_size, search_radius)
+		offset,r = BlockMatchAtPoint(img1, p, img2, p, params.block_size, params.search_r)
 		println(p, offset, r)
-		if r >= accept_xcorr
-			push!(points1, [p; 1])
-			push!(points2, [p + offset; 1])
+		if r >= params.min_r
+			push!(points1, collect(p))
+			push!(points2, collect(p + offset))
 		end
 	end
 	return points1, points2
@@ -172,10 +174,9 @@ end
 
 function AdjustAffineForScaling(A, scale)
 	# Column vector convention. I.e. p_transformed = A * p.
-	ss = 1. / scale;
 	B = copy(A)
 	# equivalent of inv(S) * A * S, where S = [1 0 0; 0 1 0; 0 0 1/scale]
-	B[1:end-1, end] *= ss
+	B[1:end-1, end] *= scale
 	return B
 end
 
@@ -189,15 +190,15 @@ function FindAffine(points1, points2)
 	A = points2 / points1
 end
 
-function BlockMatchAtPoint(A, pointInA, B, pointInB, half_block_size, search_r)
+function BlockMatchAtPoint(A, pointInA, B, pointInB, block_radius, search_r)
 # A is the template
 # Returns:
 #	offset: offset from pointInB to pointInA's actual match in B.
 #	r_max:  correlation value at the match point
 #	xc:		raw cross-correlation map
 
-	b = half_block_size
-	B_radius = half_block_size + search_r;
+	b = block_radius
+	B_radius = block_radius + search_r;
 
 	A_lower = pointInA - b
 	A_upper = pointInA + b
@@ -217,53 +218,47 @@ end
 function BlockMatchSections
 end
 
-function RecomputeSectionAffine(pair::MeshSet, downsample_ratio = 1)
-	points1list = pair.meshes[1].nodes
-	points2list = pair.matches[1].dst_points
-	points1 = hcat(points1list[:]...)
-	points2 = hcat(points2list[:]...)
-	if size(points1,1)==2
-		points1 = [points1, zeros(eltype(points1), 1, size(points1,2))]
-	end
-	if size(points2,1)==2
-		points2 = [points2, zeros(eltype(points2), 1, size(points2,2))]
-	end
+function recompute_affine(meshset::MeshSet)
+	params = meshset.params
+	points1list = meshset.meshes[1].nodes
+	points2list = meshset.matches[1].dst_points
+	points1 = points_to_3xN_matrix(points1list)
+	points2 = points_to_3xN_matrix(points2list)
 	A = FindAffine(points1, points2)
-	A = AdjustAffineForScaling(A, downsample_ratio)
-
+	A = AdjustAffineForScaling(A, params.scaling_factor)
 	# convert column vector convention to row vector convention
 	return A.'
 end
 
-function Meshes2SectionMatches!(pair::MeshSet, downsample_ratio = 1, accept_xcorr = 0.3; return_points=false)
-	if pair.N != 2
+function Meshes2SectionMatches!(meshset::MeshSet, params; return_points=false)
+	if meshset.N != 2
 		error("Invalid Arguments")
 	end
 
 	img1 = []
 	img2 = []
 	try
-		img1 = getFloatImage(pair.meshes[1])
-		img2 = getFloatImage(pair.meshes[2])
+		img1 = getFloatImage(meshset.meshes[1])
+		img2 = getFloatImage(meshset.meshes[2])
 	catch
 		# mostly for testing purpose where name is the file path
-		img1 = getFloatImage(pair.meshes[1].name)
-		img2 = getFloatImage(pair.meshes[2].name)
+		img1 = getFloatImage(meshset.meshes[1].name)
+		img2 = getFloatImage(meshset.meshes[2].name)
 	end
 
 	A, points1, points2, residualIn1, residualIn2, rmsIn1, rmsIn2, rmsTotal = 
-		AffineAlignSections(img1, img2, downsample_ratio, accept_xcorr; return_points=true)
+		AffineAlignSections(img1, img2, params; return_points=true)
 
 	# in the future this might not be a good idea where nodes could be the fine alignment nodes
-	pair.meshes[1].nodes = points1
+	meshset.meshes[1].nodes = points1
 	src_points_indices = 1:length(points1)
 	dst_points = points2
 
-	matches = Matches(pair.meshes[1].index, pair.meshes[2].index, length(points1),
+	matches = Matches(meshset.meshes[1].index, meshset.meshes[2].index, length(points1),
 		src_points_indices, dst_points, [], [], []);
-	pair.matches = [matches]
+	meshset.matches = [matches]
 
-	return A, pair
+	return A, meshset
 end
 
 
@@ -280,16 +275,34 @@ Returns:
  * Affine transform and the MeshSet containing the matches.
 
 """
-function AffineAlignSections(sec1, sec2, downsample_ratio = 1, accept_xcorr = 0.3)
+function AffineAlignSections(sec1, sec2, params=PARAMS_PREALIGNMENT)
 	if isa(sec1, Index) && isa(sec2, Index) && length(sec1)==2 && length(sec2)==2
 		sec1 = sec1..., MONTAGED_INDEX, MONTAGED_INDEX
 		sec2 = sec2..., MONTAGED_INDEX, MONTAGED_INDEX
 	end
-
-	pair = makeNewMeshSet(PARAMS_ALIGNMENT)
-	pair.N = 2
+	meshset = makeNewMeshSet(params)
+	meshset.N = 2
 	mesh1 = Mesh(sec1)
 	mesh2 = Mesh(sec2)
-	pair.meshes = [mesh1, mesh2]
-	return Meshes2SectionMatches!(pair, downsample_ratio, accept_xcorr)
+	meshset.meshes = [mesh1, mesh2]
+	return Meshes2SectionMatches!(meshset, params)
+end
+
+function prealign_directory()
+    img_filenames = filter(x -> x[end-2:end] == "tif", readdir(MONTAGED_DIR))
+    for filename_A in img_filenames
+        img_preceding = filter(x -> parseName(x)[2]-1 == parseName(filename_A)[2], img_filenames)
+        if length(img_preceding) > 0
+            filename_B = img_preceding[1]
+            println("Prealigning ", filename_B[1:end-4], " to ", filename_A[1:end-4])
+            @time tform, meshset = AffineAlignSections(filename_A, filename_B)
+            println("Saving JLD for ", filename_B[1:end-4], " to ", filename_A[1:end-4])
+            save(meshset)         
+        end
+    end
+end
+
+function prealignment()
+    @time prealign_directory()
+    @time render_prealignment_for_directory()
 end

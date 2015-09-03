@@ -67,5 +67,6 @@ include("imwarp.jl")
 include("meshwarp.jl")
 include("render.jl")
 include("review.jl")
+include("visualize.jl")
 
 #end

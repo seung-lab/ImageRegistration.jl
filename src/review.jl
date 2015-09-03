@@ -133,8 +133,8 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
 
   if step == "post"
     src_nodes, dst_nodes = get_matched_points_t(meshset, k)
-    src_index = (src_mesh.index[1], src_mesh.index[2], -4, -4)
-    dst_index = (dst_mesh.index[1], dst_mesh.index[2], -4, -4)
+    src_index = (src_mesh.index[1], src_mesh.index[2], src_mesh.index[3]-1, src_mesh.index[4]-1)
+    dst_index = (dst_mesh.index[1], dst_mesh.index[2], dst_mesh.index[3]-1, dst_mesh.index[4]-1)
     global_bb = get_global_bb(meshset)
     src_offset = [global_bb.i, global_bb.j]
     dst_offset = [global_bb.i, global_bb.j]
@@ -144,16 +144,18 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
     dst_offset = dst_mesh.disp
   end
 
-  src_nodes = hcat(src_nodes...) .- src_offset
-  dst_nodes = hcat(dst_nodes...) .- dst_offset
+  src_nodes = hcat(src_nodes...)[1:2, :] .- src_offset
+  dst_nodes = hcat(dst_nodes...)[1:2, :] .- dst_offset
 
   src_img = getFloatImage(src_index)
-  for i = 1:downsample/2
+  println(size(src_img))
+  for i = 1:downsample
     src_img = restrict(src_img)
     src_nodes /= 2
   end
   dst_img = getFloatImage(dst_index)
-  for i = 1:downsample/2
+  println(size(dst_img))
+  for i = 1:downsample
     dst_img = restrict(dst_img)
     dst_nodes /= 2
   end
@@ -164,14 +166,27 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
   # imgc, img2 = view(make_isotropic(img))
   imgc, img2 = view(img)
   vectors = [src_nodes; dst_nodes]
-  an_pts, an_vectors = draw_vectors(imgc, img2, vectors)
-  # an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,0,0))
-  # an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,1,0))
-  # pts_to_remove = edit_matches(imgc, img2, an_dst_pts)
-  pts_to_remove = []
+  # an_pts, an_vectors = draw_vectors(imgc, img2, vectors)
+  an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,0,0))
+  an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,1,0))
+  pts_to_remove = edit_matches(imgc, img2, an_dst_pts)
   src_img = 0; dst_img = 0; imgc = 0; img2 = 0;
   gc()
   return pts_to_remove
+end
+
+"""
+Determine appropriate meshset solution method for meshset
+"""
+function resolve!(meshset::MeshSet)
+  index = meshset.meshes[1].index
+  if is_montaged(index)
+    solveMeshSet!(meshset)
+  elseif is_prealigned(index)
+    continue
+  elseif is_aligned(index)
+    solveMeshSet!(meshset)
+  end
 end
 
 """
@@ -195,24 +210,33 @@ function review_matches(dir, method="movie")
     for (k, matches) in enumerate(meshset.matches)
       println("Inspecting matches at index ", k,)
       if method=="images"
-        src_bm_imgs = get_blockmatch_images(meshset, k, "src")
-        dst_bm_imgs = get_blockmatch_images(meshset, k, "dst")
+        src_bm_imgs = get_blockmatch_images(meshset, k, "src", meshset.params.block_size)
+        dst_bm_imgs = get_blockmatch_images(meshset, k, "dst", meshset.params.block_size)
         filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
         pts_to_remove = edit_blockmatches(filtered_imgs)
-        # save_blockmatch_imgs(pts_to_remove, meshset, k, joinpath(dir, "blockmatches"))
       else
-        pts_to_remove = review_matches_movie(meshset, k)
+        pts_to_remove = review_matches_movie(meshset, k, "pre", 3)
       end
+      save_blockmatch_imgs(pts_to_remove, meshset, k, joinpath(dir, "blockmatches"))
       remove_matches_from_meshset!(pts_to_remove, k, meshset)
       log_line = string("Removed following matches from index ", k, ":\n")
       log_line = string(log_line, join(pts_to_remove, "\n"))
       write(log_file, log_line, "\n")
     end
-    solveMeshSet!(meshset)
+    resolve!(meshset)
     println("Saving JLD here: ", path)
     close(log_file)
     @time save(joinpath(dir, path), meshset)
   end
+end
+
+"""
+Convert matches object for section into filename string
+"""
+function matches2filename(meshset, k)
+  src_index = meshset.matches[k].src_index
+  dst_index = meshset.matches[k].dst_index
+  return string(join(src_index[1:2], ","), "-", join(dst_index[1:2], ","))
 end
 
 """
@@ -226,8 +250,14 @@ end
 Save match pair images w/ search & block radii at k index in meshset
 """
 function save_blockmatch_imgs(blockmatch_ids, meshset, k, path)
-  src_imgs = get_blockmatch_images(meshset, k, "src", block_size_alignment)
-  combined_radius = search_r_alignment+block_size_alignment
+  dir_path = joinpath(path, matches2filename(meshset, k))
+  if !isdir(dir_path)
+    mkdir(dir_path)
+  end
+  block_radius = meshset.params.block_size
+  search_radius = meshset.params.search_r
+  src_imgs = get_blockmatch_images(meshset, k, "src", block_radius)
+  combined_radius = search_radius+block_radius
   dst_imgs = get_blockmatch_images(meshset, k, "dst", combined_radius)
   println("save_blockmatch_imgs")
   for (idx, (src_img, dst_img)) in enumerate(zip(src_imgs, dst_imgs))
@@ -238,10 +268,10 @@ function save_blockmatch_imgs(blockmatch_ids, meshset, k, path)
     if idx in blockmatch_ids
       img_mark = "bad"
     end
-    imwrite(src_img, joinpath(path, string(img_mark, "_", n , "_src_", k, ".jpg")))
-    imwrite(dst_img, joinpath(path, string(img_mark, "_", n , "_dst_", k, ".jpg")))
+    imwrite(src_img, joinpath(dir_path, string(img_mark, "_", n , "_src_", k, ".jpg")))
+    imwrite(dst_img, joinpath(dir_path, string(img_mark, "_", n , "_dst_", k, ".jpg")))
     if !isnan(sum(xc))
-      imwrite(xcorr2Image(xc), joinpath(path, string(img_mark, "_", n , "_xc_", k, ".jpg")))
+      imwrite(xcorr2Image(xc), joinpath(dir_path, string(img_mark, "_", n , "_xc_", k, ".jpg")))
     end
   end
 end
@@ -251,7 +281,7 @@ Return first JLD file in provided directory
 """
 function load_sample_meshset(dir)
   jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
-  fn = jld_filenames[1]
+  fn = jld_filenames[4]
   println(joinpath(dir, fn))
   return load(joinpath(dir, fn))["MeshSet"]
 end
@@ -259,7 +289,7 @@ end
 """
 Excerpt image in radius around given point
 """
-function sliceimg(img, point::Array{1}, radius::Int64)
+function sliceimg(img, point, radius::Int64)
   point = ceil(Int64, point)
   imin = min(point[1]-radius, 1)
   jmin = min(point[2]-radius, 1)
@@ -287,7 +317,7 @@ end
 """
 Retrieve 1d array of block match pairs from the original images
 """
-function get_blockmatch_images(meshset, k, mesh_type="src", radius=block_size_alignment)
+function get_blockmatch_images(meshset, k, mesh_type, radius)
   matches = meshset.matches[k]
   index = matches.(symbol(mesh_type, "_index"))
   mesh = meshset.meshes[findIndex(meshset, index)]
@@ -296,8 +326,6 @@ function get_blockmatch_images(meshset, k, mesh_type="src", radius=block_size_al
   offset = mesh.disp
   img = getFloatImage(mesh)
   bm_imgs = []
-  # block_size in Params
-  # search_r in Params
   for pt in (mesh_type == "src" ? points[1] : points[2])
     push!(bm_imgs, sliceimg(img, pt-offset, radius))
   end
@@ -443,21 +471,21 @@ end
 """
 Display index k match pair meshes are two frames in movie to scroll between
 """
-function section_movie(meshset, slice_range=(2000:6000, 2000:6000), downsample=2)
+function section_movie(meshset, slice_range=(20000:24000, 20000:24000), downsample=2)
   global_bb = get_global_bb(meshset)
   offset = [global_bb.i, global_bb.j]
   all_imgs = []
   all_nodes = []
   for mesh in meshset.meshes
-    img = getFloatImage((mesh.index[1], mesh.index[2], -4, -4))[slice_range...]
-    # img = getFloatImage(mesh)
+    img = getFloatImage((mesh.index[1], mesh.index[2], -4, -4))
+    img = img[slice_range...]
     nodes = hcat(mesh.nodes_t...) .- offset
-    for i = 1:downsample/2
+    for i = 1:downsample
       img = restrict(img)
       nodes /= 2
     end
     push!(all_imgs, img)
-    push!(all_nodes, [nodes])
+    push!(all_nodes, collect(nodes))
   end
   imgs = Image(cat(3, all_imgs...), timedim=3)
   imgc, img2 = view(imgs)
@@ -474,7 +502,7 @@ function scan_section_movie(meshset, divisions=8, downsample=2)
   all_nodes = []
   for mesh in meshset.meshes
     nodes = hcat(mesh.nodes_t...) .- offset
-    for i = 1:downsample/2
+    for i = 1:downsample
       nodes /= 2
     end
     push!(all_nodes, [nodes])
@@ -518,6 +546,29 @@ function scan_section_movie(meshset, divisions=8, downsample=2)
   end
 end
 
+function write_prealignment_thumbnails(downsample=8)
+  img_filenames = filter(x -> x[end-2:end] == "tif", readdir(PREALIGNED_DIR))
+  for filename_A in img_filenames
+    img_preceding = filter(x -> parseName(x)[2]-1 == parseName(filename_A)[2], img_filenames)
+    if length(img_preceding) > 0
+      filename_B = img_preceding[1]
+      println(filename_B, "-", filename_A)
+      A = getFloatImage(joinpath(PREALIGNED_DIR, filename_A))
+      for i = 1:downsample/2
+        A = restrict(A)
+      end
+      B = getFloatImage(joinpath(PREALIGNED_DIR, filename_B))
+      for i = 1:downsample/2
+        B = restrict(B)
+      end
+      B_offset = PREALIGNED_OFFSETS[find(i -> PREALIGNED_OFFSETS[i,1]==filename_B[1:end-4], 1:size(PREALIGNED_OFFSETS, 1)), 3:4]
+      O, O_bb = imfuse(A, [0,0], B, B_offset)
+      println("Writing ", filename_B[1:end-4])
+      fn = string(filename_B[1:end-4], "-", filename_A[1:end-4], ".jpg")
+      imwrite(O, joinpath(PREALIGNED_DIR, "review", fn))
+    end
+  end
+end  
 
 
 
