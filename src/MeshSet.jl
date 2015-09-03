@@ -95,6 +95,13 @@ function consolidate(Ms::MeshSet)
 		else nodes_t = hcat(nodes_t, hcat(cur_mesh.nodes_t...)); end
 	end
 	
+	nodes = Points(0);
+	
+	for i in 1:Ms.N
+		cur_mesh = Ms.meshes[i];
+		if i == 1 nodes = hcat(cur_mesh.nodes...);
+		else nodes = hcat(nodes_t, hcat(cur_mesh.nodes...)); end
+	end
 end
 =#
 
@@ -275,6 +282,17 @@ function get_matched_points(Ms::MeshSet, k)
 	return src_pts, dst_pts
 end
 
+function get_matched_points(Ms::MeshSet)
+	src_points = Points(0);	
+	dst_points = Points(0);	
+  	for k in 1:Ms.M
+	pts = get_matched_points(Ms, k);
+	src_points = vcat(src_points,pts[1]);
+	dst_points = vcat(dst_points,pts[2]);
+	 end
+	return src_points, dst_points;
+end
+
 function get_matched_points_t(Ms::MeshSet, k)
 
 src_pts = Points(0);
@@ -294,6 +312,16 @@ end
 	return src_pts, dst_pts;
 end
 
+function get_matched_points_t(Ms::MeshSet)
+	src_points = Points(0);	
+	dst_points = Points(0);	
+  	for k in 1:Ms.M
+	pts = get_matched_points_t(Ms, k);
+	src_points = vcat(src_points,pts[1]);
+	dst_points = vcat(dst_points,pts[2]);
+	 end
+	return src_points, dst_points;
+end
 function load_section(offsets, section_num)
 	indices = find(i -> offsets[i,2][2] == section_num, 1:size(offsets, 1));
 	Ms = makeNewMeshSet(PARAMS_MONTAGE);
@@ -316,9 +344,45 @@ function load_section(offsets, section_num)
 		push!(images, image)
 	end
 
-
-
 	return Ms, images;
+end
+
+function affine_approximate(Ms::MeshSet)
+	pts = get_matched_points(Ms)[1];
+	pts_t = get_matched_points_t(Ms)[1];
+
+	num_pts = size(pts, 1);
+
+	hpts = Array{Float64, 2}(3, num_pts);
+	hpts_t = Array{Float64, 2}(3, num_pts);
+
+	for i in 1:num_pts
+	hpts[:, i] = [pts[i]; 1];
+	hpts_t[:, i] = [pts_t[i]; 1];
+	end
+
+	return hpts_t / hpts;
+end
+
+function decomp_affine(tform::Array{Float64, 2})
+a = tform[1, 1];
+b = tform[1, 2];
+c = tform[2, 1];
+d = tform[2, 2];
+
+p = norm(a, b);
+r = det(tform) / p;
+q = (a * c - b * d) / det(tform);
+theta = rad2deg(atan(b / a));
+
+t_i = tform[1, 3]
+t_j = tform[2, 3]
+
+println("Affine decomposition: in left-to-right order with the transformation matrix being T*v,");
+println("Translation: i-translation: $t_i, j-translation: $t_j");
+println("Scaling:  i-scaling: $p, j-scaling: $r");
+println("Shearing: j-shear: $q")
+println("Rotation: $theta deg.")
 end
 
 function make_stack(offsets, wafer_num, section_range)
@@ -399,9 +463,6 @@ function print_res_stats(Ms)
 	println("Residuals after solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max");
 end
 function stats(Ms::MeshSet)
-
-	
-
 	residuals = Points(0);
 	residuals_t = Points(0);
 	movement_src = Points(0);
@@ -438,7 +499,7 @@ function stats(Ms::MeshSet)
 	sig_t = std(res_norm_t);
 	max_t = maximum(res_norm_t);
 
-	
+#=	
 	move_src_norm = map(norm, movement_src);
 	rms_src = sqrt(mean(move_src_norm.^2));
 	avg_src = mean(move_src_norm);
@@ -460,14 +521,15 @@ function stats(Ms::MeshSet)
 	sig_dst_i = std(zip(movement_dst)[1]);
 	avg_dst_j = mean(zip(movement_dst)[2]);
 	sig_dst_j = std(zip(movement_dst)[2]);
-
+=#
 
 	println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
 	println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
-	println("Movements in elastic step, src: rms: $rms_src,  mean: $avg_src, sigma = $sig_src, max = $max_src");
+	decomp_affine(affine_approximate(Ms));
+#=	println("Movements in elastic step, src: rms: $rms_src,  mean: $avg_src, sigma = $sig_src, max = $max_src");
 	println("Movements in elastic step, src, i-dir.: avg: $avg_src_i, sigma = $sig_src_i");
 	println("Movements in elastic step, src, j-dir.: avg: $avg_src_j, sigma = $sig_src_j\n");
 	println("Movements in elastic step, dst: rms: $rms_dst,  mean: $avg_dst, sigma = $sig_dst, max = $max_dst");
 	println("Movements in elastic step, dst, i-dir.: avg: $avg_dst_i, sigma = $sig_dst_i");
-	println("Movements in elastic step, dst, j-dir.: avg: $avg_dst_j, sigma = $sig_dst_j");
+	println("Movements in elastic step, dst, j-dir.: avg: $avg_dst_j, sigma = $sig_dst_j");=#
 end
