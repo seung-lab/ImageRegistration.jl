@@ -49,6 +49,7 @@ using Images
 using ImageView
 using Colors
 using FixedPointNumbers
+include("Index.jl")
 include("Params.jl")
 include("IO.jl")
 include("Params_session.jl")

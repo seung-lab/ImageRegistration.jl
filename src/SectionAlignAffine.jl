@@ -103,6 +103,9 @@ function AffineAlignSections(img1::Array{}, img2::Array{}, params=PARAMS_PREALIG
 	points = GenerateMatchPoints(img1, img2, params)
 	points1list, points2list = GetBlockMatches(img1, img2, points, params)
 
+	n_matches = length(points1list)
+	println("n_matches: ", n_matches)
+
 	points1 = points_to_3xN_matrix(points1list)
 	points2 = points_to_3xN_matrix(points2list)
 
@@ -116,6 +119,10 @@ function AffineAlignSections(img1::Array{}, img2::Array{}, params=PARAMS_PREALIG
 	tolerance_ratio = 0.001
 	rmsThres = tolerance_ratio * mean([size(img1)..., size(img2)...])
 	rmsTotal = mean([rmsIn1, rmsIn2].^2)^0.5
+
+	if n_matches < 0.5 * length(points)
+		println("WARNING [AffineAlignSections]: # of matches is small. n_matches: ", n_matches)
+	end
 	if  rmsTotal > rmsThres
 		println("WARNING [AffineAlignSections]: high residual. RMS error: ", rmsTotal)
 	end
@@ -302,6 +309,37 @@ function prealign_directory()
             save(meshset)         
         end
     end
+end
+
+function compute_propogated_transform(index::Index)
+	index = (index[1:2]..., 0, 0)
+	filenames = filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR))
+	indices = [(parseName(x), x) for x in filenames]
+	println(indices)
+	sort!(indices)
+	if indices[1][1] == ones(Int, 4)
+		error("Could not parse JLD filename to index: ", indices[1][2])
+	end
+	for k in 2:length(indices)
+		if indices[k][1] > index
+			break;
+		end
+		if !isAdjacent(indices[k-1][1], indices[k][1])
+			error("Missing section between ", indices[k-1][1], " and ", indices[k][1])
+		end
+	end
+	T = diagm(ones(3));
+	for k in 2:length(indices)
+		ind, fn = indices[k]
+		if ind > index
+			break;
+		end
+		meshset = load(joinpath(PREALIGNED_DIR, fn))["MeshSet"]
+		A = recompute_affine(meshset)
+		# row vector homogeneous point convention
+		T *= A
+	end
+	return T
 end
 
 function prealignment()
