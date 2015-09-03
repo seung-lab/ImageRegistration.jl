@@ -3,7 +3,6 @@ function montage_section(n)
 	@time Ms, images = load_section(PREMONTAGED_OFFSETS, n);
 	@time add_all_matches!(Ms, images);
 	@time solve_meshset!(Ms);
-	print_res_stats(Ms);
 	save(Ms);
 	images = 0;
 	gc(); gc();

@@ -1,3 +1,5 @@
+import PyPlot
+
 type MeshSet
 	params::Params
 
@@ -83,6 +85,25 @@ function addMatches2MeshSet!(M, Ms)
 	Ms.m_e += M.n;
 	return;
 end
+#=
+function consolidate(Ms::MeshSet)
+	nodes_t = Points(0);
+	
+	for i in 1:Ms.N
+		cur_mesh = Ms.meshes[i];
+		if i == 1 nodes_t = hcat(cur_mesh.nodes_t...);
+		else nodes_t = hcat(nodes_t, hcat(cur_mesh.nodes_t...)); end
+	end
+	
+	nodes = Points(0);
+	
+	for i in 1:Ms.N
+		cur_mesh = Ms.meshes[i];
+		if i == 1 nodes = hcat(cur_mesh.nodes...);
+		else nodes = hcat(nodes_t, hcat(cur_mesh.nodes...)); end
+	end
+end
+=#
 
 function solve_meshset!(Ms)
 	match_coeff = Ms.params.match_coeff;
@@ -261,6 +282,17 @@ function get_matched_points(Ms::MeshSet, k)
 	return src_pts, dst_pts
 end
 
+function get_matched_points(Ms::MeshSet)
+	src_points = Points(0);	
+	dst_points = Points(0);	
+  	for k in 1:Ms.M
+	pts = get_matched_points(Ms, k);
+	src_points = vcat(src_points,pts[1]);
+	dst_points = vcat(dst_points,pts[2]);
+	 end
+	return src_points, dst_points;
+end
+
 function get_matched_points_t(Ms::MeshSet, k)
 
 src_pts = Points(0);
@@ -280,6 +312,16 @@ end
 	return src_pts, dst_pts;
 end
 
+function get_matched_points_t(Ms::MeshSet)
+	src_points = Points(0);	
+	dst_points = Points(0);	
+  	for k in 1:Ms.M
+	pts = get_matched_points_t(Ms, k);
+	src_points = vcat(src_points,pts[1]);
+	dst_points = vcat(dst_points,pts[2]);
+	 end
+	return src_points, dst_points;
+end
 function load_section(offsets, section_num)
 	indices = find(i -> offsets[i,2][2] == section_num, 1:size(offsets, 1));
 	Ms = makeNewMeshSet(PARAMS_MONTAGE);
@@ -302,9 +344,45 @@ function load_section(offsets, section_num)
 		push!(images, image)
 	end
 
-
-
 	return Ms, images;
+end
+
+function affine_approximate(Ms::MeshSet)
+	pts = get_matched_points(Ms)[1];
+	pts_t = get_matched_points_t(Ms)[1];
+
+	num_pts = size(pts, 1);
+
+	hpts = Array{Float64, 2}(3, num_pts);
+	hpts_t = Array{Float64, 2}(3, num_pts);
+
+	for i in 1:num_pts
+	hpts[:, i] = [pts[i]; 1];
+	hpts_t[:, i] = [pts_t[i]; 1];
+	end
+
+	return hpts_t / hpts;
+end
+
+function decomp_affine(tform::Array{Float64, 2})
+a = tform[1, 1];
+b = tform[1, 2];
+c = tform[2, 1];
+d = tform[2, 2];
+
+p = norm(a, b);
+r = det(tform) / p;
+q = (a * c - b * d) / det(tform);
+theta = rad2deg(atan(b / a));
+
+t_i = tform[1, 3]
+t_j = tform[2, 3]
+
+println("Affine decomposition: in left-to-right order with the transformation matrix being T*v,");
+println("Translation: i-translation: $t_i, j-translation: $t_j");
+println("Scaling:  i-scaling: $p, j-scaling: $r");
+println("Shearing: j-shear: $q")
+println("Rotation: $theta deg.")
 end
 
 function make_stack(offsets, wafer_num, section_range)
@@ -378,8 +456,80 @@ function print_res_stats(Ms)
 		end
 	end
 	res_norm = map(norm, residuals_t);
+	rms = sqrt(mean(res_norm.^2));
 	avg = mean(res_norm);
 	sig = std(res_norm);
 	max = maximum(res_norm);
-	println("Residuals after solving elastically: mean: $avg, sigma = $sig, max = $max");
+	println("Residuals after solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max");
+end
+function stats(Ms::MeshSet)
+	residuals = Points(0);
+	residuals_t = Points(0);
+	movement_src = Points(0);
+	movement_dst = Points(0);
+	for k in 1:Ms.M
+		for i in 1:Ms.matches[k].n
+			w = Ms.matches[k].dst_weights[i];
+			t = Ms.matches[k].dst_triangles[i];
+			p = Ms.matches[k].src_points_indices[i];
+			src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
+			dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
+			p1 = src.nodes[p];
+			p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3]
+			p1_t = src.nodes_t[p];
+			p2_t = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
+			push!(residuals, p2-p1);
+			push!(residuals_t, p2_t-p1_t);
+			push!(movement_src, p1_t-p1);
+			push!(movement_dst, p2_t-p2);
+		end
+	end
+
+
+	res_norm = map(norm, residuals);
+	rms = sqrt(mean(res_norm.^2));
+	avg = mean(res_norm);
+	sig = std(res_norm);
+	max = maximum(res_norm);
+
+
+	res_norm_t = map(norm, residuals_t);
+	rms_t = sqrt(mean(res_norm_t.^2));
+	avg_t = mean(res_norm_t);
+	sig_t = std(res_norm_t);
+	max_t = maximum(res_norm_t);
+
+#=	
+	move_src_norm = map(norm, movement_src);
+	rms_src = sqrt(mean(move_src_norm.^2));
+	avg_src = mean(move_src_norm);
+	sig_src = std(move_src_norm);
+	max_src = maximum(move_src_norm);
+
+	avg_src_i = mean(zip(movement_src)[1]);
+	sig_src_i = std(zip(movement_src)[1]);
+	avg_src_j = mean(zip(movement_src)[2]);
+	sig_src_j = std(zip(movement_src)[2]);
+
+	move_dst_norm = map(norm, movement_dst);
+	rms_dst = sqrt(mean(move_dst_norm.^2));
+	avg_dst = mean(move_dst_norm);
+	sig_dst = std(move_dst_norm);
+	max_dst = maximum(move_dst_norm);
+
+	avg_dst_i = mean(zip(movement_dst)[1]);
+	sig_dst_i = std(zip(movement_dst)[1]);
+	avg_dst_j = mean(zip(movement_dst)[2]);
+	sig_dst_j = std(zip(movement_dst)[2]);
+=#
+
+	println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
+	println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
+	decomp_affine(affine_approximate(Ms));
+#=	println("Movements in elastic step, src: rms: $rms_src,  mean: $avg_src, sigma = $sig_src, max = $max_src");
+	println("Movements in elastic step, src, i-dir.: avg: $avg_src_i, sigma = $sig_src_i");
+	println("Movements in elastic step, src, j-dir.: avg: $avg_src_j, sigma = $sig_src_j\n");
+	println("Movements in elastic step, dst: rms: $rms_dst,  mean: $avg_dst, sigma = $sig_dst, max = $max_dst");
+	println("Movements in elastic step, dst, i-dir.: avg: $avg_dst_i, sigma = $sig_dst_i");
+	println("Movements in elastic step, dst, j-dir.: avg: $avg_dst_j, sigma = $sig_dst_j");=#
 end
