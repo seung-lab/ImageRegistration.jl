@@ -47,7 +47,7 @@ using HDF5
 using JLD
 using Images
 using ImageView
-using Color
+using Colors
 using FixedPointNumbers
 include("Params.jl")
 include("IO.jl")

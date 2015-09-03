@@ -1,3 +1,5 @@
+import PyPlot
+
 type MeshSet
 	params::Params
 
@@ -83,6 +85,18 @@ function addMatches2MeshSet!(M, Ms)
 	Ms.m_e += M.n;
 	return;
 end
+#=
+function consolidate(Ms::MeshSet)
+	nodes_t = Points(0);
+	
+	for i in 1:Ms.N
+		cur_mesh = Ms.meshes[i];
+		if i == 1 nodes_t = hcat(cur_mesh.nodes_t...);
+		else nodes_t = hcat(nodes_t, hcat(cur_mesh.nodes_t...)); end
+	end
+	
+end
+=#
 
 function solve_meshset!(Ms)
 	match_coeff = Ms.params.match_coeff;
