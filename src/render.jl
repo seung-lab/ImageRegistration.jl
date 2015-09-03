@@ -178,26 +178,37 @@ function render_montage_for_directory()
     end
 end
 
-function render_prealignment_for_directory()
-    img_filenames = filter(x -> x[end-2:end] == "tif", readdir(MONTAGED_DIR))
-    log_file = open(joinpath(PREALIGNED_DIR, "prealigned_offsets.txt"), "w")
-    for filename_A in img_filenames[5:6]
-        img_preceding = filter(x -> parseName(x)[2]-1 == parseName(filename_A)[2], img_filenames)
-        if length(img_preceding) > 0
-            filename_B = img_preceding[1]
-            println("Pre-aligning ", filename_B[1:end-4])
-            A = getFloatImage(joinpath(MONTAGED_DIR, filename_A))
-            B = getFloatImage(joinpath(MONTAGED_DIR, filename_B))
-            @time tform = AffineAlignSections(A, B, 1.0)
-            A = 0
-            gc()
-            println("Rendering ", filename_B[1:end-4])
-            @time B, B_offset = imwarp(B, inv(tform), [0.0, 0.0])
-            println("Writing ", filename_B[1:end-4])
-            imwrite(B, joinpath(PREALIGNED_DIR, string(filename_B[1:end-4], ".tif")))
-            log_line = join((string(filename_B[1:end-4], ".tif"), B_offset[1], B_offset[2], size(B,1), size(B,2)), " ")
-            write(log_file, log_line, "\n")
+function render_prealignment_for_directory(downsample=6)
+    filenames = filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR))
+    log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
+    log_file = open(log_path, "w")
+    for fn in filenames
+        meshset = load(joinpath(PREALIGNED_DIR, fn))["MeshSet"]
+        println("Warping ", fn[1:end-4])
+        warped, offset = imwarp(meshset)
+        warped_index = meshset.meshes[2].index
+        warped_fn = string(join(warped_index[1:2], ","), "_prealigned.tif")
+        println("Writing ", warped_fn)
+        imwrite(warped, joinpath(PREALIGNED_DIR, warped_fn))
+        log_line = join((warped_fn, offset[1], offset[2], size(warped,1), size(warped,2)), " ")
+        write(log_file, log_line, "\n")
+        gc(); gc();
+
+        warped = restrict(warped)
+        gc(); gc();
+        fixed = getFloatImage(meshset.meshes[1])
+        fixed = restrict(fixed)
+        gc(); gc();
+        offset = round(Int64, offset/2)
+        println(offset)
+        O, O_bb = imfuse(fixed, [0,0], warped, offset)
+        for i = 2:downsample
+            O = restrict(O)
         end
+        fixed_index = meshset.meshes[1].index
+        review_fn = string(join(warped_index[1:2], ","), "-", join(fixed_index[1:2], ","), "_prealigned.jpg")
+        println("Writing thumbnail ", review_fn)
+        imwrite(O, joinpath(PREALIGNED_DIR, "review", review_fn))             
     end
     close(log_file)
 end

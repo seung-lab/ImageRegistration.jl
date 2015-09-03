@@ -151,7 +151,9 @@ function save(Ms::MeshSet)
 	firstindex = Ms.meshes[1].index;
 	lastindex = Ms.meshes[Ms.N].index;
 
-	if is_prealigned(firstindex)
+	if is_montaged(firstindex)
+		filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
+	elseif is_prealigned(firstindex)
 		filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_aligned.jld"));
 	else
 		filename = joinpath(MONTAGE_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
@@ -252,28 +254,17 @@ end
 end
 
 function get_matched_points(Ms::MeshSet, k)
-
-src_p = Points(0);
-dst_p = Points(0);
-
-for i in 1:Ms.matches[k].n
-		w = Ms.matches[k].dst_weights[i];
-		t = Ms.matches[k].dst_triangles[i];
-		p = Ms.matches[k].src_points_indices[i];
-		src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
-		dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
-		p1 = src.nodes[p];
-		p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3];
-		push!(src_p, p1);
-		push!(dst_p, p2);
-end
-	return src_p, dst_p;
+	src_mesh = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
+	src_indices = Ms.matches[k].src_points_indices
+	src_pts = src_mesh.nodes[src_indices]
+	dst_pts = Ms.matches[k].dst_points
+	return src_pts, dst_pts
 end
 
 function get_matched_points_t(Ms::MeshSet, k)
 
-src_p = Points(0);
-dst_p = Points(0);
+src_pts = Points(0);
+dst_pts = Points(0);
 
 for i in 1:Ms.matches[k].n
 		w = Ms.matches[k].dst_weights[i];
@@ -283,10 +274,10 @@ for i in 1:Ms.matches[k].n
 		dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
 		p1 = src.nodes_t[p];
 		p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3];
-		push!(src_p, p1);
-		push!(dst_p, p2);
+		push!(src_pts, p1);
+		push!(dst_pts, p2);
 end
-	return src_p, dst_p;
+	return src_pts, dst_pts;
 end
 
 function load_section(offsets, section_num)
