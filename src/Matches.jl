@@ -150,7 +150,7 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 	#				A_im_array[idx] = A_im;	
 	#				B_im_array[idx] = B_im;	
 
-					println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
+#					println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
 				end
 			end
 		end
