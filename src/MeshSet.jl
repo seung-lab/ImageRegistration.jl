@@ -363,7 +363,7 @@ println("Rotation: $theta deg.")
 end
 
 function make_stack(offsets, wafer_num, a, b)
-	index = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
+	i = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
 	Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
 
 	index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
@@ -374,15 +374,17 @@ function make_stack(offsets, wafer_num, a, b)
 	size_j = 36000;
 
 	addMesh2MeshSet!(Tile2Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
-	name = offsets[index, 1];
-	index = offsets[index, 2];
-	dy += offsets[index, 3];
-	dx += offsets[index, 4];
-	size_i = offsets[index, 5];
-	size_j = offsets[index, 6];
+	name = offsets[i, 1];
+	index = offsets[i, 2];
+	dy = offsets[i, 3];
+	dx = offsets[i, 4];
+	size_i = offsets[i, 5];
+	size_j = offsets[i, 6];
 
 	addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
 	optimize_all_cores(Ms.params);
+
+	return Ms;
 end
 function make_stack(offsets, wafer_num, section_range)
 	indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
