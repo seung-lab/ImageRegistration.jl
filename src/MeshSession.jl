@@ -26,8 +26,8 @@ function align_stack(wafer_num, k::UnitRange{Int64})
 	save(Ms);
 end
 
-function align_to_fixed(wafer_num, a, b)
-	@time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, a, b);
+function align_to_fixed(wafer_num, aligned, prealigned)
+	@time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, aligned, prealigned);
 	@time for i in 1:Ms.N-1
 	  @time a = Ms.meshes[i].index[2];
 	  @time b = Ms.meshes[i+1].index[2];
