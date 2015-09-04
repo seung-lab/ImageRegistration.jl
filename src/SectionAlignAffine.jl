@@ -315,7 +315,6 @@ function compute_propogated_transform(index::Index)
 	index = (index[1:2]..., 0, 0)
 	filenames = filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR))
 	indices = [(parseName(x), x) for x in filenames]
-	println(indices)
 	sort!(indices)
 	if indices[1][1] == ones(Int, 4)
 		error("Could not parse JLD filename to index: ", indices[1][2])
@@ -324,7 +323,7 @@ function compute_propogated_transform(index::Index)
 		if indices[k][1] > index
 			break;
 		end
-		if !isAdjacent(indices[k-1][1], indices[k][1])
+		if !isAdjacent(indices[k-1][1], indices[k][1], true)
 			error("Missing section between ", indices[k-1][1], " and ", indices[k][1])
 		end
 	end
