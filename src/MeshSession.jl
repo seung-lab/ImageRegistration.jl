@@ -5,14 +5,12 @@ function montage_section(n)
 	@time solve_meshset!(Ms);
 	save(Ms);
 	images = 0;
-	gc(); gc();
 end
 
 function montage_sections(wafer_num, k::UnitRange{Int64})
 	optimize_all_cores(PARAMS_MONTAGE);
 	for n in k
 	  @time montage_section(n);
-	  gc(); gc();
 	end
 
 end
