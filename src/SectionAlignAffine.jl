@@ -38,6 +38,8 @@ end
 
 function test2()
 	getimage(path) = convert(Array{Float64, 2}, convert(Array, imread(path)));
+	#getimage(path) = convert(Array{Ufixed8, 2}, convert(Array, imread(path)));
+	#getimage(path) = reinterpret(UInt8, convert(Array, imread(path)));
 	sec1 = getimage("../output_images/(1,1)_montage.tif")
 	sec2 = getimage("../output_images/(1,2)_montage.tif")
 	println(size(sec1))
@@ -47,7 +49,7 @@ function test2()
 	points2 = points_to_3xN_matrix(points2)
 
 	println(trans)
-	downsample = 1./4
+	downsample = 4
 	sec1 = sec1[1:downsample:end, 1:downsample:end];
 	sec2 = sec2[1:downsample:end, 1:downsample:end];
 
