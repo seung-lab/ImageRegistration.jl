@@ -160,6 +160,8 @@ function solve_meshset!(Ms)
 		cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)];
 	end
 
+    print(Ms.params);
+    stats(Ms);
 end
 
 function save(filename::String, Ms::MeshSet)
@@ -174,7 +176,7 @@ function save(Ms::MeshSet)
 
 	if is_montaged(firstindex)
 		filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
-	elseif is_prealigned(firstindex)
+	elseif is_prealigned(firstindex) || is_aligned(firstindex)
 		filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_aligned.jld"));
 	else
 		filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
@@ -385,6 +387,28 @@ println("Shearing: j-shear: $q")
 println("Rotation: $theta deg.")
 end
 
+function make_stack(offsets, wafer_num, a, b)
+	index = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
+	Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+
+	index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
+	name_aligned = getName(index_aligned);	
+	dy_aligned = 0;
+	dx_aligned = 0;
+	size_i = 36000; 
+	size_j = 36000;
+
+	addMesh2MeshSet!(Tile2Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
+	name = offsets[index, 1];
+	index = offsets[index, 2];
+	dy += offsets[index, 3];
+	dx += offsets[index, 4];
+	size_i = offsets[index, 5];
+	size_j = offsets[index, 6];
+
+	addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
+	optimize_all_cores(Ms.params);
+end
 function make_stack(offsets, wafer_num, section_range)
 	indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
 	Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
