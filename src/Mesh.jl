@@ -55,7 +55,7 @@ end
 
 
 
-function Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+function Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length::Int64, mesh_coeff::Float64)
 	(Ai, Aj) = (size_i,size_j);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
@@ -106,28 +106,29 @@ end
 
 
 # Tile2Mesh
-function Tile2Mesh(name, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+function Tile2Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, mesh_length, mesh_coeff::Float64)
+	(size_i, size_j) = size(image);
+	return Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Float64, mesh_length, mesh_coeff::Float64);
+end
+
+function Tile2Mesh(name, index::Index, dy, dx, tile_fixed, mesh_length::Float64, mesh_coeff::Float64)
 	image = getImage(getPath(name));
 	return Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 end
 
-function Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params::Params)
+function Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params::Params)
 	return Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
 end
 
-function Tile2Mesh(name, size::Int64, index, dy, dx, tile_fixed, params::Params)
+function Tile2Mesh(name, size, index::Index, dy, dx, tile_fixed, params::Params)
 	return Tile2Mesh(name, size, size, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
 end
 
-function Tile2Mesh(name, image, index, dy, dx, tile_fixed, params::Params)
+function Tile2Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, params::Params)
 	(size_i, size_j) = size(image);
 	Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
 end
 
-function Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-	(size_i, size_j) = size(image);
-	Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-end
 
 function getMeshIndex(dims, i, j)
 	ind = 0;

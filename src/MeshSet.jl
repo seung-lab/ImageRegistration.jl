@@ -160,6 +160,8 @@ function solve_meshset!(Ms)
 		cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)];
 	end
 
+    print(Ms.params);
+    stats(Ms);
 end
 
 function save(filename::String, Ms::MeshSet)
@@ -174,7 +176,7 @@ function save(Ms::MeshSet)
 
 	if is_montaged(firstindex)
 		filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
-	elseif is_prealigned(firstindex)
+	elseif is_prealigned(firstindex) || is_aligned(firstindex)
 		filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_aligned.jld"));
 	else
 		filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
@@ -184,8 +186,12 @@ function save(Ms::MeshSet)
 		write(file, "MeshSet", Ms);
 	end
 end
-
-function JLD2MeshSet(filename)
+#=
+function load(index::Index)
+	filepath = getPath(index);
+	Ms = load(index);
+end=#
+function load(filename::String)
 	Ms = load(filename, "MeshSet"); 
 	return Ms;
 end
@@ -229,9 +235,6 @@ i = 1;
 nextidx() = (idx=i; i+=1; idx);
 matches_array = cell(n);
 
-#optimize_all_cores(Ms.params);
-
-#if is_prealigned(Ms.meshes[1].index)
 				while true
 					idx = nextidx();
 						if idx > n
@@ -240,32 +243,6 @@ matches_array = cell(n);
 					(a, b) = pairs[idx];
 					matches_array[idx] = Meshes2Matches(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params);
 				end
-#=else
-@sync begin
-	for p in 1:num_procs
-		if p != myid() || num_procs == 1
-			@async begin
-				while true
-					idx = nextidx();
-						if idx > n
-							break
-						end
-					(a, b) = pairs[idx];
-					A_rr = RemoteRef();
-					B_rr = RemoteRef();
-					p_rr = RemoteRef();
-					put!(A_rr, Ms.meshes[a]);
-					put!(B_rr, Ms.meshes[b]);
-					put!(p_rr, Ms.params);
-					matches_array[idx] = remotecall_fetch(p, Meshes2Matches, images[a], A_rr, images[b], B_rr, p_rr);
-				end
-			end
-		end
-	end
-end
-
-end
-=#
 for k in 1:n
 		M = matches_array[k]
 		if typeof(M) == Void || M == Void continue; end
@@ -385,6 +362,30 @@ println("Shearing: j-shear: $q")
 println("Rotation: $theta deg.")
 end
 
+function make_stack(offsets, wafer_num, a, b)
+	i = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
+	Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+
+	index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
+	name_aligned = getName(index_aligned);	
+	dy_aligned = 0;
+	dx_aligned = 0;
+	size_i = 36000; 
+	size_j = 36000;
+
+	addMesh2MeshSet!(Tile2Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
+	name = offsets[i, 1];
+	index = offsets[i, 2];
+	dy = offsets[i, 3];
+	dx = offsets[i, 4];
+	size_i = offsets[i, 5];
+	size_j = offsets[i, 6];
+
+	addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
+	optimize_all_cores(Ms.params);
+
+	return Ms;
+end
 function make_stack(offsets, wafer_num, section_range)
 	indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
 	Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
@@ -410,11 +411,6 @@ end
 function load_section_pair(Ms, a, b)
 	A_image = getImage(getPath(Ms.meshes[find_section(Ms,a)].name));
 	B_image = getImage(getPath(Ms.meshes[find_section(Ms,b)].name));
-	#	A_im = SharedArray(UInt8, size(A_image, 1), size(A_image, 2));
-	#	A_im[:, :] = A_image[:, :];
-	#	B_im = SharedArray(UInt8, size(B_image, 1), size(B_image, 2));
-	#	B_im[:, :] = B_image[:, :];
-#     	return A_im, B_im; 
      	return A_image, B_image; 
 end
 
@@ -441,27 +437,6 @@ function load_stack(offsets, wafer_num, section_range)
 	return Ms, images;
 end
 
-function print_res_stats(Ms)
-	residuals_t = Points(0);
-	for k in 1:Ms.M
-		for i in 1:Ms.matches[k].n
-			w = Ms.matches[k].dst_weights[i];
-			t = Ms.matches[k].dst_triangles[i];
-			p = Ms.matches[k].src_points_indices[i];
-			src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
-			dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
-			p1 = src.nodes_t[p];
-			p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
-			push!(residuals_t, p2-p1);
-		end
-	end
-	res_norm = map(norm, residuals_t);
-	rms = sqrt(mean(res_norm.^2));
-	avg = mean(res_norm);
-	sig = std(res_norm);
-	max = maximum(res_norm);
-	println("Residuals after solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max");
-end
 function stats(Ms::MeshSet)
 	residuals = Points(0);
 	residuals_t = Points(0);
@@ -499,37 +474,7 @@ function stats(Ms::MeshSet)
 	sig_t = std(res_norm_t);
 	max_t = maximum(res_norm_t);
 
-#=	
-	move_src_norm = map(norm, movement_src);
-	rms_src = sqrt(mean(move_src_norm.^2));
-	avg_src = mean(move_src_norm);
-	sig_src = std(move_src_norm);
-	max_src = maximum(move_src_norm);
-
-	avg_src_i = mean(zip(movement_src)[1]);
-	sig_src_i = std(zip(movement_src)[1]);
-	avg_src_j = mean(zip(movement_src)[2]);
-	sig_src_j = std(zip(movement_src)[2]);
-
-	move_dst_norm = map(norm, movement_dst);
-	rms_dst = sqrt(mean(move_dst_norm.^2));
-	avg_dst = mean(move_dst_norm);
-	sig_dst = std(move_dst_norm);
-	max_dst = maximum(move_dst_norm);
-
-	avg_dst_i = mean(zip(movement_dst)[1]);
-	sig_dst_i = std(zip(movement_dst)[1]);
-	avg_dst_j = mean(zip(movement_dst)[2]);
-	sig_dst_j = std(zip(movement_dst)[2]);
-=#
-
 	println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
 	println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
 	decomp_affine(affine_approximate(Ms));
-#=	println("Movements in elastic step, src: rms: $rms_src,  mean: $avg_src, sigma = $sig_src, max = $max_src");
-	println("Movements in elastic step, src, i-dir.: avg: $avg_src_i, sigma = $sig_src_i");
-	println("Movements in elastic step, src, j-dir.: avg: $avg_src_j, sigma = $sig_src_j\n");
-	println("Movements in elastic step, dst: rms: $rms_dst,  mean: $avg_dst, sigma = $sig_dst, max = $max_dst");
-	println("Movements in elastic step, dst, i-dir.: avg: $avg_dst_i, sigma = $sig_dst_i");
-	println("Movements in elastic step, dst, j-dir.: avg: $avg_dst_j, sigma = $sig_dst_j");=#
 end
