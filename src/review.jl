@@ -199,8 +199,8 @@ end
 Review all matches in the meshsets in given directory via method specified
 """
 function review_matches(dir, method="movie")
-  jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
-  for fn in jld_filenames[1:1]
+  filenames = sort_dir(dir)
+  for fn in filenames[1:1]
     println(joinpath(dir, fn))
     is_file_changed = false
     meshset = load(joinpath(dir, fn))["MeshSet"]
@@ -219,7 +219,7 @@ function review_matches(dir, method="movie")
         @time filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
         pts_to_remove = collect(edit_blockmatches(filtered_imgs))
       else
-        pts_to_remove = review_matches_movie(meshset, k, "post")
+        pts_to_remove = review_matches_movie(meshset, k, "pre")
       end
       if length(pts_to_remove) > 0
         is_file_changed = true
@@ -445,48 +445,52 @@ end
 
 INCOMPLETE
 """
-function imfuse_section(meshes)
-    img_reds = []
-    img_greens = []
-    bbs_reds = []
-    bbs_greens = []
-    for mesh in meshes
-        img, bb = meshwarp(mesh)
-        img = restrict(img)
-        bb = BoundingBox(bb/2..., size(img)[1], size(img)[2])
-        if (mesh.index[3] + mesh.index[4]) % 2 == 1
-            push!(img_reds, img)
-            push!(bbs_reds, bb)
-        else
-            push!(img_greens, img)
-            push!(bbs_greens, bb)
-        end
-    end
-    global_ref = sum(bbs_reds) + sum(bbs_greens)
-    red_img = zeros(Int(global_ref.h), Int(global_ref.w))
-    for (idx, (img, bb)) in enumerate(zip(img_reds, bbs_reds))
-        println(idx)
-        i = bb.i - global_ref.i+1
-        j = bb.j - global_ref.j+1
-        w = bb.w-1
-        h = bb.h-1
-        red_img[i:i+h, j:j+w] = max(red_img[i:i+h, j:j+w], img)
-        img_reds[idx] = 0
-        gc()
-    end
-    green_img = zeros(Int(global_ref.h), Int(global_ref.w))
-    for (idx, (img, bb)) in enumerate(zip(img_greens, bbs_greens))
-        println(idx)
-        i = bb.i - global_ref.i+1
-        j = bb.j - global_ref.j+1
-        w = bb.w-1
-        h = bb.h-1
-        green_img[i:i+h, j:j+w] = max(green_img[i:i+h, j:j+w], img)
-        img_greens[idx] = 0
-        gc()
-    end
-    O, O_bb = imfuse(red_img, [0,0], green_img, [0,0])
-    view(make_isotropic(O))
+function imfuse_section(meshset, downsample=3)
+  img_reds = []
+  img_greens = []
+  bbs_reds = []
+  bbs_greens = []
+  for mesh in meshset.meshes
+      img, bb = meshwarp(mesh)
+      img = restrict(img)
+      bb = BoundingBox(floor(Int,bb/2)..., size(img)[1], size(img)[2])
+      if (mesh.index[3] + mesh.index[4]) % 2 == 1
+          push!(img_reds, img)
+          push!(bbs_reds, bb)
+      else
+          push!(img_greens, img)
+          push!(bbs_greens, bb)
+      end
+  end
+  global_ref = snap_bb(sum(bbs_reds) + sum(bbs_greens))
+  red_img = zeros(Int(global_ref.h), Int(global_ref.w))
+  for (idx, (img, bb)) in enumerate(zip(img_reds, bbs_reds))
+      println(idx)
+      i = bb.i - global_ref.i+1
+      j = bb.j - global_ref.j+1
+      w = bb.w-1
+      h = bb.h-1
+      red_img[i:i+h, j:j+w] = max(red_img[i:i+h, j:j+w], img)
+      img_reds[idx] = 0
+      # gc()
+  end
+  green_img = zeros(Int(global_ref.h), Int(global_ref.w))
+  for (idx, (img, bb)) in enumerate(zip(img_greens, bbs_greens))
+      println(idx)
+      i = bb.i - global_ref.i+1
+      j = bb.j - global_ref.j+1
+      w = bb.w-1
+      h = bb.h-1
+      green_img[i:i+h, j:j+w] = max(green_img[i:i+h, j:j+w], img)
+      img_greens[idx] = 0
+      # gc()
+  end
+  O, O_bb = imfuse(red_img, [0,0], green_img, [0,0])
+  for i = 2:downsample
+      O = restrict(O)
+  end
+  index = meshset.meshes[1].index
+  imwrite(O, joinpath(MONTAGED_DIR, "review", string(join(index[1:2], ","), "_review.jpg")))
 end 
 
 """

@@ -171,58 +171,24 @@ function padimages(imgA, imgB)
 end
 
 function render_montage_for_directory()
-    for fn in readdir(MONTAGED_DIR)[4:end]
-        if fn[end-2:end] == "jld"
-            println("Rendering ", fn[1:end-4])
-            meshset = load(joinpath(MONTAGED_DIR, fn))["MeshSet"]
-            img, offset = render_section(meshset.meshes)
-            img = grayim(img)
-            img["spatialorder"] = ["y", "x"]
-            println("Writing ", fn[1:end-4])
-            @time imwrite(img, joinpath(MONTAGED_DIR, string(fn[1:end-4], ".tif")))
-            img = 0
-            gc()
-        end
+    filenames = sort_dir(MONTAGED_DIR)
+    for fn in filenames[4:end]
+        # gc(); gc();
+        println("Rendering ", fn[1:end-4])
+        meshset = load(joinpath(MONTAGED_DIR, fn))["MeshSet"]
+        img, offset = merge_images(meshset.meshes)
+        img = grayim(img)
+        img["spatialorder"] = ["y", "x"]
+        println("Writing ", fn[1:end-4])
+        @time imwrite(img, joinpath(MONTAGED_DIR, string(fn[1:end-4], ".tif")))
+
+        imfuse_section(meshset)
     end
 end
 
-function render_prealignment_for_directory(downsample=6)
-    filenames = sort(filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR)))
-    log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
-    if !isfile(log_path)
-        f = open(log_path, "w")
-        close(f)
-    end
-    for fn in filenames[1:1]
-        log_file = open(log_path, "a")
-        meshset = load(joinpath(PREALIGNED_DIR, fn))["MeshSet"]
-        println("Warping ", fn[1:end-4])
-        warped, offset = imwarp(meshset)
-        warped_index = meshset.meshes[2].index
-        warped_fn = string(join(warped_index[1:2], ","), "_prealigned.tif")
-        println("Writing ", warped_fn)
-        imwrite(warped, joinpath(PREALIGNED_DIR, warped_fn))
-        log_line = join((warped_fn, offset[1], offset[2], size(warped,1), size(warped,2)), " ")
-        write(log_file, log_line, "\n")
-        gc(); gc();
-
-        warped = restrict(warped)
-        gc(); gc();
-        fixed = getFloatImage(meshset.meshes[1])
-        fixed = restrict(fixed)
-        gc(); gc();
-        offset = round(Int64, offset/2)
-        println(offset)
-        O, O_bb = imfuse(fixed, [0,0], warped, offset)
-        for i = 2:downsample
-            O = restrict(O)
-        end
-        fixed_index = meshset.meshes[1].index
-        review_fn = string(join(warped_index[1:2], ","), "-", join(fixed_index[1:2], ","), "_prealigned.jpg")
-        println("Writing thumbnail ", review_fn)
-        imwrite(O, joinpath(PREALIGNED_DIR, "review", review_fn))             
-        close(log_file)
-    end
+function sort_dir(dir, file_extension="jld")
+    files_in_dir = filter(x -> x[end-2:end] == file_extension, readdir(dir))
+    return sort(files_in_dir, by=x->parseName(x))
 end
 
 function get_global_bb(meshset)
@@ -251,23 +217,21 @@ function warp_pad_write(mesh)
 end
 
 function render_alignment_for_directory()
-	filename = joinpath(ALIGNED_DIR, "1,10-1,11_aligned.jld")
-    println("Rendering meshes in ", filename)
-    meshset = load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
-    global_bb = get_global_bb(meshset)
-    # map(warp_pad_write, meshset.meshes)
-    for mesh in meshset.meshes[2:2]
-    	println("Warping ", mesh.name)
-	    @time img, offset = meshwarp(mesh)
-        println(global_bb)
-        println(offset)
-        println(size(img))
-	    img = padimage(img, offset, global_bb)
-        println(size(img))
-	    println("Writing ", mesh.name)
-        new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
-	    @time imwrite(img, joinpath(ALIGNED_DIR, new_fn))
-	    img = 0
-	    gc(); gc();
-	end
+	filenames = sort_dir(ALIGNED_DIR)
+    for filename in filenames
+        println("Rendering meshes in ", filename)
+        meshset = load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
+        global_bb = get_global_bb(meshset)
+        # map(warp_pad_write, meshset.meshes)
+        for mesh in meshset.meshes
+        	println("Warping ", mesh.name)
+    	    @time img, offset = meshwarp(mesh)
+            println(global_bb)
+            println(offset)
+            println(size(img))
+            println("Writing ", mesh.name)
+            new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
+    	    @time imwrite(padimage(img, offset, global_bb), joinpath(ALIGNED_DIR, new_fn))
+    	end
+    end
 end
