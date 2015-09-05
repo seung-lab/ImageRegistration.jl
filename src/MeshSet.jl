@@ -161,7 +161,7 @@ function solve_meshset!(Ms)
 	end
 
     print(Ms.params);
-    stats(Ms);
+    # stats(Ms);
 end
 
 function save(filename::String, Ms::MeshSet)
@@ -461,20 +461,20 @@ function stats(Ms::MeshSet)
 	end
 
 
-	res_norm = map(norm, residuals);
-	rms = sqrt(mean(res_norm.^2));
-	avg = mean(res_norm);
-	sig = std(res_norm);
-	max = maximum(res_norm);
+	# res_norm = map(norm, residuals);
+	# rms = sqrt(mean(res_norm.^2));
+	# avg = mean(res_norm);
+	# sig = std(res_norm);
+	# max = maximum(res_norm);
 
 
-	res_norm_t = map(norm, residuals_t);
-	rms_t = sqrt(mean(res_norm_t.^2));
-	avg_t = mean(res_norm_t);
-	sig_t = std(res_norm_t);
-	max_t = maximum(res_norm_t);
+	# res_norm_t = map(norm, residuals_t);
+	# rms_t = sqrt(mean(res_norm_t.^2));
+	# avg_t = mean(res_norm_t);
+	# sig_t = std(res_norm_t);
+	# max_t = maximum(res_norm_t);
 
-	println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
-	println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
+	# println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
+	# println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
 	decomp_affine(affine_approximate(Ms));
 end
