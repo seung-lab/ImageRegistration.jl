@@ -62,7 +62,7 @@ include("MeshSession.jl")
 if !isdefined(:BoundingBox) # haaaaack
 	include("boundingbox.jl")
 end
-include("SectionAlignAffine.jl")
+include("prealign.jl")
 include("incidence2triangles.jl")
 include("imwarp.jl")
 include("meshwarp.jl")
