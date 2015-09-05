@@ -146,8 +146,7 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
         end
         iter+=1;
     end
-    print(Ms.params);
-    stats(Ms);
+
 end
 
 #=

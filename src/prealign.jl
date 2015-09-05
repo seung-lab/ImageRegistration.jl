@@ -47,7 +47,7 @@ function test2()
   fixed_points = points_to_3xN_matrix(fixed_points)
 
   println(trans)
-  downsample = 1./4
+  downsample = 4
   moving_section = moving_section[1:downsample:end, 1:downsample:end]
   fixed_section = fixed_section[1:downsample:end, 1:downsample:end]
 
