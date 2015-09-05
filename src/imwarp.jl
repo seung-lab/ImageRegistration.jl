@@ -1,7 +1,7 @@
 function imwarp(meshset::MeshSet)
   tform = recompute_affine(meshset)
   img = getFloatImage(meshset.meshes[2])
-  @time img, offset = imwarp(img, inv(tform))
+  @time img, offset = imwarp(img, tform)
   return img, offset
 end
 
@@ -137,6 +137,14 @@ function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
 end
 
 function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
+    img[i,j]=pixelvalue
+end
+
+function writepixel{T<:Ufixed8}(img::Array{T},i,j,pixelvalue)
+    img[i,j]=pixelvalue
+end
+
+function writepixel{T<:UInt8}(img::Array{T},i,j,pixelvalue)
     img[i,j]=pixelvalue
 end
 

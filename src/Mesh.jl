@@ -41,6 +41,14 @@ function getFloatImage(index::Index)
 	return getFloatImage(getPath(index));
 end
 
+function getUfixed8Image(mesh::Mesh)
+	return getUfixed8Image(getPath(mesh.index))
+end
+
+function getUInt8Image(mesh::Mesh)
+	return getUInt8Image(getPath(mesh.index))
+end
+
 function getImage(mesh::Mesh)
 	return getImage(mesh.name);
 end
