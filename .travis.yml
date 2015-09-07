@@ -3,10 +3,8 @@ compiler:
   - clang
 notifications:
   email: false
-env:
-  matrix: 
-    - JULIAVERSION="juliareleases" 
-    - JULIAVERSION="julianightlies" 
+env: 
+  - JULIAVERSION="julianightlies" 
 before_install:
   - sudo add-apt-repository ppa:staticfloat/julia-deps -y
   - sudo add-apt-repository ppa:staticfloat/${JULIAVERSION} -y

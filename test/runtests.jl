@@ -1,5 +1,3 @@
-using Julimaps
-
 filenames = filter(x -> x[end-1:end] == "jl", readdir("test"))
 for fn in filenames
 	if fn != "runtests.jl"
