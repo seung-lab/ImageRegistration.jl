@@ -1,4 +1,5 @@
 using Julimaps
+Pkg.build("Tk")
 
 filenames = filter(x -> x[end-1:end] == "jl", readdir("test"))
 for fn in filenames
