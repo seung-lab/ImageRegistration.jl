@@ -12,7 +12,7 @@
 
 * `imgs`: 1D array, images (2D arrays)
 * `offsets`: 1D array, 2-element array positions of corresponding image 
-	in 'imgs` in global space
+  in 'imgs` in global space
 
 """ 
 function merge_images(imgs, offsets)
@@ -139,9 +139,9 @@ function padimage(img, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64)
 end
 
 """
-`PADIMAGE` - Specify image padding by offset's relation to global bounding box
+`RESCOPE` - Crop/pad an image to fill a bounding box
     
-    new_img = padimage(img, offset, boundingbox)
+    new_img = rescope(img, offset, boundingbox)
 
 Args:
 
@@ -151,39 +151,34 @@ Args:
 
 Returns:
 
-* new_img: original img, extended with rows and columns of zeros
+* new_img: original img, cropped &/or extended with rows and columns of zeros
 """
-function padimage(img, offset, bb)
-	ylow = offset[1] - bb.i
-	xlow = offset[2] - bb.j
-    z = zeros(bb.h, bb.w)
-    z[ylow+1:ylow+size(img,1), xlow+1:xlow+size(img,2)] = img
-    return z
+function rescopeimage(img, offset, bb)
+  i_start = bb.i - offset[1]
+  j_start = bb.j - offset[2]
+  i_end = (offset[1] + size(img,1)) - (bb.i + bb.h)
+  j_end = (offset[2] + size(img,2)) - (bb.j + bb.w)
+  i_start = i_start > 0 ? i_start : 1
+  j_start = j_start > 0 ? j_start : 1
+  i_end = i_end > 0 ? bb.i + bb.h : size(img,1)
+  j_end = j_end > 0 ? bb.j + bb.w : size(img,2)
+  img = img[i_start:i_end, j_start:j_end]
+  i_low = offset[1] - bb.i + 1
+  j_low = offset[2] - bb.j + 1
+  i_high = offset[1] - bb.i + size(img,1)
+  j_high = offset[2] - bb.j + size(img,2)
+  z = zeros(bb.h, bb.w)
+  z[i_low:i_high, j_low:j_high] = img
+  return z
 end
 
 function padimages(imgA, imgB)
-    szA = collect(size(imgA))
-    szB = collect(size(imgB))
-    szC = max(szA, szB)
-    imgA = padimage(imgA, 0, 0, reverse(szC-szA)...)
-    imgB = padimage(imgB, 0, 0, reverse(szC-szB)...)
-    return imgA, imgB
-end
-
-function render_montage_for_directory()
-    filenames = sort_dir(MONTAGED_DIR)
-    for fn in filenames[4:end]
-        # gc(); gc();
-        println("Rendering ", fn[1:end-4])
-        meshset = load(joinpath(MONTAGED_DIR, fn))["MeshSet"]
-        img, offset = merge_images(meshset.meshes)
-        img = grayim(img)
-        img["spatialorder"] = ["y", "x"]
-        println("Writing ", fn[1:end-4])
-        @time imwrite(img, joinpath(MONTAGED_DIR, string(fn[1:end-4], ".tif")))
-
-        imfuse_section(meshset)
-    end
+  szA = collect(size(imgA))
+  szB = collect(size(imgB))
+  szC = max(szA, szB)
+  imgA = padimage(imgA, 0, 0, reverse(szC-szA)...)
+  imgB = padimage(imgB, 0, 0, reverse(szC-szB)...)
+  return imgA, imgB
 end
 
 function sort_dir(dir, file_extension="jld")
@@ -205,33 +200,49 @@ function get_global_bb(meshset)
     return global_bb
 end    
 
+function render_montaged(section_range::UnitRange{Int64})
+  filenames = sort_dir(MONTAGED_DIR)[section_range]
+  for fn in filenames[4:end]
+    println("Rendering ", fn[1:end-4])
+    meshset = JLD.load(joinpath(MONTAGED_DIR, fn))["MeshSet"]
+    img, offset = merge_images(meshset.meshes)
+    img = grayim(img)
+    img["spatialorder"] = ["y", "x"]
+    println("Writing ", fn[1:end-4])
+    @time imwrite(img, joinpath(MONTAGED_DIR, string(fn[1:end-4], ".tif")))
+
+    imfuse_section(meshset)
+  end
+end
+
 function warp_pad_write(mesh)
     println("Warping ", mesh.name)
     @time img, offset = meshwarp(mesh)
     println(offset)
     println(size(img))
-    img = padimage(img, offset, global_bb)
+    img = rescopeimage(img, offset, global_bb)
     println(size(img))
     println("Writing ", mesh.name)
     @time imwrite(img, joinpath(ALIGNED_DIR, string(mesh.name, ".tif")))
 end
 
-function render_alignment_for_directory()
-	filenames = sort_dir(ALIGNED_DIR)
-    for filename in filenames
-        println("Rendering meshes in ", filename)
-        meshset = load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
-        global_bb = get_global_bb(meshset)
-        # map(warp_pad_write, meshset.meshes)
-        for mesh in meshset.meshes
-        	println("Warping ", mesh.name)
-    	    @time img, offset = meshwarp(mesh)
-            println(global_bb)
-            println(offset)
-            println(size(img))
-            println("Writing ", mesh.name)
-            new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
-    	    @time imwrite(padimage(img, offset, global_bb), joinpath(ALIGNED_DIR, new_fn))
-    	end
+function render_aligned(section_range::UnitRange{Int64})
+  filenames = sort_dir(ALIGNED_DIR)[section_range]
+  for filename in filenames
+    println("Rendering meshes in ", filename)
+    meshset = JLD.load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
+    global_bb = BoundingBox(0,0,36000,36000)
+    # map(warp_pad_write, meshset.meshes)
+    for mesh in meshset.meshes[5:5]
+      println("Warping ", mesh.name)
+      @time img, offset = meshwarp(mesh)
+      println(global_bb)
+      println(offset)
+      println(size(img))
+      println("Writing ", mesh.name)
+      new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
+      @time imwrite(rescopeimage(img, offset, global_bb), 
+                                                joinpath(ALIGNED_DIR, new_fn))
     end
+  end
 end

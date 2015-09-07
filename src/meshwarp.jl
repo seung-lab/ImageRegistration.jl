@@ -2,7 +2,7 @@
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
 function meshwarp(mesh::Mesh)
-    img = getFloatImage(mesh)
+    @time img = getUfixed8Image(mesh)
     src_nodes = hcat(mesh.nodes...)'
     dst_nodes = hcat(mesh.nodes_t...)'
     offset = mesh.disp
@@ -37,7 +37,7 @@ subsequent fusing of multiple warped tiles.
 See definitions in IMWARP documentation for further help.
 
 """ 
-function meshwarp{N}(img::Array{Float64, N},
+function meshwarp{T}(img::Array{T},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
     bb = snap_bb(find_mesh_bb(dst))
@@ -250,8 +250,7 @@ end
 
 function demo_meshwarp()
 # Demo the updated meshwarp function that runs faster than original package
-    img = imread(joinpath(BUCKET, "test_images", "turtle.jpg"))
-    img = convert(Array{Float64, 3}, data(separate(img)))[:,:,1]
+    img = getUfixed8Image(joinpath(BUCKET, "test_images", "turtle.jpg"))
     src_nodes = [20.0 20.0;
                     620.0 20.0;
                     620.0 560.0;

@@ -70,8 +70,7 @@ function draw_mesh(img, nodes, node_dict)
     return draw_mesh(imgc, img2, nodes, node_dict)
 end
 
-function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,0,1))
-# Display match displacement vectors on images
+function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,0,1), k=100)
 # Args:
 #   imgc: ImageCanvas object
 #   img2: ImageSliced2d object 
@@ -83,11 +82,24 @@ function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,
 #   img2: ImageSliced2d object
 #   an_points: annotation object for the points
 #   an_vectors: annotation object for the vectors
-    vectors = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
-    an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], color=pt_color))
-    an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, coord_order="xxyy", linewidth=3))
+    vectors = [vectors[2,:]; 
+                vectors[1,:]; 
+                (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
+                (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+    an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, 
+                                            coord_order="xxyy", linewidth=3))
+    an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], 
+                                                    color=pt_color, shape='*'))
     return an_points, an_vectors
-end    
+end
+
+function draw_indices(imgc, img2, points, offset=[-20,-20])
+    points = [points[2,:]; points[1,:]] .- offset
+    for i in 1:size(points,2)
+        an_txt = annotate!(imgc, img2, AnnotationText(points[:,i]..., "$i", 
+                                            fontsize=12, color=RGB(0,0,0)))
+    end
+end
 
 function draw_vectors(img, vectors)
     imgc, img2 = view(img)
@@ -109,7 +121,7 @@ function demo_draw_vectors()
     draw_vectors(a, vectors)
 end
 
-function draw_points(imgc, img2, points, color=RGB(0,0,1))
+function draw_points(imgc, img2, points, color=RGB(0,0,1), linewidth=1.0, shape='x')
 # Display match displacement vectors on images
 # Args:
 #   imgc: ImageCanvas object
@@ -120,7 +132,10 @@ function draw_points(imgc, img2, points, color=RGB(0,0,1))
 #   img2: ImageSliced2d object
 #   an_points: annotation object for the points
     points = [points[2,:]; points[1,:]]
-    an_points = annotate!(imgc, img2, AnnotationPoints(points, color=color))
+    an_points = annotate!(imgc, img2, AnnotationPoints(points, 
+                                                        color=color, 
+                                                        linewidth=linewidth,
+                                                        shape=shape))
     return an_points
 end 
 

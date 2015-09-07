@@ -23,31 +23,65 @@ po = padimage(o, 1, 2, 3, 4)
 @test size(po, 1) == 11
 @test size(po, 2) == 6
 
-# test_padimage()
+# test_rescopeimage()
 img = ones(1,1)
 offset = [0,0]
 bb = BoundingBox(0,0,1,1)
-@test padimage(img, offset, bb) == img
+@test rescopeimage(img, offset, bb) == img
 
 img = ones(1,1)
 offset = [1,1]
 bb = BoundingBox(1,1,1,1)
-@test padimage(img, offset, bb) == img
+@test rescopeimage(img, offset, bb) == img
 
 img = ones(1,1)
 offset = [1,1]
 bb = BoundingBox(0,0,2,2)
-@test padimage(img, offset, bb) == [0 0; 0 1]
+@test rescopeimage(img, offset, bb) == [0 0; 0 1]
+
+img = ones(1,1)
+offset = [1,1]
+bb = BoundingBox(-1,-1,3,3)
+@test rescopeimage(img, offset, bb) == [0 0 0; 0 0 0; 0 0 1]
 
 img = ones(1,1)
 offset = [1,1]
 bb = BoundingBox(0,0,3,3)
-@test padimage(img, offset, bb) == [0 0 0; 0 1 0; 0 0 0]
+@test rescopeimage(img, offset, bb) == [0 0 0; 0 1 0; 0 0 0]
 
 img = ones(1,1)
 offset = [0,0]
 bb = BoundingBox(-1,-1,2,2)
-@test padimage(img, offset, bb) == [0 0; 0 1]
+@test rescopeimage(img, offset, bb) == [0 0; 0 1]
+
+img = rand(5,5)
+offset = [0,0]
+bb = BoundingBox(0,0,5,5)
+@test rescopeimage(img, offset, bb) == img
+
+bb = BoundingBox(0,0,2,2)
+@test rescopeimage(img, offset, bb) == img[1:2, 1:2]
+
+bb = BoundingBox(0,0,5,6)
+@test rescopeimage(img, offset, bb)[1:5, 1:5] == img
+@test rescopeimage(img, offset, bb)[1:5, 6:6] == zeros(5, 1)
+
+bb = BoundingBox(0,-1,5,5)
+@test rescopeimage(img, offset, bb)[1:5, 2:5] == img[1:5, 1:4]
+@test rescopeimage(img, offset, bb)[1:5, 1:1] == zeros(5, 1)
+
+bb = BoundingBox(0,-1,5,7)
+@test rescopeimage(img, offset, bb)[1:5, 2:6] == img
+@test rescopeimage(img, offset, bb)[1:5, 1:1] == zeros(5, 1)
+@test rescopeimage(img, offset, bb)[1:5, 7:7] == zeros(5, 1)
+
+bb = BoundingBox(-1,0,7,5)
+@test rescopeimage(img, offset, bb)[2:6, 1:5] == img
+@test rescopeimage(img, offset, bb)[1:1, 1:5] == zeros(1, 5)
+@test rescopeimage(img, offset, bb)[7:7, 1:5] == zeros(1, 5)
+
+bb = BoundingBox(-3,-3,3,3)
+@test rescopeimage(img, offset, bb) == zeros(3,3)
 
 # test_imfuse()
 A = rand(5,5)

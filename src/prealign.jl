@@ -254,8 +254,8 @@ function affine_align_sections(moving_img_filename::String,
                                                 params=PARAMS_PREALIGNMENT)
   meshset = makeNewMeshSet(params)
   meshset.N = 2
-  moving_mesh = Mesh(moving_section)
-  fixed_mesh = Mesh(fixed_section)
+  moving_mesh = Mesh(moving_img_filename)
+  fixed_mesh = Mesh(fixed_img_filename)
   meshset.meshes = [fixed_mesh, moving_mesh]
 
   if meshset.N != 2
@@ -265,17 +265,18 @@ function affine_align_sections(moving_img_filename::String,
   moving_img = []
   fixed_img = []
   try
-    fixed_img = getFloatImage(meshset.meshes[1])
-    moving_img = getFloatImage(meshset.meshes[2])
+    fixed_img = getUfixed8Image(meshset.meshes[1])
+    moving_img = getUfixed8Image(meshset.meshes[2])
   catch
     # mostly for testing purpose where name is the file path
-    fixed_img = getFloatImage(meshset.meshes[1].name)
-    moving_img = getFloatImage(meshset.meshes[2].name)
+    fixed_img = getUfixed8Image(meshset.meshes[1].name)
+    moving_img = getUfixed8Image(meshset.meshes[2].name)
   end
 
   # Align
   tform, moving_points, fixed_points, residualIn1, residualIn2, rmsIn1, rmsIn2, rmsTotal = 
     affine_align_images(moving_img, fixed_img, params; return_points=true)
+  println(tform)
 
   # Update matches object in meshset
   meshset.meshes[1].nodes = moving_points
@@ -306,9 +307,9 @@ function affine_align_sections(moving_img_filename::String,
     close(f)
   end
   log_file = open(log_path, "a")
-  println("Rendering ", fn[1:end-4])
-  @time warped_img, warped_offset = imwarp(moving_img, tform)
   warped_fn = string(join(warped_index[1:2], ","), "_prealigned.tif")
+  println("Rendering ", warped_fn)
+  @time warped_img, warped_offset = imwarp(moving_img, tform)
   println("Writing ", warped_fn)
   @time imwrite(warped_img, joinpath(PREALIGNED_DIR, warped_fn))
   log_line = join((warped_fn, warped_offset[1], warped_offset[2], 

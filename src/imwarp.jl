@@ -1,6 +1,6 @@
 function imwarp(meshset::MeshSet)
   tform = recompute_affine(meshset)
-  img = getFloatImage(meshset.meshes[2])
+  img = getUfixed8Image(meshset.meshes[2])
   @time img, offset = imwarp(img, tform)
   return img, offset
 end
