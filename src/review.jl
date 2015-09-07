@@ -608,18 +608,12 @@ function write_alignment_thumbnails(meshset, k, step="post")
   src_mesh = meshset.meshes[findIndex(meshset, src_index)]
   dst_mesh = meshset.meshes[findIndex(meshset, dst_index)]
 
-  if step == "post"
-    src_nodes, dst_nodes = get_matched_points_t(meshset, k)
-    src_index = (src_mesh.index[1], src_mesh.index[2], src_mesh.index[3]-1, src_mesh.index[4]-1)
-    dst_index = (dst_mesh.index[1], dst_mesh.index[2], dst_mesh.index[3]-1, dst_mesh.index[4]-1)
-    global_bb = get_global_bb(meshset)
-    src_offset = [global_bb.i, global_bb.j]
-    dst_offset = [global_bb.i, global_bb.j]
-  else
-    src_nodes, dst_nodes = get_matched_points(meshset, k)
-    src_offset = src_mesh.disp
-    dst_offset = dst_mesh.disp
-  end
+  src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+  src_index = (src_mesh.index[1], src_mesh.index[2], src_mesh.index[3]-1, src_mesh.index[4]-1)
+  dst_index = (dst_mesh.index[1], dst_mesh.index[2], dst_mesh.index[3]-1, dst_mesh.index[4]-1)
+  global_bb = get_global_bb(meshset)
+  src_offset = [global_bb.i, global_bb.j]
+  dst_offset = [global_bb.i, global_bb.j]
 
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
