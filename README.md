@@ -17,9 +17,9 @@ A set of tools for elastic image registration in Julia.
 # Milestones
 * Montage two tiles (8/9)
 * Montage one section (8/16)
-* Prealign two sections
+* Prealign two sections (9/1)
 * Align two sections (9/3)
-* Align five sections
+* Align five sections (9/5)
 * Align one wafer
 * Align one stack
 * Premontage one section

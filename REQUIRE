@@ -3,4 +3,6 @@ Images
 ImageView
 Colors
 JLD
-HDF5
+Tk 8.5
+Cairo
+FixedPointNumbers
