@@ -1,11 +1,17 @@
-language: julia
-os:
-  - linux
-  - osx
-julia:
-  - release
-  - nightly
+language: cpp
+compiler:
+  - clang
 notifications:
   email: false
-after_success:
-  - julia -e 'cd(Pkg.dir("Julimaps")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+env:
+  matrix: 
+    - JULIAVERSION="juliareleases" 
+    - JULIAVERSION="julianightlies" 
+before_install:
+  - sudo add-apt-repository ppa:staticfloat/julia-deps -y
+  - sudo add-apt-repository ppa:staticfloat/${JULIAVERSION} -y
+  - sudo apt-get update -qq -y
+  - sudo apt-get install curl libpcre3-dev julia -y
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+script:
+  - xvfb-run julia -e 'versioninfo(); Pkg.init(); Pkg.clone(pwd()); Pkg.build("Julimaps"); Pkg.test("Julimaps")'
