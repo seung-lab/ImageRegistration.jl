@@ -7,8 +7,5 @@ julia:
   - nightly
 notifications:
   email: false
-script:
-    - julia -e 'Pkg.clone(pwd()); Pkg.build("Julimaps")'
-    - julia -e 'Pkg.test("Julimaps", coverage=true)'
 after_success:
   - julia -e 'cd(Pkg.dir("Julimaps")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
