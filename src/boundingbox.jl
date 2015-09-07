@@ -83,8 +83,8 @@ function tform_bb(bb, tform)
   tform_pts = [bb2pts(bb) ones(size(bb2pts(bb),1),1)] * tform
   i = minimum(tform_pts[:,1])
   j = minimum(tform_pts[:,2])
-  h = maximum(tform_pts[:,1]) - i
-  w = maximum(tform_pts[:,2]) - j
+  h = maximum(tform_pts[:,1])-i
+  w = maximum(tform_pts[:,2])-j
   return BoundingBox(i, j, h, w)
 end
 

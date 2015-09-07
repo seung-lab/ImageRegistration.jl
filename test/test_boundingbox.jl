@@ -13,25 +13,31 @@ D = BoundingBox(5,10,35,20)
   dst = [4.0 2.0;
           8.0 2.0;
           6.0 10.0]
-  bounds = find_mesh_bb(dst')
-  @test bounds == (3, 1, 9, 11)
+  bounds = find_mesh_bb(dst)
+  @test bounds == BoundingBox(4,2,4,8)
 
   dst = [0.0 0.0;
           0.0 0.0;
           0.0 0.0]
-  bounds = find_mesh_bb(dst')
-  @test bounds == (-1, -1, 1, 1)
+  bounds = find_mesh_bb(dst)
+  @test bounds == BoundingBox(0,0,0,0)
 
 # test_tform_bb()
-sz = (100, 100)
+tform = [1 0 0;
+        0 1 0;
+        0 0 1];
+bb = BoundingBox(100,100,100,100)
+tbb = tform_bb(bb, tform)
+@test bb == tbb
+
 tform = [1 0 0;
         0 1 0;
         100 100 1];
-bb = BoundingBox(100, 100, 100, 100)
-tbb = tform_bb(sz2bb(sz), tform)
-@test bb2pts(bb) == bb2pts(tbb)
+bb = BoundingBox(100,100,100,100)
+tbb = tform_bb(bb, tform)
+@test BoundingBox(200,200,100,100) == tbb
 
-sz = (100, 100)
+sz = (101, 101)
 tform = [cos(pi/6) -sin(pi/6) 0;
         sin(pi/6) cos(pi/6) 0;
         0 0 1];
@@ -52,4 +58,3 @@ bb = snap_bb(BoundingBox(100.9, 200.1, 100.5, 100.2))
 tbb = sz2bb((101, 201))
 tbb = BoundingBox(100, 200, 102, 101)
 @test bb2pts(bb) == bb2pts(tbb)  
-end
