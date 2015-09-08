@@ -49,6 +49,7 @@ using Images
 using ImageView
 using Colors
 using FixedPointNumbers
+using Base.Test
 include("Index.jl")
 include("Params.jl")
 include("IO.jl")

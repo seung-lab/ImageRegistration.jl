@@ -44,11 +44,6 @@ function meshwarp{T}(img::Array{T},
     warped_img = similar(img, bb.h+1, bb.w+1)
     warped_offset = [bb.i, bb.j]
 
-    if interp
-        println("w interpolation")
-    else
-        println("w/o interpolation")
-    end
     for t=1:size(trigs, 1)    
         tr = squeeze(trigs[t, :], 1)
         # coordinates of the source triangle
