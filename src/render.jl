@@ -154,21 +154,15 @@ Returns:
 * new_img: original img, cropped &/or extended with rows and columns of zeros
 """
 function rescopeimage(img, offset, bb)
-  i_start = bb.i - offset[1]
-  j_start = bb.j - offset[2]
-  i_end = (offset[1] + size(img,1)) - (bb.i + bb.h)
-  j_end = (offset[2] + size(img,2)) - (bb.j + bb.w)
-  i_start = i_start > 0 ? i_start : 1
-  j_start = j_start > 0 ? j_start : 1
-  i_end = i_end > 0 ? bb.i + bb.h : size(img,1)
-  j_end = j_end > 0 ? bb.j + bb.w : size(img,2)
-  img = img[i_start:i_end, j_start:j_end]
-  i_low = offset[1] - bb.i + 1
-  j_low = offset[2] - bb.j + 1
-  i_high = offset[1] - bb.i + size(img,1)
-  j_high = offset[2] - bb.j + size(img,2)
-  z = zeros(bb.h, bb.w)
-  z[i_low:i_high, j_low:j_high] = img
+  z = zeros(bb.h+1, bb.w+1)
+  imgbb = BoundingBox(offset..., size(img,1)-1, size(img,2)-1)
+  xbb = imgbb - bb
+  if !isnan(xbb.i) || !isnan(xbb.j) || !isnan(xbb.h) || !isnan(xbb.h)
+    crop_img = xbb.i-offset[1]+1 : xbb.i-offset[1]+1+xbb.h, 
+                  xbb.j-offset[2]+1 : xbb.j-offset[2]+1+xbb.w
+    crop_z = xbb.i-bb.i+1:xbb.i-bb.i+1+xbb.h, xbb.j-bb.j+1:xbb.j-bb.j+1+xbb.w
+    z[crop_z...] = img[crop_img...]
+  end
   return z
 end
 
@@ -227,22 +221,74 @@ function warp_pad_write(mesh)
 end
 
 function render_aligned(section_range::UnitRange{Int64})
+  global_bb = BoundingBox(0,0,36000,36000)
+  scale = 0.0625
+  s = [scale 0 0; 0 scale 0; 0 0 1]
+
   filenames = sort_dir(ALIGNED_DIR)[section_range]
   for filename in filenames
     println("Rendering meshes in ", filename)
     meshset = JLD.load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
-    global_bb = BoundingBox(0,0,36000,36000)
+    images = Dict()
+    
+    # Check images dict for thumbnail, otherwise render, save, & resize it
+    function retrieve_image(mesh)
+      index = (mesh.index[1:2]..., -4, -4)
+      if index in keys(images)
+        img = images[index]
+      else
+        path = getPath(index)
+        if isfile(path)
+          img, _ = imwarp(getUfixed8Image(index), s)
+        else
+          println("Warping ", mesh.name)
+          @time img, offset = meshwarp(mesh)
+          @time img = rescopeimage(img, offset, global_bb)
+          println("Writing ", mesh.name)
+          new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
+          @time imwrite(img, joinpath(ALIGNED_DIR, new_fn))
+          img, _ = imwarp(img, s)
+        end
+        images[index] = img
+      end
+      return img
+    end
+
     # map(warp_pad_write, meshset.meshes)
-    for mesh in meshset.meshes[5:5]
-      println("Warping ", mesh.name)
-      @time img, offset = meshwarp(mesh)
-      println(global_bb)
-      println(offset)
-      println(size(img))
-      println("Writing ", mesh.name)
-      new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
-      @time imwrite(rescopeimage(img, offset, global_bb), 
-                                                joinpath(ALIGNED_DIR, new_fn))
+    for (k, matches) in enumerate(meshset.matches)
+      src_index = matches.src_index
+      dst_index = matches.dst_index
+      src_mesh = meshset.meshes[findIndex(meshset, src_index)]
+      dst_mesh = meshset.meshes[findIndex(meshset, dst_index)]
+
+      src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+      src_index = (src_index[1:2]..., src_index[3]-1, src_index[4]-1)
+      dst_index = (dst_index[1:2]..., dst_index[3]-1, dst_index[4]-1)
+      src_offset = [global_bb.i, global_bb.j]
+      dst_offset = [global_bb.i, global_bb.j]
+
+      src_img = retrieve_image(src_mesh)
+      dst_img = retrieve_image(dst_mesh)
+
+      src_offset *= scale
+      dst_offset *= scale
+
+      O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
+
+      src_nodes = (hcat(src_nodes...)[1:2, :] .- src_offset)*scale
+      dst_nodes = (hcat(dst_nodes...)[1:2, :] .- dst_offset)*scale
+
+      imgc, img2 = view(O, pixelspacing=[1,1])
+      vectors = [src_nodes; dst_nodes]
+      an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
+      draw_indices(imgc, img2, src_nodes)
+      # an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,1,1), 2.0, 'x')
+      # an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,0,0), 2.0, '+')
+
+      thumbnail_fn = string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","), "_aligned_thumbnail.png")
+      println("Writing ", thumbnail_fn)
+      Cairo.write_to_png(imgc.c.back, joinpath(ALIGNED_DIR, "review", thumbnail_fn))
+      destroy(toplevel(imgc))
     end
   end
 end

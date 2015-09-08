@@ -1,5 +1,3 @@
-using Base.Test
-
 # test_bb_operations()
 A = BoundingBox(10,10,30,20)
 B = BoundingBox(5,20,20,10)
@@ -58,3 +56,18 @@ bb = snap_bb(BoundingBox(100.9, 200.1, 100.5, 100.2))
 tbb = sz2bb((101, 201))
 tbb = BoundingBox(100, 200, 102, 101)
 @test bb2pts(bb) == bb2pts(tbb)  
+
+a = BoundingBox(0,0,10,10)
+b = BoundingBox(0,0,5,5)
+@test a+b == BoundingBox(0,0,10,10)
+@test a-b == BoundingBox(0,0,5,5)
+
+a = BoundingBox(2,2,10,10)
+b = BoundingBox(0,0,5,5)
+@test a+b == BoundingBox(0,0,12,12)
+@test a-b == BoundingBox(2,2,3,3)
+
+a = BoundingBox(20,20,10,10)
+b = BoundingBox(0,0,5,5)
+@test a+b == BoundingBox(0,0,30,30)
+@test isnan((a-b).i)

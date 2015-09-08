@@ -1,6 +1,6 @@
-import Base: +, ==
+import Base: +, -, ==
 
-type BoundingBox{T}
+immutable BoundingBox{T}
   i::T
   j::T
   h::T    # height
@@ -11,7 +11,7 @@ BoundingBox() = BoundingBox(0,0,0,0)
 BoundingBox(a, b, c, d) = BoundingBox(promote(a,b,c,d)...)
 
 """
-Add bounding boxes by finding BoundingBox that encompasses both
+Add bounding boxes to find BB of their union
 """
 function +(bbA::BoundingBox, bbB::BoundingBox)
   i = min(bbA.i, bbB.i)
@@ -19,6 +19,22 @@ function +(bbA::BoundingBox, bbB::BoundingBox)
   h = max(bbA.h+bbA.i, bbB.h+bbB.i) - i
   w = max(bbA.w+bbA.j, bbB.w+bbB.j) - j
   return BoundingBox(i,j,h,w)
+end
+
+"""
+Subtract bounding boxes to find BB of their intersection
+"""
+function -(bbA::BoundingBox, bbB::BoundingBox)
+  i = max(bbA.i, bbB.i)
+  j = max(bbA.j, bbB.j)
+  h = min(bbA.h+bbA.i, bbB.h+bbB.i)-i
+  w = min(bbA.w+bbA.j, bbB.w+bbB.j)-j
+  if h < 0 || w < 0
+    bb = BoundingBox(NaN, NaN, NaN, NaN)
+  else
+    bb = BoundingBox(i,j,h,w)
+  end
+  return bb
 end
 
 """
@@ -89,8 +105,8 @@ function tform_bb(bb, tform)
 end
 
 """
-Convert Tuple for image size into a BoundingBox at (0,0)
+Convert Tuple for image size into a BoundingBox at (1,1)
 """
 function sz2bb(sz)
-  return BoundingBox(0, 0, sz[1]-1, sz[2]-1);  # should origin be at 1,1, 0,0, or 0.5,0.5?
+  return BoundingBox(0, 0, sz[1]-1, sz[2]-1)
 end
