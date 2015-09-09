@@ -362,6 +362,37 @@ println("Shearing: j-shear: $q")
 println("Rotation: $theta deg.")
 end
 
+function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
+
+  indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in batch, 1:size(offsets, 1));
+  Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+
+  index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
+  name_aligned = getName(index_aligned);  
+  dy_aligned = 0;
+  dx_aligned = 0;
+  size_i = 36000; 
+  size_j = 36000;
+
+  addMesh2MeshSet!(Tile2Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
+
+  dy = 0;
+  dx = 0;
+
+  for i in indices
+  name = offsets[i, 1];
+  index = offsets[i, 2];
+  dy += offsets[i, 3];
+  dx += offsets[i, 4];
+  size_i = offsets[i, 5];
+  size_j = offsets[i, 6];
+
+  addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
+end
+  optimize_all_cores(Ms.params);
+
+  return Ms;
+end
 function make_stack(offsets, wafer_num, a, b)
   i = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
   Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
@@ -461,20 +492,20 @@ function stats(Ms::MeshSet)
   end
 
 
-  # res_norm = map(norm, residuals);
-  # rms = sqrt(mean(res_norm.^2));
-  # avg = mean(res_norm);
-  # sig = std(res_norm);
-  # max = maximum(res_norm);
+   res_norm = map(norm, residuals);
+   rms = sqrt(mean(res_norm.^2));
+   avg = mean(res_norm);
+   sig = std(res_norm);
+   max = maximum(res_norm);
 
 
-  # res_norm_t = map(norm, residuals_t);
-  # rms_t = sqrt(mean(res_norm_t.^2));
-  # avg_t = mean(res_norm_t);
-  # sig_t = std(res_norm_t);
-  # max_t = maximum(res_norm_t);
+   res_norm_t = map(norm, residuals_t);
+   rms_t = sqrt(mean(res_norm_t.^2));
+   avg_t = mean(res_norm_t);
+   sig_t = std(res_norm_t);
+   max_t = maximum(res_norm_t);
 
-  # println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
-  # println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
+   println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
+   println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
   decomp_affine(affine_approximate(Ms));
 end

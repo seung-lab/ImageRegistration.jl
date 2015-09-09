@@ -41,7 +41,8 @@ end
 function get_max_xc_vector(A, B)
 
 	xc = normxcorr2(A, B);
-	r_max = maximum(xc); 
+	r_max = maximum(xc);
+	if isnan(r_max) return NO_MATCH; end
 	rad = round(Int64, (size(xc, 1) - 1)/ 2)	
 
 	ind = findfirst(r_max .== xc);
@@ -52,6 +53,7 @@ function get_max_xc_vector(A, B)
 	if ind == 0 return NO_MATCH; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
 	if i_max == 0 i_max = size(xc, 1); end
+	println("$i_max, $j_max, $r_max");
 	return [i_max - 1 - rad; j_max - 1 - rad; r_max], xc;
 end
 
@@ -145,7 +147,9 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 				#	B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
 					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
 				#	max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im, B_im); 
-					disp_vectors_raw[idx] = max_vect_xc[1];
+				if max_vect_xc[1] == 0 disp_vectors_raw[idx] = NO_MATCH; else
+				disp_vectors_raw[idx] = max_vect_xc[1];
+			      end
 				#	xc_im_array[idx] = (max_vect_xc[2] .+ 1)./ 2;
 	#				A_im_array[idx] = A_im;	
 	#				B_im_array[idx] = B_im;	
