@@ -71,5 +71,6 @@ include("meshwarp.jl")
 include("render.jl")
 include("review.jl")
 include("visualize.jl")
+include("utilities.jl")
 
 #end
