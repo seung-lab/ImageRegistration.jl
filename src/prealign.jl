@@ -252,7 +252,6 @@ function recompute_affine(meshset::MeshSet)
   fixed_points = points_to_3xN_matrix(fixed_pointslist)
   tform = find_affine(moving_points, fixed_points)
   tform = adjust_affine_for_scaling(tform, params.scaling_factor)
-  # convert column vector convention to row vector convention
   return tform
 end
 
@@ -334,14 +333,14 @@ function compute_propogated_transform(index::Index)
   filenames = filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR))
   indices = [(parseName(x), x) for x in filenames]
   sort!(indices)
-  if indices[1][1] == ones(Int, 4)
+  if indices[1][1] == zeros(Int, 4)
     error("Could not parse JLD filename to index: ", indices[1][2])
   end
   for k in 2:length(indices)
     if indices[k][1] > index
       break
     end
-    if !isAdjacent(indices[k-1][1], indices[k][1])
+    if !isAdjacent(indices[k-1][1], indices[k][1], true)
       error("Missing section between ", indices[k-1][1], " and ", indices[k][1])
     end
   end
