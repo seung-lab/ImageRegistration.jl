@@ -154,7 +154,7 @@ Returns:
 * new_img: original img, cropped &/or extended with rows and columns of zeros
 """
 function rescopeimage(img, offset, bb)
-  z = zeros(bb.h+1, bb.w+1)
+  z = zeros(Ufixed8, bb.h+1, bb.w+1)
   imgbb = BoundingBox(offset..., size(img,1)-1, size(img,2)-1)
   xbb = imgbb - bb
   if !isnan(xbb.i) || !isnan(xbb.j) || !isnan(xbb.h) || !isnan(xbb.h)
