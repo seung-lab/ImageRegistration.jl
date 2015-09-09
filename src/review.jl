@@ -271,17 +271,16 @@ function save_blockmatch_imgs(meshset, k, blockmatch_ids=[], path=joinpath(ALIGN
   dst_imgs_adjusted = get_blockmatch_images(meshset, k, "dst", block_radius)
   println("save_blockmatch_imgs")
   for (idx, (src_img, dst_img, dst_img_adjusted)) in enumerate(zip(src_imgs, dst_imgs_true, dst_imgs_adjusted))
-    println(idx, "/", length(src_imgs))
-    xc = normxcorr2(src_img, dst_img)
-    n = @sprintf("%03d", idx)
-    img_mark = "good"
     if idx in blockmatch_ids
-      img_mark = "bad"
-    end
-    imwrite(src_img, joinpath(dir_path, string(img_mark, "_", n , "_src_", k, ".jpg")))
-    imwrite(dst_img_adjusted, joinpath(dir_path, string(img_mark, "_", n , "_dst_", k, ".jpg")))
-    if !isnan(sum(xc))
-      imwrite(xcorr2Image(xc), joinpath(dir_path, string(img_mark, "_", n , "_xc_", k, ".jpg")))
+      println(idx, "/", length(src_imgs))
+      xc = normxcorr2(src_img, dst_img)
+      n = @sprintf("%03d", idx)
+      img_mark = "good"
+      imwrite(src_img, joinpath(dir_path, string(n , "_src_", k, "_", img_mark, ".jpg")))
+      imwrite(dst_img_adjusted, joinpath(dir_path, string(n , "_dst_", k, "_", img_mark, ".jpg")))
+      if !isnan(sum(xc))
+        imwrite(xcorr2Image(xc), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
+      end
     end
   end
 end
@@ -446,18 +445,26 @@ function imfuse_section(meshset, downsample=3)
   img_greens = []
   bbs_reds = []
   bbs_greens = []
+  # red_meshes = []
+  # green_meshes = []
   for mesh in meshset.meshes
-      img, bb = meshwarp(mesh)
-      img = restrict(img)
-      bb = BoundingBox(floor(Int,bb/2)..., size(img)[1], size(img)[2])
-      if (mesh.index[3] + mesh.index[4]) % 2 == 1
-          push!(img_reds, img)
-          push!(bbs_reds, bb)
-      else
-          push!(img_greens, img)
-          push!(bbs_greens, bb)
-      end
+    img, bb = meshwarp(mesh)
+    img = restrict(img)
+    bb = BoundingBox(floor(Int,bb/2)..., size(img)[1], size(img)[2])
+    if (mesh.index[3] + mesh.index[4]) % 2 == 1
+      # push!(red_meshes, mesh)
+      push!(img_reds, img)
+      push!(bbs_reds, bb)
+    else
+      # push!(green_meshes, mesh)
+      push!(img_greens, img)
+      push!(bbs_greens, bb)
+    end
   end
+  # red_warps = pmap(meshwarp, red_meshes)
+  # red_imgs, offsets = ([[x[i] for x in warps] for i=1:2]...)
+  
+  # green_warps = pmap(meshwarp, green_meshes)
   global_ref = snap_bb(sum(bbs_reds) + sum(bbs_greens))
   red_img = zeros(Int(global_ref.h), Int(global_ref.w))
   for (idx, (img, bb)) in enumerate(zip(img_reds, bbs_reds))

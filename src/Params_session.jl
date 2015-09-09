@@ -1,3 +1,5 @@
+import Base: print
+
 type Params
   	scaling_factor::Float64
 

@@ -196,10 +196,10 @@ end
 
 function render_montaged(section_range::UnitRange{Int64})
   filenames = sort_dir(MONTAGED_DIR)[section_range]
-  for fn in filenames[4:end]
+  for fn in filenames
     println("Rendering ", fn[1:end-4])
     meshset = JLD.load(joinpath(MONTAGED_DIR, fn))["MeshSet"]
-    img, offset = merge_images(meshset.meshes)
+    img, offset = merge_images_parallel(meshset.meshes)
     img = grayim(img)
     img["spatialorder"] = ["y", "x"]
     println("Writing ", fn[1:end-4])
@@ -221,9 +221,15 @@ function warp_pad_write(mesh)
 end
 
 function render_aligned(section_range::UnitRange{Int64})
-  global_bb = BoundingBox(0,0,36000,36000)
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
+
+  # Log file for image offsets
+  log_path = joinpath(ALIGNED_DIR, "aligned_offsets.txt")
+  if !isfile(log_path)
+    f = open(log_path, "w")
+    close(f)
+  end
 
   filenames = sort_dir(ALIGNED_DIR)[section_range]
   for filename in filenames
@@ -243,11 +249,18 @@ function render_aligned(section_range::UnitRange{Int64})
         else
           println("Warping ", mesh.name)
           @time img, offset = meshwarp(mesh)
-          @time img = rescopeimage(img, offset, global_bb)
+          @time img = rescopeimage(img, offset, GLOBAL_BB)
           println("Writing ", mesh.name)
           new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
           @time imwrite(img, joinpath(ALIGNED_DIR, new_fn))
           img, _ = imwarp(img, s)
+
+          # Log image offsets
+          log_file = open(log_path, "a")
+          log_line = join((new_fn, offset[1], offset[2], 
+                              size(img,1), size(img,2)), " ")
+          write(log_file, log_line, "\n")
+          close(log_file)
         end
         images[index] = img
       end
@@ -255,7 +268,7 @@ function render_aligned(section_range::UnitRange{Int64})
     end
 
     # map(warp_pad_write, meshset.meshes)
-    for (k, matches) in enumerate(meshset.matches)
+    for (k, matches) in enumerate(meshset.matches[1:1])
       src_index = matches.src_index
       dst_index = matches.dst_index
       src_mesh = meshset.meshes[findIndex(meshset, src_index)]
@@ -264,8 +277,8 @@ function render_aligned(section_range::UnitRange{Int64})
       src_nodes, dst_nodes = get_matched_points_t(meshset, k)
       src_index = (src_index[1:2]..., src_index[3]-1, src_index[4]-1)
       dst_index = (dst_index[1:2]..., dst_index[3]-1, dst_index[4]-1)
-      src_offset = [global_bb.i, global_bb.j]
-      dst_offset = [global_bb.i, global_bb.j]
+      src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
+      dst_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
 
       src_img = retrieve_image(src_mesh)
       dst_img = retrieve_image(dst_mesh)
@@ -281,7 +294,7 @@ function render_aligned(section_range::UnitRange{Int64})
       imgc, img2 = view(O, pixelspacing=[1,1])
       vectors = [src_nodes; dst_nodes]
       an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-      draw_indices(imgc, img2, src_nodes)
+      c = draw_indices(imgc, img2, src_nodes)
       # an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,1,1), 2.0, 'x')
       # an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,0,0), 2.0, '+')
 
@@ -292,3 +305,12 @@ function render_aligned(section_range::UnitRange{Int64})
     end
   end
 end
+
+function write_alignment_blockmatches(section_range::UnitRange{Int64})
+  filenames = sort_dir(ALIGNED_DIR)[section_range]
+  for filename in filenames
+    println("Rendering meshes in ", filename)
+    meshset = JLD.load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
+    save_blockmatch_imgs(meshset, k, [], joinpath(ALIGNED_DIR, "blockmatches"))
+  end
+end  
