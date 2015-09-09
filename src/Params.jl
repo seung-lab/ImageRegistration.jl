@@ -157,6 +157,7 @@ aligned_dir_path = "4_aligned"
 wafer_filename = "wafer_paths.txt"
 premontaged_offsets_filename = "premontaged_offsets.txt"
 prealigned_offsets_filename = "prealigned_offsets.txt"
+aligned_offsets_filename = "aligned_offsets.txt"
 
 export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR
 
@@ -174,6 +175,10 @@ premontaged_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_data
 global PREMONTAGED_OFFSETS = parse_offsets(premontaged_offsets_path)
 prealigned_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path, prealigned_offsets_filename)
 global PREALIGNED_OFFSETS = parse_offsets(prealigned_offsets_path)
+aligned_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_offsets_filename)
+global ALIGNED_OFFSETS = parse_offsets(aligned_offsets_path)
+
+global GLOBAL_BB = BoundingBox(0,0,36000,36000)
 
 show_plot = false
 num_procs = nprocs()

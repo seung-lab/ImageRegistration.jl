@@ -144,7 +144,9 @@ function affine_align_images(moving_img::Array{}, fixed_img::Array{},
   end
 end
 
-
+"""
+Calculate coordinates of 'mesh' points to be blockmatched
+"""
 function generate_match_points(moving_img::Array{}, fixed_img::Array{}, 
                                                   params=PARAMS_PREALIGNMENT)
   border_ratio = 0.1
@@ -168,6 +170,9 @@ function generate_match_points(moving_img::Array{}, fixed_img::Array{},
   return points
 end
 
+"""
+Cycle through points list, pass images from cross-correlation, and store results
+"""
 function get_block_matches(moving_img::Array{}, fixed_img::Array{}, points, 
                           params=PARAMS_PREALIGNMENT)
   moving_points = []
@@ -184,7 +189,9 @@ function get_block_matches(moving_img::Array{}, fixed_img::Array{}, points,
   return moving_points, fixed_points
 end
 
-
+"""
+Scale an affine transform computed on scaled images
+"""
 function adjust_affine_for_scaling(tform, scale)
   s = [scale 0 0; 0 scale 0; 0 0 1]
   return s * tform * inv(s)
@@ -272,6 +279,10 @@ function affine_align_sections(moving_img_filename::String,
     fixed_img = getUfixed8Image(meshset.meshes[1].name)
     moving_img = getUfixed8Image(meshset.meshes[2].name)
   end
+
+  idx = findfirst(ALIGNED_OFFSETS[:,1], fixed_img_filename)
+  fixed_offset = ALIGNED_OFFSETS[idx, 3:4]
+  @time moving_img = rescopeimage(moving_img, fixed_offset, GLOBAL_BB)
 
   # Align
   tform, moving_points, fixed_points, residualIn1, residualIn2, rmsIn1, rmsIn2, rmsTotal = 

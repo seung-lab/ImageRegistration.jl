@@ -50,7 +50,11 @@ using ImageView
 using Colors
 using FixedPointNumbers
 using Base.Test
+using Cairo
 include("Index.jl")
+if !isdefined(:BoundingBox) # haaaaack
+	include("boundingbox.jl")
+end
 include("Params.jl")
 include("IO.jl")
 include("Params_session.jl")
@@ -60,9 +64,6 @@ include("Matches.jl")
 include("MeshSet.jl")
 include("MeshSolve.jl")
 include("MeshSession.jl")
-if !isdefined(:BoundingBox) # haaaaack
-	include("boundingbox.jl")
-end
 include("prealign.jl")
 include("incidence2triangles.jl")
 include("imwarp.jl")

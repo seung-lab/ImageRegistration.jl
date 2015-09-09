@@ -95,10 +95,19 @@ end
 
 function draw_indices(imgc, img2, points, offset=[-20,-20])
     points = [points[2,:]; points[1,:]] .- offset
+    c = canvas(imgc)
+    ctx = Cairo.getgc(c)
+    Cairo.save(ctx)
+    Cairo.set_font_size(ctx, 12.0)
     for i in 1:size(points,2)
-        an_txt = annotate!(imgc, img2, AnnotationText(points[:,i]..., "$i", 
-                                            fontsize=12, color=RGB(0,0,0)))
+        Cairo.move_to(ctx, points[:,i]...)
+        Cairo.show_text(ctx,"$i")
+        # an_txt = annotate!(imgc, img2, AnnotationText(points[:,i]..., "$i", 
+                                            # fontsize=12, color=RGB(0,0,0)))
     end
+    Cairo.stroke(ctx)
+    Cairo.restore(ctx)
+    return c
 end
 
 function draw_vectors(img, vectors)
