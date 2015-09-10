@@ -18,3 +18,23 @@ function count_outliers(vectors, k)
   d_std = mean((d.-d_mean).^2).^(1/2)
   return sum((d.-d_mean)./d_std .> k)
 end
+
+"""
+Transform Nx3 pts by 3x3 tform matrix
+"""
+function warp_pts(tform, pts)
+    pts = hcat(pts, ones(size(pts,1)))
+    tpts = pts * tform
+    return tpts[:,1:2]
+end
+
+"""
+Make N array of 1x2 points into Nx3 homogenous points
+"""
+function points_to_Nx3_matrix(points)
+  points = hcat(points...)
+  if size(points,1)==2
+    points = [points; ones(eltype(points), 1, size(points,2))]'
+  end
+  return points
+end

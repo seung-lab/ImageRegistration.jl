@@ -1,11 +1,5 @@
 using Base.Test
 
-function warp_pts(affine, pts)
-    pts = hcat(pts, ones(size(pts,1)))
-    tpts = pts * affine
-    return tpts[:,1:2]
-end
-
 # test_meshwarp()
 img = reshape(float(collect(1:121).%2), 11, 11) # 11x11 checkerboard
 triangles = [1 2 3]

@@ -1,30 +1,6 @@
 # Author: Thomas Macrina
 # Email: tmacrina@princeton.edu
 # Date: 150810
-#
-# Visualize the meshes and displacement vectors with image annotations and 
-# color plots.
-
-using PyCall
-unshift!(PyVector(pyimport("sys")["path"]), "") # include current directory
-unshift!(PyVector(pyimport("sys")["path"]), "src") # include src directory
-@pyimport create_color_plots as ccp
-
-function write_vector_color_plot(mesh_path, write_name, offset=[0,0])
-# Write color plot to describe displacement vectors
-# Args:
-#   mesh_path: string to the JLD file
-#   write_name: string to save color plot image
-#   offset: 2-element array noting global offset of the images to adjust nodes
-# Returns:
-#   None
-    v, vt, e = load_mesh(mesh_path) # original verts, final verts, incidence
-    v[1,:] = v[1,:] - offset[1]
-    v[2,:] = v[2,:] - offset[2]
-    vt[1,:] = vt[1,:] - offset[1]
-    vt[2,:] = vt[2,:] - offset[2]
-    ccp.write_image_from_points(v', vt', write_name)
-end
 
 """
 Turn 2D array into Image object with isotropic pixel spacing for display

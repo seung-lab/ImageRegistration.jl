@@ -154,7 +154,7 @@ Returns:
 * new_img: original img, cropped &/or extended with rows and columns of zeros
 """
 function rescopeimage(img, offset, bb)
-  z = zeros(bb.h+1, bb.w+1)
+  z = zeros(Ufixed8, bb.h+1, bb.w+1)
   imgbb = BoundingBox(offset..., size(img,1)-1, size(img,2)-1)
   xbb = imgbb - bb
   if !isnan(xbb.i) || !isnan(xbb.j) || !isnan(xbb.h) || !isnan(xbb.h)
@@ -268,7 +268,7 @@ function render_aligned(section_range::UnitRange{Int64})
     end
 
     # map(warp_pad_write, meshset.meshes)
-    for (k, matches) in enumerate(meshset.matches[1:1])
+    for (k, matches) in enumerate(meshset.matches)
       src_index = matches.src_index
       dst_index = matches.dst_index
       src_mesh = meshset.meshes[findIndex(meshset, src_index)]
@@ -288,8 +288,8 @@ function render_aligned(section_range::UnitRange{Int64})
 
       O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
 
-      src_nodes = (hcat(src_nodes...)[1:2, :] .- src_offset)*scale
-      dst_nodes = (hcat(dst_nodes...)[1:2, :] .- dst_offset)*scale
+      src_nodes = hcat(src_nodes...)[1:2, :]*scale .- src_offset
+      dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
 
       imgc, img2 = view(O, pixelspacing=[1,1])
       vectors = [src_nodes; dst_nodes]
