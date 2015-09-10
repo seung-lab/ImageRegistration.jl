@@ -431,7 +431,11 @@ function make_stack(offsets, wafer_num, section_range)
     dx += offsets[i, 4];
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
-    addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
+    is_fixed = false;
+    if findfirst(indices, i) in [1:3:length(indices)]
+      is_fixed = true;
+    end
+    addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
   end
 
   optimize_all_cores(Ms.params);

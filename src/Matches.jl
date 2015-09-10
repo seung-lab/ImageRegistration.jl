@@ -53,7 +53,7 @@ function get_max_xc_vector(A, B)
 	if ind == 0 return NO_MATCH; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
 	if i_max == 0 i_max = size(xc, 1); end
-	println("$i_max, $j_max, $r_max");
+	#println("$i_max, $j_max, $r_max");
 	return [i_max - 1 - rad; j_max - 1 - rad; r_max], xc;
 end
 
