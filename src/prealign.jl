@@ -1,98 +1,3 @@
-#=
-include("convolve.jl")
-
-
-using Images
-include("imwarp.jl")
-include("visualize.jl")
-#include("render.jl") # cyclic inclusion
-=#
-
-function test()
-  getimage(path) = convert(Array{Float64, 2}, convert(Array, imread(path)))
-  moving_section = getimage("../sections/S2-W001_fixed_section4_0.175.tif")
-  #fixed_section = getimage("./sections/S2-W001_fixed_section4_0.175.tif")
-  fixed_section = getimage("../sections/S2-W001_fixed_section5_0.175.tif")
-  println(size(moving_section))
-  println(size(fixed_section))
-  trans, moving_points, fixed_points, res1, res2 = affine_align_sections(moving_section, fixed_section, PARAMS_PREALIGNMENT; return_points=true)
-  moving_points = points_to_3xN_matrix(moving_points)
-  fixed_points = points_to_3xN_matrix(fixed_points)
-
-  println(trans)
-  #out_img, offset = imwarp(fixed_section, trans)
-  #imwrite(moving_section, joinpath(".","test_outputs", string("moving_section", ".tif")))
-  #imwrite(fixed_section, joinpath(".","test_outputs", string("fixed_section_", offset[1], "_", offset[2], ".tif")))
-  #imwrite(out_img, joinpath(".","test_outputs", string("warped_", offset[1], "_", offset[2], ".tif")))
-  p22 = fixed_points + res2
-  p11 = moving_points + res1
-  moving_points = moving_points[1:2,:]
-  fixed_points = fixed_points[1:2,:]
-  draw_vectors(fixed_section, vcat(fixed_points[1:2,:], p22[1:2,:]))
-  #ccp.write_image_from_points(moving_points[1:2,:].', p11[2:-1:1,:].', "test_outputs/write_name.jpg")
-  draw_points(moving_section, moving_points)
-  draw_points(fixed_section, fixed_points)
-  #draw_points(out_img, moving_points)
-end
-
-
-function test2()
-  getimage(path) = convert(Array{Float64, 2}, convert(Array, imread(path)))
-  moving_section = getimage("../output_images/(1,1)_montage.tif")
-  fixed_section = getimage("../output_images/(1,2)_montage.tif")
-  println(size(moving_section))
-  println(size(fixed_section))
-  trans, moving_points, fixed_points, res1, res2 = affine_align_sections(moving_section, fixed_section, PARAMS_PREALIGNMENT; return_points=true)
-  moving_points = points_to_3xN_matrix(moving_points)
-  fixed_points = points_to_3xN_matrix(fixed_points)
-
-  println(trans)
-  downsample = 4
-  moving_section = moving_section[1:downsample:end, 1:downsample:end]
-  fixed_section = fixed_section[1:downsample:end, 1:downsample:end]
-
-  p11 = moving_points + res1
-  p22 = fixed_points + res2
-
-  p11 = p11[1:2,:]
-  p22 = p22[1:2,:]
-  moving_points = moving_points[1:2,:]
-  fixed_points = fixed_points[1:2,:]
-
-  p11 = p11/downsample
-  p22 = p22/downsample
-  moving_points = moving_points/downsample
-  fixed_points = fixed_points/downsample
-  
-  trans = adjust_affine_for_scaling(trans.', downsample).'
-  out_img, offset = imwarp(fixed_section, inv(trans))
-  println(offset)
-  fused, fused_offset = imfuse(moving_section, [0,0], out_img, offset)
-  println(fused_offset)
-
-  block_radius = 150
-  scalebar = [1; 1; 2*block_radius/downsample; 2*block_radius/downsample]
-  draw_vectors(make_isotropic(moving_section), hcat(vcat(moving_points, p11), scalebar))
-  draw_vectors(make_isotropic(fixed_section), hcat(vcat(fixed_points, p22), scalebar+100))
-  draw_vectors(make_isotropic(fused), hcat(vcat(moving_points.-fused_offset, p11.-fused_offset), scalebar)) # todo: check offset
-    #ccp.write_image_from_points(moving_points[1:2,:].', p11[2:-1:1,:].', "test_outputs/write_name.jpg")
-end
-
-function test3()
-  moving_section = "../output_images/(1,1)_montage.tif"
-  fixed_section = "../output_images/(1,2)_montage.tif"
-  A, meshset = affine_align_sections(moving_section, fixed_section)
-  return meshset
-end
-
-function points_to_Nx3_matrix(points)
-  points = hcat(points...)
-  if size(points,1)==2
-    points = [points; ones(eltype(points), 1, size(points,2))]'
-  end
-  return points
-end
-
 """
 `AFFINE_ALIGN_IMAGES`
 
@@ -177,9 +82,11 @@ function get_block_matches(moving_img::Array{}, fixed_img::Array{}, points,
                           params=PARAMS_PREALIGNMENT)
   moving_points = []
   fixed_points = []
+  block_radius = floor(Int64, params.block_size * params.scaling_factor)
+  search_radius = floor(Int64, params.search_r * params.scaling_factor)
   for pt = points
     offset, r, xc = block_match_at_point(moving_img, pt, fixed_img, pt, 
-                                            params.block_size, params.search_r)
+                                            block_radius, search_radius)
     println(pt, offset, r)
     if r >= params.min_r
       push!(moving_points, collect(pt))
@@ -252,7 +159,6 @@ function recompute_affine(meshset::MeshSet)
   fixed_points = points_to_3xN_matrix(fixed_pointslist)
   tform = find_affine(moving_points, fixed_points)
   tform = adjust_affine_for_scaling(tform, params.scaling_factor)
-  # convert column vector convention to row vector convention
   return tform
 end
 
@@ -265,23 +171,15 @@ function affine_align_sections(moving_img_filename::String,
   fixed_mesh = Mesh(fixed_img_filename)
   meshset.meshes = [fixed_mesh, moving_mesh]
 
-  if meshset.N != 2
-    error("Invalid Arguments")
-  end
+  fixed_img = getUfixed8Image(meshset.meshes[1])
+  moving_img = getUfixed8Image(meshset.meshes[2])
 
-  moving_img = []
-  fixed_img = []
-  try
-    fixed_img = getUfixed8Image(meshset.meshes[1])
-    moving_img = getUfixed8Image(meshset.meshes[2])
-  catch
-    # mostly for testing purpose where name is the file path
-    fixed_img = getUfixed8Image(meshset.meshes[1].name)
-    moving_img = getUfixed8Image(meshset.meshes[2].name)
+  offsets = parse_offsets(prealigned_offsets_path)
+  if is_aligned(meshset.meshes[1].index)
+    offsets = ALIGNED_OFFSETS
   end
-
-  idx = findfirst(ALIGNED_OFFSETS[:,1], fixed_img_filename)
-  fixed_offset = ALIGNED_OFFSETS[idx, 3:4]
+  idx = findfirst(offsets[:,1], fixed_img_filename)
+  fixed_offset = offsets[idx, 3:4]
   @time moving_img = rescopeimage(moving_img, fixed_offset, GLOBAL_BB)
 
   # Align
@@ -292,24 +190,40 @@ function affine_align_sections(moving_img_filename::String,
   # Update matches object in meshset
   meshset.meshes[1].nodes = moving_points
   src_points_indices = 1:length(moving_points)
-  dst_points = fixed_points
   matches = Matches(meshset.meshes[2].index, meshset.meshes[1].index, 
-    length(moving_points), src_points_indices, dst_points, [], [], [])
+    length(moving_points), src_points_indices, fixed_points, [], [], [])
   meshset.matches = [matches]
-  println("Saving JLD for ", moving_img_filename[1:end-4], 
-                                  " to ", fixed_img_filename[1:end-4])
+  println("Saving JLD for ", moving_img_filename, 
+                                  " to ", fixed_img_filename)
   save(meshset)  
 
   warped_index = meshset.meshes[2].index
+  
   # Write overlay thumbnail for review
   scale = 0.125
   s = [scale 0 0; 0 scale 0; 0 0 1]
   @time imgA, A_offset = imwarp(fixed_img, s)
   @time imgB, B_offset = imwarp(moving_img, tform*s)
+
+  pt_scaling = meshset.params.scaling_factor
+  src_nodes = hcat(fixed_points/pt_scaling...)[1:2, :]
+  dst_nodes = (points_to_Nx3_matrix(moving_points/pt_scaling)*tform)[:, 1:2]'
+  src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]/pt_scaling
+  dst_offset = [GLOBAL_BB.i, GLOBAL_BB.j]/pt_scaling
+
+  src_nodes = (src_nodes .- src_offset)*scale
+  dst_nodes = (dst_nodes .- dst_offset)*scale
+
   O, O_bb = imfuse(imgA, A_offset, imgB, B_offset)
-  thumbnail_fn = string(join(warped_index[1:2], ","), "_prealigned_thumbnail.jpg")
+  imgc, img2 = view(O, pixelspacing=[1,1])
+  vectors = [src_nodes; dst_nodes]
+  an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
+  c = draw_indices(imgc, img2, src_nodes)
+
+  thumbnail_fn = string(join(warped_index[1:2], ","), "_prealigned_thumbnail.png")
   println("Writing ", thumbnail_fn)
-  imwrite(restrict(O), joinpath(PREALIGNED_DIR, "review", thumbnail_fn))
+  Cairo.write_to_png(imgc.c.back, joinpath(PREALIGNED_DIR, "review", thumbnail_fn))
+  destroy(toplevel(imgc))
 
   # Render image
   log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
@@ -334,14 +248,14 @@ function compute_propogated_transform(index::Index)
   filenames = filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR))
   indices = [(parseName(x), x) for x in filenames]
   sort!(indices)
-  if indices[1][1] == ones(Int, 4)
+  if indices[1][1] == zeros(Int, 4)
     error("Could not parse JLD filename to index: ", indices[1][2])
   end
   for k in 2:length(indices)
     if indices[k][1] > index
       break
     end
-    if !isAdjacent(indices[k-1][1], indices[k][1])
+    if !isAdjacent(indices[k-1][1], indices[k][1], true)
       error("Missing section between ", indices[k-1][1], " and ", indices[k][1])
     end
   end
