@@ -2,7 +2,7 @@
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
 function meshwarp(mesh::Mesh)
-    @time img = getUfixed8Image(mesh)
+    @time img = get_ufixed8_image(mesh)
     src_nodes = hcat(mesh.nodes...)'
     dst_nodes = hcat(mesh.nodes_t...)'
     offset = mesh.disp
@@ -245,7 +245,7 @@ end
 
 function demo_meshwarp()
 # Demo the updated meshwarp function that runs faster than original package
-    img = getUfixed8Image(joinpath(BUCKET, "test_images", "turtle.jpg"))
+    img = get_ufixed8_image(joinpath(BUCKET, "test_images", "turtle.jpg"))
     src_nodes = [20.0 20.0;
                     620.0 20.0;
                     620.0 560.0;

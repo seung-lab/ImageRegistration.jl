@@ -1,9 +1,9 @@
 import PyPlot
 
 type MeshSet
-  params::Params
+  params::Dict
 
-    N::Int64            # number of meshes in the set
+  N::Int64            # number of meshes in the set
   M::Int64            # number of matches in the set - (a -> b) and (b -> a) are distinct
 
   indices::Array{Index, 1}        # wafer, section, row, column as a tuple - if tileIndex is 0 then denotes entire section
@@ -20,28 +20,19 @@ type MeshSet
   matches_pairs::Pairings       # vector of index (in meshes) - (a, b) means the match is between (meshes[a] -> meshes[b])
 end
 
-function isAdjacent(Am, Bm)
-  if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) + abs(Am.index[2] - Bm.index[2]) == 1 return true; end
-  return false;
-end
 
-function isDiagonal(Am, Bm)
-  if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) == 2 && Am.index[3] != Bm.index[3] && Am.index[4] != Bm.index[4] return true; end
-  return false;
-end
-
-function findNode(Ms, mesh_ind, node_ind);
+function find_node(Ms, mesh_ind, node_ind);
   return Ms.nodes_indices[mesh_ind] + node_ind;
 end
 
-function findIndex(Ms, mesh_index_tuple::Index)
+function find_index(Ms, mesh_index_tuple::Index)
   return findfirst(this -> mesh_index_tuple == this.index, Ms.meshes)
 end
 
 function find_section(Ms, section_num)
   return findfirst(this -> section_num == this.index[2], Ms.meshes)
 end
-function makeNewMeshSet(params::Params)
+function MeshSet(params::Dict)
   N = 0;
   M = 0;
 
@@ -62,7 +53,7 @@ function makeNewMeshSet(params::Params)
 end
 
 
-function addMesh2MeshSet!(Am, Ms)
+function add_mesh(Am, Ms)
   push!(Ms.indices, Am.index);
   push!(Ms.meshes, Am);
   if length(Ms.nodes_indices) == 0 push!(Ms.nodes_indices, 0);
@@ -75,10 +66,10 @@ function addMesh2MeshSet!(Am, Ms)
   return;
 end
 
-function addMatches2MeshSet!(M, Ms)
+function add_matches(M, Ms)
   if (typeof(M) == Void || M == Void) return; end
   push!(Ms.matches, M);
-  push!(Ms.matches_pairs, (findIndex(Ms, M.src_index), findIndex(Ms, M.dst_index)));
+  push!(Ms.matches_pairs, (find_index(Ms, M.src_index), find_index(Ms, M.dst_index)));
   Ms.M += 1;
   Ms.n;
   Ms.m += M.n;
@@ -106,11 +97,11 @@ end
 =#
 
 function solve_meshset!(Ms)
-  match_coeff = Ms.params.match_coeff;
-  eta_gradient = Ms.params.eta_gradient;
-  ftol_gradient = Ms.params.ftol_gradient;
-  eta_newton = Ms.params.eta_newton;
-  ftol_newton = Ms.params.ftol_newton;
+  match_coeff = Ms.params["match_coeff"];
+  eta_gradient = Ms.params["eta_gradient"];
+  ftol_gradient = Ms.params["ftol_gradient"];
+  eta_newton = Ms.params["eta_newton"];
+  ftol_newton = Ms.params["ftol_newton"];
 
   nodes = Points(0);
   nodes_fixed = BinaryProperty(0);
@@ -142,10 +133,10 @@ function solve_meshset!(Ms)
     edges_padded = spzeros(Float64, Ms.n, cur_matches.n);
 
     for j in 1:Ms.matches[i].n
-      edges_padded[findNode(Ms, Ms.matches_pairs[i][1], cur_matches.src_points_indices[j]), j] = -1;
-      edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1];
-      edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
-      edges_padded[findNode(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
+      edges_padded[find_node(Ms, Ms.matches_pairs[i][1], cur_matches.src_points_indices[j]), j] = -1;
+      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1];
+      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2];
+      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3];
     end
     edges = hcat(edges, edges_padded);
   end
@@ -176,7 +167,7 @@ function save(Ms::MeshSet)
 
   if is_montaged(firstindex)
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_montaged.jld"));
-  elseif is_prealigned(firstindex) || is_aligned(firstindex)
+  elseif is_aligned(firstindex)
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
   else
     filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "_aligned.jld"));
@@ -188,7 +179,7 @@ function save(Ms::MeshSet)
 end
 #=
 function load(index::Index)
-  filepath = getPath(index);
+  filepath = get_path(index);
   Ms = load(index);
 end=#
 function load(filename::String)
@@ -201,8 +192,8 @@ adjacent_pairs = Pairings(0);
 diagonal_pairs = Pairings(0);
 
   for i in 1:Ms.N, j in 1:Ms.N
-    if isAdjacent(Ms.meshes[i], Ms.meshes[j]) push!(adjacent_pairs, (i, j)); end
-    if isDiagonal(Ms.meshes[i], Ms.meshes[j]) push!(diagonal_pairs, (i, j)); end
+    if is_adjacent(Ms.meshes[i], Ms.meshes[j]) push!(adjacent_pairs, (i, j)); end
+    if is_diagonal(Ms.meshes[i], Ms.meshes[j]) push!(diagonal_pairs, (i, j)); end
   end
 
   pairs = vcat(adjacent_pairs, diagonal_pairs);
@@ -214,14 +205,14 @@ function add_pair_matches!(Ms, a, b)
 
 images = load_section_pair(Ms, a, b);
 
-matches_atob = Meshes2Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
-matches_btoa = Meshes2Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
+matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
+matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
 
 if typeof(matches_atob) != Void && (matches_atob) != Void
-    addMatches2MeshSet!(matches_atob, Ms);
+    add_matches(matches_atob, Ms);
         end
 if typeof(matches_btoa) != Void && (matches_btoa) != Void
-    addMatches2MeshSet!(matches_btoa, Ms);
+    add_matches(matches_btoa, Ms);
         end
   return Ms;
 
@@ -241,18 +232,18 @@ matches_array = cell(n);
               break
             end
           (a, b) = pairs[idx];
-          matches_array[idx] = Meshes2Matches(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params);
+          matches_array[idx] = Matches(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params);
         end
 for k in 1:n
     M = matches_array[k]
     if typeof(M) == Void || M == Void continue; end
-    addMatches2MeshSet!(M, Ms);
+    add_matches(M, Ms);
 end
   return Ms;
 end
 
 function get_matched_points(Ms::MeshSet, k)
-  src_mesh = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
+  src_mesh = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
   src_indices = Ms.matches[k].src_points_indices
   src_pts = src_mesh.nodes[src_indices]
   dst_pts = Ms.matches[k].dst_points
@@ -279,8 +270,8 @@ for i in 1:Ms.matches[k].n
     w = Ms.matches[k].dst_weights[i];
     t = Ms.matches[k].dst_triangles[i];
     p = Ms.matches[k].src_points_indices[i];
-    src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
-    dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
+    src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
+    dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
     p1 = src.nodes_t[p];
     p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3];
     push!(src_pts, p1);
@@ -301,7 +292,7 @@ function get_matched_points_t(Ms::MeshSet)
 end
 function load_section(offsets, section_num)
   indices = find(i -> offsets[i,2][2] == section_num, 1:size(offsets, 1));
-  Ms = makeNewMeshSet(PARAMS_MONTAGE);
+  Ms = MeshSet(PARAMS_MONTAGE);
   num_tiles = length(indices);
   paths = Array{String, 1}(num_tiles);
 
@@ -314,8 +305,8 @@ function load_section(offsets, section_num)
     index = offsets[i, 2];
     dx = offsets[i, 3];
     dy = offsets[i, 4];
-    image = getImage(getPath(name));
-    addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
+    image = get_image(get_path(name));
+    add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
     #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
     #image_shared[:, :] = image[:, :];
     push!(images, image)
@@ -365,16 +356,16 @@ end
 function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
 
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in batch, 1:size(offsets, 1));
-  Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+  Ms = MeshSet(PARAMS_ALIGNMENT);
 
   index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
-  name_aligned = getName(index_aligned);  
+  name_aligned = get_name(index_aligned);  
   dy_aligned = 0;
   dx_aligned = 0;
   size_i = 36000; 
   size_j = 36000;
 
-  addMesh2MeshSet!(Tile2Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
+  add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
 
   dy = 0;
   dx = 0;
@@ -387,7 +378,7 @@ function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
   size_i = offsets[i, 5];
   size_j = offsets[i, 6];
 
-  addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
+  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
 end
   optimize_all_cores(Ms.params);
 
@@ -395,16 +386,16 @@ end
 end
 function make_stack(offsets, wafer_num, a, b)
   i = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
-  Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+  Ms = MeshSet(PARAMS_ALIGNMENT);
 
   index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
-  name_aligned = getName(index_aligned);  
+  name_aligned = get_name(index_aligned);  
   dy_aligned = 0;
   dx_aligned = 0;
   size_i = 36000; 
   size_j = 36000;
 
-  addMesh2MeshSet!(Tile2Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
+  add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
   name = offsets[i, 1];
   index = offsets[i, 2];
   dy = offsets[i, 3];
@@ -412,14 +403,14 @@ function make_stack(offsets, wafer_num, a, b)
   size_i = offsets[i, 5];
   size_j = offsets[i, 6];
 
-  addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
+  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
   optimize_all_cores(Ms.params);
 
   return Ms;
 end
 function make_stack(offsets, wafer_num, section_range)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
-  Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+  Ms = MeshSet(PARAMS_ALIGNMENT);
 
   dy = 0;
   dx = 0;
@@ -432,10 +423,10 @@ function make_stack(offsets, wafer_num, section_range)
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false;
-    if findfirst(indices, i) in [1:3:length(indices)]
+    if findfirst(indices, i) in 1:3:length(indices)
       is_fixed = true;
     end
-    addMesh2MeshSet!(Tile2Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
+    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
   end
 
   optimize_all_cores(Ms.params);
@@ -444,14 +435,14 @@ function make_stack(offsets, wafer_num, section_range)
 end
 
 function load_section_pair(Ms, a, b)
-  A_image = getImage(getPath(Ms.meshes[find_section(Ms,a)].name));
-  B_image = getImage(getPath(Ms.meshes[find_section(Ms,b)].name));
+  A_image = get_image(get_path(Ms.meshes[find_section(Ms,a)].name));
+  B_image = get_image(get_path(Ms.meshes[find_section(Ms,b)].name));
       return A_image, B_image; 
 end
 
 function load_stack(offsets, wafer_num, section_range)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
-  Ms = makeNewMeshSet(PARAMS_ALIGNMENT);
+  Ms = MeshSet(PARAMS_ALIGNMENT);
   images = Array{SharedArray{UInt8, 2}, 1}(0);
 
   for i in indices
@@ -459,8 +450,8 @@ function load_stack(offsets, wafer_num, section_range)
   index = offsets[i, 2];
   dx = offsets[i, 4];
   dy = offsets[i, 3];
-  image = getImage(getPath(name));
-  addMesh2MeshSet!(Tile2Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
+  image = get_image(get_path(name));
+  add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
   
   image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
   image_shared[:, :] = image[:, :];
@@ -482,8 +473,8 @@ function stats(Ms::MeshSet)
       w = Ms.matches[k].dst_weights[i];
       t = Ms.matches[k].dst_triangles[i];
       p = Ms.matches[k].src_points_indices[i];
-      src = Ms.meshes[findIndex(Ms, Ms.matches[k].src_index)]
-      dst = Ms.meshes[findIndex(Ms, Ms.matches[k].dst_index)]
+      src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
+      dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
       p1 = src.nodes[p];
       p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3]
       p1_t = src.nodes_t[p];

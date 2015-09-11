@@ -16,7 +16,7 @@ end
 end
 
 
-function parseName(name::String)
+function parse_name(name::String)
 
     ret = (0, 0, 0, 0)
     # singleton tile
@@ -53,7 +53,7 @@ function parseName(name::String)
     
 end
 
-function getName(index::Index)
+function get_name(index::Index)
     if is_overview(index)
     return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2])
     elseif is_montaged(index)
@@ -67,13 +67,13 @@ function getName(index::Index)
     end
 end
 
-# function getPath()
+# function get_path()
 # methods: 
 #     
 # extensions:
-# Mesh.jl: getPath(mesh::Mesh)
-function getPath(index::Index)
-    name = getName(index)
+# Mesh.jl: get_path(mesh::Mesh)
+function get_path(index::Index)
+    name = get_name(index)
     if is_overview(index)
         section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
@@ -91,23 +91,23 @@ function getPath(index::Index)
     return path
 end
 
-function getPath(name::String)
-    return getPath(parseName(name))
+function get_path(name::String)
+    return get_path(parse_name(name))
 end
 
 
 
 # extensions:
-# Mesh.jl getImage(mesh::Mesh)
-function getImage(path::String)
+# Mesh.jl get_image(mesh::Mesh)
+function get_image(path::String)
     img = imread(path)
     img = img[:, :, 1]
     img.properties["timedim"] = 0
     return convert(Array{UInt8, 2}, round(convert(Array, img)*255))
 end
 
-function getImage(index::Index)
-    return getImage(getPath(index))
+function get_image(index::Index)
+    return get_image(get_path(index))
 end
 
 
@@ -128,8 +128,8 @@ function parse_offsets(path::String)
         file = readdlm(path)
         offsets = cell(size(file, 1), size(file, 2) + 1) # name, index, dx, dy
         for i in 1:size(offsets, 1)
-            index = parseName(file[i, 1])
-            offsets[i, 1] = getName(index)
+            index = parse_name(file[i, 1])
+            offsets[i, 1] = get_name(index)
             offsets[i, 2] = index
             for j in 3:size(offsets, 2)
                 offsets[i, j] = file[i, j-1]
