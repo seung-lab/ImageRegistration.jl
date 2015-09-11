@@ -25,41 +25,41 @@ type Mesh
 end
 
 Mesh() = Mesh("", (0,0,0,0), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
-Mesh(index::Index) = Mesh(getName(index), index, [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
-Mesh(name::String) = Mesh(name, parseName(name), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+Mesh(index::Index) = Mesh(get_name(index), index, [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+Mesh(name::String) = Mesh(name, parse_name(name), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
 
 ### IO EXTENSIONS
-function getPath(mesh::Mesh)
-	return getPath(mesh.name);
+function get_path(mesh::Mesh)
+	return get_path(mesh.name);
 end
 
-function getFloatImage(mesh::Mesh)
-	return getFloatImage(getPath(mesh.index));
+function get_float_image(mesh::Mesh)
+	return get_float_image(get_path(mesh.index));
 end
 
-function getFloatImage(index::Index)
-	return getFloatImage(getPath(index));
+function get_float_image(index::Index)
+	return get_float_image(get_path(index));
 end
 
-function getUfixed8Image(index::Index)
-	return getUfixed8Image(getPath(index))
+function get_ufixed8_image(index::Index)
+	return get_ufixed8_image(get_path(index))
 end
 
-function getUfixed8Image(mesh::Mesh)
-	return getUfixed8Image(getPath(mesh.index))
+function get_ufixed8_image(mesh::Mesh)
+	return get_ufixed8_image(get_path(mesh.index))
 end
 
-function getUInt8Image(mesh::Mesh)
-	return getUInt8Image(getPath(mesh.index))
+function get_uint8_image(mesh::Mesh)
+	return get_uint8_image(get_path(mesh.index))
 end
 
-function getImage(mesh::Mesh)
-	return getImage(mesh.name);
+function get_image(mesh::Mesh)
+	return get_image(mesh.name);
 end
 
 
 
-function Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length::Int64, mesh_coeff::Float64)
+function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length::Int64, mesh_coeff::Float64)
 	(Ai, Aj) = (size_i,size_j);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
@@ -67,7 +67,7 @@ function Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_l
  	offsets = [rem(Ai, dists[1])/2; rem(Aj, dists[2])/2];
 	disp = [dy; dx];
 
-	n = maximum([getMeshIndex(dims, dims[1], dims[2]); getMeshIndex(dims, dims[1], dims[2]-1)]);
+	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
 	m = 0;
 	m_upperbound = 3 * n;
 
@@ -78,24 +78,24 @@ function Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_l
 	edge_coeffs = FloatProperty(m_upperbound); edge_coeffs[:] = convert(Float64, mesh_coeff);
 
 	for i in 1:dims[1], j in 1:dims[2]
-		k = getMeshIndex(dims, i, j); if k == 0 continue; end
-		nodes[k] = getMeshCoord(dims, disp+offsets, dists, i, j);
+		k = get_mesh_index(dims, i, j); if k == 0 continue; end
+		nodes[k] = get_mesh_coord(dims, disp+offsets, dists, i, j);
 		if (j != 1)
-			m += 1;	edges[k, m] = -1; edges[getMeshIndex(dims, i, j-1), m] = 1;
+			m += 1;	edges[k, m] = -1; edges[get_mesh_index(dims, i, j-1), m] = 1;
 		end
 
 		if (i != 1)
 			if iseven(i) || j != dims[2]
-				m += 1;	edges[k, m] = -1; edges[getMeshIndex(dims, i-1, j), m] = 1;
+				m += 1;	edges[k, m] = -1; edges[get_mesh_index(dims, i-1, j), m] = 1;
 			end
 			if iseven(i) && (j != dims[2]) 			
-				m += 1; edges[k, m] = -1; edges[getMeshIndex(dims, i-1, j+1), m] = 1;
+				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-1, j+1), m] = 1;
 			end
 			if isodd(i) && (j != 1)
-				m += 1; edges[k, m] = -1; edges[getMeshIndex(dims, i-1, j-1), m] = 1;
+				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-1, j-1), m] = 1;
 			end
 			if isodd(i) && ((j == 1) || (j == dims[2]))
-				m += 1; edges[k, m] = -1; edges[getMeshIndex(dims, i-2, j), m] = 1;
+				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-2, j), m] = 1;
 				edge_lengths[m] = 2 * dists[1];
 			end
 		end
@@ -109,32 +109,32 @@ function Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_l
 end
 
 
-# Tile2Mesh
-function Tile2Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, mesh_length, mesh_coeff::Float64)
+# Mesh
+function Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, mesh_length, mesh_coeff::Float64)
 	(size_i, size_j) = size(image);
-	return Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Float64, mesh_length, mesh_coeff::Float64);
+	return Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Float64, mesh_length, mesh_coeff::Float64);
 end
 
-function Tile2Mesh(name, index::Index, dy, dx, tile_fixed, mesh_length::Float64, mesh_coeff::Float64)
-	image = getImage(getPath(name));
-	return Tile2Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+function Mesh(name, index::Index, dy, dx, tile_fixed, mesh_length::Float64, mesh_coeff::Float64)
+	image = get_image(get_path(name));
+	return Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 end
 
-function Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params::Params)
-	return Tile2Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
+function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params::Dict)
+	return Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
 end
 
-function Tile2Mesh(name, size, index::Index, dy, dx, tile_fixed, params::Params)
-	return Tile2Mesh(name, size, size, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
+function Mesh(name, size, index::Index, dy, dx, tile_fixed, params::Dict)
+	return Mesh(name, size, size, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
 end
 
-function Tile2Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, params::Params)
+function Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, params::Dict)
 	(size_i, size_j) = size(image);
-	Tile2Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params.mesh_length, params.mesh_coeff)
+	Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
 end
 
 
-function getMeshIndex(dims, i, j)
+function get_mesh_index(dims, i, j)
 	ind = 0;
 	
 	if iseven(i) && (j == dims[2]) return ind; end
@@ -147,7 +147,7 @@ function getMeshIndex(dims, i, j)
 	return ind;
 end
 
-function getMeshCoord(dims, total_offset, dists, i, j)
+function get_mesh_coord(dims, total_offset, dists, i, j)
 	if iseven(i) && (j == dims[2]) return (0, 0); end
 	
 	pi = (i-1) * dists[1] + total_offset[1];
@@ -162,7 +162,7 @@ end
 
 
 # find the triangular mesh indices for a given point in A
-function findMeshTriangle(Am, i, j)
+function find_mesh_triangle(Am, i, j)
 
 	# convert to A's local coordinates, and displace by the mesh offset
 	Ai = i - Am.disp[1] - Am.offsets[1];
@@ -177,7 +177,7 @@ function findMeshTriangle(Am, i, j)
 		j0 = round(Int64, Aj / Am.dists[2] + 0.5);
 	end
 
-	ind0 = getMeshIndex(Am.dims, i0, j0);
+	ind0 = get_mesh_index(Am.dims, i0, j0);
 	
 	if ind0 == 0
 		return NO_TRIANGLE;
@@ -191,52 +191,52 @@ function findMeshTriangle(Am, i, j)
 	theta = abs(atan(di / dj));
 	if (theta < pi / 3)
 		if (dj >= 0)
-			ind1 = getMeshIndex(Am.dims, i0, j0 + 1);
+			ind1 = get_mesh_index(Am.dims, i0, j0 + 1);
 			if (di >= 0)
 				if isodd(i0)
-					ind2 = getMeshIndex(Am.dims, i0+1, j0);
+					ind2 = get_mesh_index(Am.dims, i0+1, j0);
 				else
-					ind2 = getMeshIndex(Am.dims, i0+1, j0+1);
+					ind2 = get_mesh_index(Am.dims, i0+1, j0+1);
 				end
 			else
 				if isodd(i0)
-					ind2 = getMeshIndex(Am.dims, i0-1, j0);
+					ind2 = get_mesh_index(Am.dims, i0-1, j0);
 				else
-					ind2 = getMeshIndex(Am.dims, i0-1, j0+1);
+					ind2 = get_mesh_index(Am.dims, i0-1, j0+1);
 				end
 			end
 		else
-			ind1 = getMeshIndex(Am.dims, i0, j0 - 1);
+			ind1 = get_mesh_index(Am.dims, i0, j0 - 1);
 			if (di >= 0)
 				if isodd(i0)
-					ind2 = getMeshIndex(Am.dims, i0+1, j0-1);
+					ind2 = get_mesh_index(Am.dims, i0+1, j0-1);
 				else
-					ind2 = getMeshIndex(Am.dims, i0+1, j0);
+					ind2 = get_mesh_index(Am.dims, i0+1, j0);
 				end
 			else
 				if isodd(i0)
-					ind2 = getMeshIndex(Am.dims, i0-1, j0-1);
+					ind2 = get_mesh_index(Am.dims, i0-1, j0-1);
 				else
-					ind2 = getMeshIndex(Am.dims, i0-1, j0);
+					ind2 = get_mesh_index(Am.dims, i0-1, j0);
 				end
 			end
 		end
 	else
 		if (di >= 0)
 			if isodd(i0)
-				ind1 = getMeshIndex(Am.dims, i0+1, j0-1);
-				ind2 = getMeshIndex(Am.dims, i0+1, j0);
+				ind1 = get_mesh_index(Am.dims, i0+1, j0-1);
+				ind2 = get_mesh_index(Am.dims, i0+1, j0);
 			else
-				ind1 = getMeshIndex(Am.dims, i0+1, j0);
-				ind2 = getMeshIndex(Am.dims, i0+1, j0+1);
+				ind1 = get_mesh_index(Am.dims, i0+1, j0);
+				ind2 = get_mesh_index(Am.dims, i0+1, j0+1);
 			end
 		else
 			if isodd(i0)
-				ind1 = getMeshIndex(Am.dims, i0-1, j0-1);
-				ind2 = getMeshIndex(Am.dims, i0-1, j0);
+				ind1 = get_mesh_index(Am.dims, i0-1, j0-1);
+				ind2 = get_mesh_index(Am.dims, i0-1, j0);
 			else
-				ind1 = getMeshIndex(Am.dims, i0-1, j0);
-				ind2 = getMeshIndex(Am.dims, i0-1, j0+1);
+				ind1 = get_mesh_index(Am.dims, i0-1, j0);
+				ind2 = get_mesh_index(Am.dims, i0-1, j0+1);
 			end
 		end
 	end
@@ -248,7 +248,7 @@ function findMeshTriangle(Am, i, j)
 end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
-function getTriangleWeights(Am, triangle, pi, pj)
+function get_triangle_weights(Am, triangle, pi, pj)
 	R = vcat(Am.nodes[triangle[1]]', Am.nodes[triangle[2]]', Am.nodes[triangle[3]]')
 	R = hcat(R, ones(Float64, 3, 1));
 	r = hcat(pi, pj, 1.0);

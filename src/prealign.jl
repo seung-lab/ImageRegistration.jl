@@ -165,14 +165,14 @@ end
 function affine_align_sections(moving_img_filename::String, 
                                                 fixed_img_filename::String, 
                                                 params=PARAMS_PREALIGNMENT)
-  meshset = makeNewMeshSet(params)
+  meshset = MeshSet(params)
   meshset.N = 2
   moving_mesh = Mesh(moving_img_filename)
   fixed_mesh = Mesh(fixed_img_filename)
   meshset.meshes = [fixed_mesh, moving_mesh]
 
-  fixed_img = getUfixed8Image(meshset.meshes[1])
-  moving_img = getUfixed8Image(meshset.meshes[2])
+  fixed_img = get_ufixed8_image(meshset.meshes[1])
+  moving_img = get_ufixed8_image(meshset.meshes[2])
 
   offsets = parse_offsets(prealigned_offsets_path)
   if is_aligned(meshset.meshes[1].index)
@@ -246,7 +246,7 @@ end
 function compute_propogated_transform(index::Index)
   index = (index[1:2]..., 0, 0)
   filenames = filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR))
-  indices = [(parseName(x), x) for x in filenames]
+  indices = [(parse_name(x), x) for x in filenames]
   sort!(indices)
   if indices[1][1] == zeros(Int, 4)
     error("Could not parse JLD filename to index: ", indices[1][2])

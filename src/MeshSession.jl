@@ -54,9 +54,9 @@ function prealign(section_range::UnitRange{Int64}, is_batch_start=false)
     if k == 1
       # check that first image has been copied through
       first_img_fn = sort_dir(MONTAGED_DIR, "tif")[k]
-      first_img = getUfixed8Image(joinpath(MONTAGED_DIR, first_img_fn))
+      first_img = get_ufixed8_image(joinpath(MONTAGED_DIR, first_img_fn))
       @time first_img = rescopeimage(first_img, [0,0], GLOBAL_BB)
-      index = parseName(first_img_fn)
+      index = parse_name(first_img_fn)
 
       # Save image to prealigned
       log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
