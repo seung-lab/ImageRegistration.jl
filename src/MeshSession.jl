@@ -54,9 +54,9 @@ function prealign(section_range::UnitRange{Int64}, is_batch_start=false)
     if k == 1
       # check that first image has been copied through
       first_img_fn = sort_dir(MONTAGED_DIR, "tif")[k]
-      first_img = getUfixed8Image(joinpath(MONTAGED_DIR, first_img_fn))
+      first_img = get_ufixed8_image(joinpath(MONTAGED_DIR, first_img_fn))
       @time first_img = rescopeimage(first_img, [0,0], GLOBAL_BB)
-      index = parseName(first_img_fn)
+      index = parse_name(first_img_fn)
 
       # Save image to prealigned
       log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
@@ -100,4 +100,27 @@ function prealign(section_range::UnitRange{Int64}, is_batch_start=false)
       affine_align_sections(moving_fn, fixed_fn)
     end
   end
+end
+
+function premontage(section_range::UnitRange{Int64})
+  tiledir = joinpath(bucket_dir_path, "research/GABA/data/atlas/MasterUTSLdirectory/07122012S2/S2-W001/HighResImages_ROI1_7nm_120apa/S2-W001_Sec1_Montage/")
+  println(tiledir)
+  tiles = sort_dir(tiledir, "tif");
+  tiles = filter(x->contains(x,"Tile"), tiles)
+
+  overview = "../input_images/S2-W001_sec1_overview.tif"
+  offsets, = tiles_to_overview(tiles[end-1:end], overview, 0.07; tile_img_dir = tiledir, save_fused_img_to = "../output_images/S2-W001_sec1_overview_fused.tif")
+
+  log_path = joinpath(PREMONTAGED_DIR, "test.txt")
+  if !isfile(log_path)
+    f = open(log_path, "w")
+    close(f)
+  else
+  	f = open(log_path, "a")
+  end
+  for k in offsets
+      log_line = join(k)
+      write(f, log_line, "\n")
+  end
+  close(f)
 end

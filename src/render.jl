@@ -177,7 +177,7 @@ end
 
 function sort_dir(dir, file_extension="jld")
     files_in_dir = filter(x -> x[end-2:end] == file_extension, readdir(dir))
-    return sort(files_in_dir, by=x->parseName(x))
+    return sort(files_in_dir, by=x->parse_name(x))
 end
 
 function get_global_bb(meshset)
@@ -243,9 +243,9 @@ function render_aligned(section_range::UnitRange{Int64})
       if index in keys(images)
         img = images[index]
       else
-        path = getPath(index)
+        path = get_path(index)
         if isfile(path)
-          img, _ = imwarp(getUfixed8Image(index), s)
+          img, _ = imwarp(get_ufixed8_image(index), s)
         else
           println("Warping ", mesh.name)
           @time img, offset = meshwarp(mesh)
@@ -271,8 +271,8 @@ function render_aligned(section_range::UnitRange{Int64})
     for (k, matches) in enumerate(meshset.matches)
       src_index = matches.src_index
       dst_index = matches.dst_index
-      src_mesh = meshset.meshes[findIndex(meshset, src_index)]
-      dst_mesh = meshset.meshes[findIndex(meshset, dst_index)]
+      src_mesh = meshset.meshes[find_index(meshset, src_index)]
+      dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
 
       src_nodes, dst_nodes = get_matched_points_t(meshset, k)
       src_index = (src_index[1:2]..., src_index[3]-1, src_index[4]-1)

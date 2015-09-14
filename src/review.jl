@@ -130,8 +130,8 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
   src_index = matches.src_index
   dst_index = matches.dst_index
   println("display_matches_movie: ", (src_index, dst_index))
-  src_mesh = meshset.meshes[findIndex(meshset, src_index)]
-  dst_mesh = meshset.meshes[findIndex(meshset, dst_index)]
+  src_mesh = meshset.meshes[find_index(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
 
   if step == "post"
     src_nodes, dst_nodes = get_matched_points_t(meshset, k)
@@ -149,13 +149,13 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
   src_nodes = hcat(src_nodes...)[1:2, :] .- src_offset
   dst_nodes = hcat(dst_nodes...)[1:2, :] .- dst_offset
 
-  src_img = getUfixed8Image(src_index)
+  src_img = get_ufixed8_image(src_index)
   println(size(src_img))
   for i = 1:downsample
     src_img = restrict(src_img)
     src_nodes /= 2
   end
-  dst_img = getUfixed8Image(dst_index)
+  dst_img = get_ufixed8_image(dst_index)
   println(size(dst_img))
   for i = 1:downsample
     dst_img = restrict(dst_img)
@@ -329,12 +329,12 @@ Retrieve 1d array of block match pairs from the original images
 function get_blockmatch_images(meshset, k, mesh_type, radius)
   matches = meshset.matches[k]
   index = matches.(symbol(mesh_type, "_index"))
-  mesh = meshset.meshes[findIndex(meshset, index)]
+  mesh = meshset.meshes[find_index(meshset, index)]
   src_points, dst_points = get_matched_points(meshset, k)
   # src_points_t, dst_points_t = get_matched_points_t(meshset, k)
   scale = meshset.params.scaling_factor
   s = [scale 0 0; 0 scale 0; 0 0 1]
-  img, _ = imwarp(getUfixed8Image(mesh), s)
+  img, _ = imwarp(get_ufixed8_image(mesh), s)
   offset = mesh.disp*scale
   src_points *= scale
   dst_points *= scale
@@ -505,7 +505,7 @@ function section_movie(meshset, slice_range=(20000:24000, 20000:24000), downsamp
   all_imgs = []
   all_nodes = []
   for mesh in meshset.meshes
-    @time img = getUfixed8Image((mesh.index[1], mesh.index[2], -4, -4))
+    @time img = get_ufixed8_image((mesh.index[1], mesh.index[2], -4, -4))
     img = img[slice_range...]
     nodes = hcat(mesh.nodes_t...) .- offset
     for i = 1:downsample
@@ -554,8 +554,8 @@ function scan_section_movie(meshset, divisions=8, downsample=2)
 
       all_imgs = []
       for mesh in meshset.meshes
-        img = getUfixed8Image((mesh.index[1], mesh.index[2], -4, -4))[slice_range...]
-        # img = getUfixed8Image(mesh)
+        img = get_ufixed8_image((mesh.index[1], mesh.index[2], -4, -4))[slice_range...]
+        # img = get_ufixed8_image(mesh)
         for i = 1:downsample/2
           img = restrict(img)
         end
@@ -583,15 +583,15 @@ end
 function write_prealignment_thumbnails(downsample=8)
   img_filenames = filter(x -> x[end-2:end] == "tif", readdir(PREALIGNED_DIR))
   for filename_A in img_filenames
-    img_preceding = filter(x -> parseName(x)[2]-1 == parseName(filename_A)[2], img_filenames)
+    img_preceding = filter(x -> parse_name(x)[2]-1 == parse_name(filename_A)[2], img_filenames)
     if length(img_preceding) > 0
       filename_B = img_preceding[1]
       println(filename_B, "-", filename_A)
-      A = getUfixed8Image(joinpath(PREALIGNED_DIR, filename_A))
+      A = get_ufixed8_image(joinpath(PREALIGNED_DIR, filename_A))
       for i = 1:downsample/2
         A = restrict(A)
       end
-      B = getUfixed8Image(joinpath(PREALIGNED_DIR, filename_B))
+      B = get_ufixed8_image(joinpath(PREALIGNED_DIR, filename_B))
       for i = 1:downsample/2
         B = restrict(B)
       end
@@ -612,8 +612,8 @@ function write_alignment_thumbnails(meshset, k, step="post")
   src_index = matches.src_index
   dst_index = matches.dst_index
   println("write_alignment_thumbnails: ", (src_index, dst_index))
-  src_mesh = meshset.meshes[findIndex(meshset, src_index)]
-  dst_mesh = meshset.meshes[findIndex(meshset, dst_index)]
+  src_mesh = meshset.meshes[find_index(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
 
   src_nodes, dst_nodes = get_matched_points_t(meshset, k)
   src_index = (src_mesh.index[1], src_mesh.index[2], src_mesh.index[3]-1, src_mesh.index[4]-1)
@@ -624,8 +624,8 @@ function write_alignment_thumbnails(meshset, k, step="post")
 
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
-  src_img, _ = imwarp(getUfixed8Image(src_index), s)
-  dst_img, _ = imwarp(getUfixed8Image(dst_index), s)
+  src_img, _ = imwarp(get_ufixed8_image(src_index), s)
+  dst_img, _ = imwarp(get_ufixed8_image(dst_index), s)
   src_offset *= scale
   dst_offset *= scale
 
