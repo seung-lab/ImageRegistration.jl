@@ -228,21 +228,14 @@ function affine_align_sections(moving_img_filename::String,
   destroy(toplevel(imgc))
 
   # Render image
-  log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
-  if !isfile(log_path)
-    f = open(log_path, "w")
-    close(f)
-  end
-  log_file = open(log_path, "a")
   warped_fn = string(join(warped_index[1:2], ","), "_prealigned.tif")
   println("Rendering ", warped_fn)
   @time warped_img, warped_offset = imwarp(moving_img, tform)
   println("Writing ", warped_fn)
   @time imwrite(warped_img, joinpath(PREALIGNED_DIR, warped_fn))
-  log_line = join((warped_fn, warped_offset[1], warped_offset[2], 
-                      size(warped_img,1), size(warped_img,2)), " ")
-  write(log_file, log_line, "\n")
-  close(log_file)
+
+  log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")  
+  update_offset_log!(log_path, warped_fn, warped_offset, size(warped_img))
 end
 
 function compute_propogated_transform(index::Index)

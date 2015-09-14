@@ -55,38 +55,22 @@ function prealign(section_range::UnitRange{Int64})
       # check that first image has been copied through
       first_img_fn = sort_dir(MONTAGED_DIR, "tif")[k]
       first_img = get_ufixed8_image(joinpath(MONTAGED_DIR, first_img_fn))
-      @time first_img = rescopeimage(first_img, [0,0], GLOBAL_BB)
       index = parse_name(first_img_fn)
 
       # Save image to prealigned
-      log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
-      if !isfile(log_path)
-        f = open(log_path, "w")
-        close(f)
-      end
-      log_file = open(log_path, "a")
       new_fn = string(join(index[1:2], ","), "_prealigned.tif")
       println("Writing ", new_fn)
       @time imwrite(first_img, joinpath(PREALIGNED_DIR, new_fn))
-      log_line = join((new_fn, 0, 0, 
-                          size(first_img,1), size(first_img,2)), " ")
-      write(log_file, log_line, "\n")
-      close(log_file)
+      log_path = joinpath(PREALIGNED_DIR, "prealigned_offsets.txt")
+      update_offset_log!(log_path, new_fn, [0,0], size(first_img))
 
-      # Save iamge to aligned
-      log_path = joinpath(ALIGNED_DIR, "aligned_offsets.txt")
-      if !isfile(log_path)
-        f = open(log_path, "w")
-        close(f)
-      end
-      log_file = open(log_path, "a")
+      # Save image to aligned
+      @time first_img = rescopeimage(first_img, [0,0], GLOBAL_BB)
       new_fn = string(join(index[1:2], ","), "_aligned.tif")
       println("Writing ", new_fn)
       @time imwrite(first_img, joinpath(ALIGNED_DIR, new_fn))
-      log_line = join((new_fn, 0, 0, 
-                          size(first_img,1), size(first_img,2)), " ")
-      write(log_file, log_line, "\n")
-      close(log_file)
+      log_path = joinpath(ALIGNED_DIR, "aligned_offsets.txt")
+      update_offset_log!(log_path, new_fn, [0,0], size(first_img))
     else
       moving_fn = sort_dir(MONTAGED_DIR, "tif")[k][1:end-4]
       fixed_fn = sort_dir(PREALIGNED_DIR, "tif")[k-1][1:end-4]
