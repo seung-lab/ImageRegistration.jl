@@ -165,12 +165,13 @@ function save(Ms::MeshSet)
   firstindex = Ms.meshes[1].index;
   lastindex = Ms.meshes[Ms.N].index;
 
-  if is_premontaged(firstindex)
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
-  elseif is_prealigned(firstindex) && is_montaged(lastindex)
+
+  if is_prealigned(firstindex) && is_montaged(lastindex)
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
-  else 
+  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
     filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"));
+  else 
+    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
   end
 
   jldopen(filename, "w") do file
