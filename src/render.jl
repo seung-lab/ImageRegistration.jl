@@ -226,10 +226,6 @@ function render_aligned(section_range::UnitRange{Int64})
 
   # Log file for image offsets
   log_path = joinpath(ALIGNED_DIR, "aligned_offsets.txt")
-  if !isfile(log_path)
-    f = open(log_path, "w")
-    close(f)
-  end
 
   filenames = sort_dir(ALIGNED_DIR)[section_range]
   for filename in filenames
@@ -256,11 +252,7 @@ function render_aligned(section_range::UnitRange{Int64})
           img, _ = imwarp(img, s)
 
           # Log image offsets
-          log_file = open(log_path, "a")
-          log_line = join((new_fn, offset[1], offset[2], 
-                              size(img,1), size(img,2)), " ")
-          write(log_file, log_line, "\n")
-          close(log_file)
+          update_offset_log!(log_path, new_fn, offset, size(img))
         end
         images[index] = img
       end
