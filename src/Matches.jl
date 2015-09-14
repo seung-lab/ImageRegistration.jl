@@ -40,6 +40,10 @@ end
 
 function get_max_xc_vector(A, B)
 
+  	if std(A) == 0 || std(B) == 0
+	  return NO_MATCH;
+	end
+
 	xc = normxcorr2(A, B);
 	r_max = maximum(xc);
 	if isnan(r_max) return NO_MATCH; end
@@ -53,11 +57,11 @@ function get_max_xc_vector(A, B)
 	if ind == 0 return NO_MATCH; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
 	if i_max == 0 i_max = size(xc, 1); end
-	println("$i_max, $j_max, $r_max");
+	#println("$i_max, $j_max, $r_max");
 	return [i_max - 1 - rad; j_max - 1 - rad; r_max], xc;
 end
 
-function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
+function Matches(A, Am::Mesh, B, Bm::Mesh, params::Dict)
 
 	if (Am==Bm)
 		return Void;
@@ -94,10 +98,10 @@ function Meshes2Matches(A, Am::Mesh, B, Bm::Mesh, params::Params)
 	src_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n_upperbound);
 	dst_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n_upperbound);
 
-	min_dyn_range_ratio = params.min_dyn_range_ratio;
-	block_size = params.block_size;
-	search_r = params.search_r;
-	min_r = params.min_r;
+	min_dyn_range_ratio = params["min_dyn_range_ratio"];
+	block_size = params["block_size"];
+	search_r = params["search_r"];
+	min_r = params["min_r"];
 	b_rad = block_size + search_r;
 
 	
@@ -220,7 +224,7 @@ if (!isnan(sum(xc_im_array[idx])))
 
 
 		dst_point = Am.nodes[idx] + disp_vector;
-		dst_triangle = findMeshTriangle(Bm, dst_point[1], dst_point[2]); 
+		dst_triangle = find_mesh_triangle(Bm, dst_point[1], dst_point[2]); 
 		if dst_triangle == NO_TRIANGLE n_no_triangle +=1; 
 	#=	
 	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_triangle_", n_no_triangle,"_src.jpg")));
@@ -243,7 +247,7 @@ if (!isnan(sum(xc_im_array[idx])))
 		push!(disp_vectors_mags_j, disp_vector[2]);
 		push!(dst_points, dst_point);
 		push!(dst_triangles, dst_triangle);
-		push!(dst_weights, getTriangleWeights(Bm, dst_triangle, dst_point[1], dst_point[2]));
+		push!(dst_weights, get_triangle_weights(Bm, dst_triangle, dst_point[1], dst_point[2]));
 	end
 
 	mu_f = mean(disp_vectors_mags_f);
@@ -267,9 +271,9 @@ if (!isnan(sum(xc_im_array[idx])))
 end
 
 # multiple dispatch for when called remotely - A, B are remote references to the mesh
-function Meshes2Matches(A, A_rr::RemoteRef, B, B_rr::RemoteRef, params_rr::RemoteRef)
+function Matches(A, A_rr::RemoteRef, B, B_rr::RemoteRef, params_rr::RemoteRef)
 Am = take!(A_rr);
 Bm = take!(B_rr);
 params = take!(params_rr);
-return Meshes2Matches(A, Am, B, Bm, params);
+return Matches(A, Am, B, Bm, params);
 end
