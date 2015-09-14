@@ -424,7 +424,7 @@ function make_stack(offsets, wafer_num, section_range)
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false;
-    if findfirst(indices, i) == 1 #in 1:5:length(indices)
+    if findfirst(indices, i) == 1
       is_fixed = true; println("$index is fixed");
     end
     add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
@@ -435,6 +435,31 @@ function make_stack(offsets, wafer_num, section_range)
   return Ms;
 end
 
+function make_stack(offsets, wafer_num, section_range, fixed_interval)
+  indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
+  Ms = MeshSet(PARAMS_ALIGNMENT);
+
+  dy = 0;
+  dx = 0;
+
+  for i in indices
+    name = offsets[i, 1];
+    index = offsets[i, 2];
+    dy += offsets[i, 3];
+    dx += offsets[i, 4];
+    size_i = offsets[i, 5]
+    size_j = offsets[i, 6]
+    is_fixed = false;
+    if findfirst(indices, i) in 1:fixed_interval:length(indices)
+      is_fixed = true; println("$index is fixed");
+    end
+    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
+  end
+
+  optimize_all_cores(Ms.params);
+
+  return Ms;
+end
 function load_section_pair(Ms, a, b)
   A_image = get_image(get_path(Ms.meshes[find_section(Ms,a)].name));
   B_image = get_image(get_path(Ms.meshes[find_section(Ms,b)].name));
