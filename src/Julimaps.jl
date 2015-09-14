@@ -1,7 +1,7 @@
-#module Julimaps
-#push!(LOAD_PATH, "./mesh")
 
-### TypeAliases ###############################
+
+# TypeAliases
+
 
 export Index
 export Triangle, Triangles
@@ -24,25 +24,25 @@ typealias Pairings Array{Pairing, 1};       # useful for abstraction
 
 typealias Point Array{Float64, 1};        # [i; j]
 typealias Points Array{Point, 1};       # array of points
-typealias BinaryProperty Array{Bool, 1};      # array of bools
+typealias BinaryProperty Array{Bool, 1};    	  # array of bools
 
 typealias Edges SparseMatrixCSC{Float64, Int64}     # sparse array for edges - columns represent edges and the rows represent the nodes
-typealias FloatProperty Array{Float64, 1}
+typealias FloatProperty Array{Float64, 1}   	# array of floats
+
+# global constants, independent of deployment
+
+global const NO_MATCH = [0; 0; -1];
+global const NO_TRIANGLE = (0, 0, 0);
+global const NO_RANGE = (0:0, 0:0);
+
+global const OVERVIEW_INDEX = -1;
+global const MONTAGED_INDEX = -2;
+global const PREALIGNED_INDEX = -3;
+global const ALIGNED_INDEX = -4;
 
 
-### GLOBAL VARIABLES ###########################
- 
-global NO_MATCH = [0; 0; -1];
-global NO_TRIANGLE = (0, 0, 0);
-global NO_RANGE = (0:0, 0:0);
+# dependencies
 
-global OVERVIEW_INDEX = -1;
-global MONTAGED_INDEX = -2;
-global PREALIGNED_INDEX = -3;
-global ALIGNED_INDEX = -4;
-
-
-using Images
 using HDF5
 using JLD
 using Images
@@ -55,6 +55,7 @@ using Cairo
 if !isdefined(:BoundingBox) # haaaaack
 	include("boundingbox.jl")
 end
+
 include("Params.jl")
 include("IO.jl")
 include("Params_session.jl")
