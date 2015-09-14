@@ -69,12 +69,12 @@ function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,
     return an_points, an_vectors
 end
 
-function draw_indices(imgc, img2, points, offset=[-20,-20])
+function draw_indices(imgc, img2, points, offset=[-40,-40])
     points = [points[2,:]; points[1,:]] .- offset
     c = canvas(imgc)
     ctx = Cairo.getgc(c)
     Cairo.save(ctx)
-    Cairo.set_font_size(ctx, 12.0)
+    Cairo.set_font_size(ctx, 48.0)
     for i in 1:size(points,2)
         Cairo.move_to(ctx, points[:,i]...)
         Cairo.show_text(ctx,"$i")

@@ -38,3 +38,35 @@ function points_to_Nx3_matrix(points)
   end
   return points
 end
+
+"""
+Edit the offset_log text file associated with prealignment and alignment
+
+log_path: file path of the log file, a .txt file
+image_name: string not including the file extension
+offset: 2-element collection for the i,j offset
+sz: 2-element collection for the i,j height and width
+"""
+function update_offset_log!(log_path, image_name, offset, sz)
+  if !isfile(log_path)
+    f = open(log_path, "w")
+    close(f)
+    offset_log = [image_name, string(parse_name(image_name)), offset..., sz...]'
+  else  
+    offset_log = readdlm(log_path)
+    idx = findfirst(offset_log[:,1], image_name)
+    if idx != 0
+      offset_log[idx, 3:4] = collect(offset)
+      offset_log[idx, 5:6] = collect(sz)
+    else
+      log_line = [image_name, string(parse_name(image_name)), offset..., sz...]
+      offset_log = vcat(offset_log, log_line')
+    end
+  end
+  writedlm(log_path, offset_log)
+end
+
+
+
+
+
