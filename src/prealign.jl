@@ -7,9 +7,9 @@ point coordinates in row vector.
 function affine_align_images(moving_img::Array{}, fixed_img::Array{}, 
                                 params=PARAMS_PREALIGNMENT; return_points=false)
   # points here are in column vector convention
-  if params.scaling_factor != 1.0
-    println("Finding points at ", params.scaling_factor, "x")
-    s = [params.scaling_factor 0 0; 0 params.scaling_factor 0; 0 0 1]
+  if params["scaling_factor"] != 1.0
+    println("Finding points at ", params["scaling_factor"], "x")
+    s = [params["scaling_factor"] 0 0; 0 params["scaling_factor"] 0; 0 0 1]
     moving_img, moving_offset = imwarp(moving_img, s)
     fixed_img, fixed_offset = imwarp(fixed_img, s)
   end
@@ -40,7 +40,7 @@ function affine_align_images(moving_img::Array{}, fixed_img::Array{},
     println("WARNING [affine_align_sections]: high residual. RMS error: ", rmsTotal)
   end
 
-  tform = adjust_affine_for_scaling(tform, params.scaling_factor)
+  tform = adjust_affine_for_scaling(tform, params["scaling_factor"])
 
   if return_points
     return tform, moving_pointslist, fixed_pointslist, residualIn1, residualIn2, rmsIn1, rmsIn2, rmsTotal
@@ -55,10 +55,10 @@ Calculate coordinates of 'mesh' points to be blockmatched
 function generate_match_points(moving_img::Array{}, fixed_img::Array{}, 
                                                   params=PARAMS_PREALIGNMENT)
   border_ratio = 0.1
-  mesh_length = params.mesh_length * params.scaling_factor
+  mesh_length = params["mesh_length"] * params["scaling_factor"]
   grid_size = minimum(floor(Int, collect(size(moving_img))/mesh_length))
-  block_radius = params.block_size * params.scaling_factor
-  search_radius = params.search_r * params.scaling_factor
+  block_radius = params["block_size"] * params["scaling_factor"]
+  search_radius = params["search_r"] * params["scaling_factor"]
   overlap = [min(size(moving_img), size(fixed_img))...]
   #overlap = size(moving_img)
 
@@ -82,13 +82,13 @@ function get_block_matches(moving_img::Array{}, fixed_img::Array{}, points,
                           params=PARAMS_PREALIGNMENT)
   moving_points = []
   fixed_points = []
-  block_radius = floor(Int64, params.block_size * params.scaling_factor)
-  search_radius = floor(Int64, params.search_r * params.scaling_factor)
+  block_radius = floor(Int64, params["block_size"] * params["scaling_factor"])
+  search_radius = floor(Int64, params["search_r"] * params["scaling_factor"])
   for pt = points
     offset, r, xc = block_match_at_point(moving_img, pt, fixed_img, pt, 
                                             block_radius, search_radius)
     println(pt, offset, r)
-    if r >= params.min_r
+    if r >= params["min_r"]
       push!(moving_points, collect(pt))
       push!(fixed_points, collect(pt+offset))
     end
@@ -158,7 +158,7 @@ function recompute_affine(meshset::MeshSet)
   moving_points = points_to_3xN_matrix(moving_pointslist)
   fixed_points = points_to_3xN_matrix(fixed_pointslist)
   tform = find_affine(moving_points, fixed_points)
-  tform = adjust_affine_for_scaling(tform, params.scaling_factor)
+  tform = adjust_affine_for_scaling(tform, params["scaling_factor"])
   return tform
 end
 
@@ -180,7 +180,7 @@ function affine_align_sections(moving_img_filename::String,
   end
   idx = findfirst(offsets[:,1], fixed_img_filename)
   fixed_offset = offsets[idx, 3:4]
-  @time moving_img = rescopeimage(moving_img, fixed_offset, GLOBAL_BB)
+  # @time moving_img = rescopeimage(moving_img, fixed_offset, GLOBAL_BB)
 
   # Align
   tform, moving_points, fixed_points, residualIn1, residualIn2, rmsIn1, rmsIn2, rmsTotal = 
@@ -205,7 +205,7 @@ function affine_align_sections(moving_img_filename::String,
   @time imgA, A_offset = imwarp(fixed_img, s)
   @time imgB, B_offset = imwarp(moving_img, tform*s)
 
-  pt_scaling = meshset.params.scaling_factor
+  pt_scaling = meshset.params["scaling_factor"]
   src_nodes = hcat(fixed_points/pt_scaling...)[1:2, :]
   dst_nodes = (points_to_Nx3_matrix(moving_points/pt_scaling)*tform)[:, 1:2]'
   src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]/pt_scaling
@@ -217,8 +217,10 @@ function affine_align_sections(moving_img_filename::String,
   O, O_bb = imfuse(imgA, A_offset, imgB, B_offset)
   imgc, img2 = view(O, pixelspacing=[1,1])
   vectors = [src_nodes; dst_nodes]
+  println(size(vectors))
   an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
   c = draw_indices(imgc, img2, src_nodes)
+  # draw_indices(imgc, img2, src_nodes)
 
   thumbnail_fn = string(join(warped_index[1:2], ","), "_prealigned_thumbnail.png")
   println("Writing ", thumbnail_fn)

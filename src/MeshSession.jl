@@ -48,7 +48,7 @@ function align_to_fixed(wafer_num, aligned, prealigned)
   save(Ms);
 end
 
-function prealign(section_range::UnitRange{Int64}, is_batch_start=false)
+function prealign(section_range::UnitRange{Int64})
   for k in section_range
     println("Prealignment for montaged image no. ", k)
     if k == 1
@@ -87,15 +87,9 @@ function prealign(section_range::UnitRange{Int64}, is_batch_start=false)
                           size(first_img,1), size(first_img,2)), " ")
       write(log_file, log_line, "\n")
       close(log_file)
-
     else
-      if k == section_range[1] && is_batch_start # beginning of a batch
-        moving_fn = sort_dir(MONTAGED_DIR, "tif")[k][1:end-4]
-        fixed_fn = sort_dir(ALIGNED_DIR, "tif")[k-1][1:end-4]
-      else
-        moving_fn = sort_dir(MONTAGED_DIR, "tif")[k][1:end-4]
-        fixed_fn = sort_dir(PREALIGNED_DIR, "tif")[k-1][1:end-4]
-      end
+      moving_fn = sort_dir(MONTAGED_DIR, "tif")[k][1:end-4]
+      fixed_fn = sort_dir(PREALIGNED_DIR, "tif")[k-1][1:end-4]
       println("Prealigning ", moving_fn, " to ", fixed_fn)
       affine_align_sections(moving_fn, fixed_fn)
     end
