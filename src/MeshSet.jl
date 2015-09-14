@@ -165,12 +165,12 @@ function save(Ms::MeshSet)
   firstindex = Ms.meshes[1].index;
   lastindex = Ms.meshes[Ms.N].index;
 
-  if is_montaged(firstindex)
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_montaged.jld"));
-  elseif is_aligned(firstindex)
+  if is_premontaged(firstindex)
+    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
+  elseif is_prealigned(firstindex) && is_montaged(lastindex)
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
-  else
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","), "_aligned.jld"));
+  else 
+    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"));
   end
 
   jldopen(filename, "w") do file
@@ -423,8 +423,8 @@ function make_stack(offsets, wafer_num, section_range)
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false;
-    if findfirst(indices, i) in 1:3:length(indices)
-      is_fixed = true;
+    if findfirst(indices, i) == 1 #in 1:5:length(indices)
+      is_fixed = true; println("$index is fixed");
     end
     add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
   end
