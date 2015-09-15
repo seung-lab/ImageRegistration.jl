@@ -139,7 +139,9 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
 	  fused = cat(3, overview, min(overlay,1), zeros(size(overlay)))
 	  fused = convert(Image, fused)
 	  imwrite(fused, save_fused_img_to)
-	  view(fused)
+	  imgc, imgs = view(fused)
+	  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_fused_img_to)[2],
+	  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
   end
   if save_xcorr_img_to != ""
   	  println("xcorr  min: ", minimum(xcorr), "  max: ",maximum(xcorr))
@@ -149,7 +151,9 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
 	  # stretch high value to 1
 	  xcorr /= maximum(xcorr)
 	  imwrite(xcorr, save_xcorr_img_to)
-	  view(make_isotropic(xcorr))
+	  imgc, imgs = view(make_isotropic(xcorr))
+	  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_xcorr_img_to)[2],
+	  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
   end
   return offsets, overlay
 end
