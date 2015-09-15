@@ -180,7 +180,7 @@ function save(Ms::MeshSet)
   lastindex = Ms.meshes[Ms.N].index;
 
 
-  if is_prealigned(firstindex) && is_montaged(lastindex)
+  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
     filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"));
@@ -217,19 +217,31 @@ diagonal_pairs = Pairings(0);
   return pairs;
 end
 
+function affine_add_pair_matches!(Ms, a, b)
+
+images = load_section_pair(Ms, a, b);
+
+matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
+
+if typeof(matches_atob) != Void && (matches_atob) != Void
+    add_matches(matches_atob, Ms);
+        end
+  return Ms;
+
+end
 function add_pair_matches!(Ms, a, b)
 
 images = load_section_pair(Ms, a, b);
 
 matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
-#matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
+matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
 
 if typeof(matches_atob) != Void && (matches_atob) != Void
     add_matches(matches_atob, Ms);
         end
-#=if typeof(matches_btoa) != Void && (matches_btoa) != Void
+if typeof(matches_btoa) != Void && (matches_btoa) != Void
     add_matches(matches_btoa, Ms);
-        end=#
+        end
   return Ms;
 
 end
@@ -369,11 +381,11 @@ println("Shearing: j-shear: $q")
 println("Rotation: $theta deg.")
 end
 
-function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
+function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
 
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in batch, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_ALIGNMENT);
-
+#=
   index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
   name_aligned = get_name(index_aligned);  
   dy_aligned = 0;
@@ -382,7 +394,7 @@ function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
   size_j = 36000;
 
   add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
-
+=#
   dy = 0;
   dx = 0;
 
@@ -396,6 +408,32 @@ function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
 
   add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms);
 end
+  optimize_all_cores(Ms.params);
+
+  return Ms;
+end
+function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64)
+  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == a, 1:size(offsets, 1));
+  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
+  Ms = MeshSet(PARAMS_PREALIGNMENT);
+
+  index_dst = (wafer_num, a, PREALIGNED_INDEX, PREALIGNED_INDEX);
+  name_dst = get_name(index_dst);  
+  dy_dst = 0;
+  dx_dst = 0;
+  size_i = offsets[i_a, 5]; 
+  size_j = offsets[i_a, 6];
+
+  add_mesh(Mesh(name_dst, size_i, size_j, index_dst, dy_dst, dx_dst, true, PARAMS_PREALIGNMENT), Ms);
+
+  name = offsets[i_b, 1];
+  index = offsets[i_b, 2];
+  dy = 0;
+  dx = 0; 
+  size_i = offsets[i_b, 5];
+  size_j = offsets[i_b, 6];
+
+  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms);
   optimize_all_cores(Ms.params);
 
   return Ms;

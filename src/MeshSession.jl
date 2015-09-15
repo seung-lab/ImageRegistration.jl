@@ -48,6 +48,13 @@ function align_batch_to_fixed(wafer_num, aligned, batch::UnitRange{Int64})
   save(Ms);
 end
 
+function prealign(wafer_num, dst, src)# k::UnitRange{Int64})
+  @time Ms = affine_make_stack(PREALIGNED_OFFSETS, wafer_num, dst, src);
+  @time affine_add_pair_matches!(Ms, src, dst);
+  @time affine_solve_meshset!(Ms);
+  save(Ms);
+end
+
 function align_to_fixed(wafer_num, aligned, prealigned)
   @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, aligned, prealigned);
   @time for i in 1:Ms.N-1
