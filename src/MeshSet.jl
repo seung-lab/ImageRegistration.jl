@@ -398,7 +398,7 @@ end
 
   return Ms;
 end
-function make_stack(offsets, wafer_num, a, b)
+function make_stack(offsets, wafer_num, a::Int64, b::Int64)
   i = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_ALIGNMENT);
 
@@ -422,7 +422,7 @@ function make_stack(offsets, wafer_num, a, b)
 
   return Ms;
 end
-function make_stack(offsets, wafer_num, section_range)
+function make_stack(offsets, wafer_num, section_range, fixed_interval)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_ALIGNMENT);
 
@@ -437,7 +437,7 @@ function make_stack(offsets, wafer_num, section_range)
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false;
-    if findfirst(indices, i) == 1 #in 1:5:length(indices)
+    if findfirst(indices, i) in 1:fixed_interval:length(indices)
       is_fixed = true; println("$index is fixed");
     end
     add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
