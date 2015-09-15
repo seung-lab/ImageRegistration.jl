@@ -188,7 +188,7 @@ function affine_align_sections(moving_img_filename::String,
   println(tform)
 
   # Update matches object in meshset
-  meshset.meshes[1].nodes = moving_points
+  meshset.meshes[2].nodes = moving_points
   src_points_indices = 1:length(moving_points)
   matches = Matches(meshset.meshes[2].index, meshset.meshes[1].index, 
     length(moving_points), src_points_indices, fixed_points, [], [], [])
@@ -208,19 +208,19 @@ function affine_align_sections(moving_img_filename::String,
   pt_scaling = meshset.params["scaling_factor"]
   src_nodes = hcat(fixed_points/pt_scaling...)[1:2, :]
   dst_nodes = (points_to_Nx3_matrix(moving_points/pt_scaling)*tform)[:, 1:2]'
-  src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]/pt_scaling
-  dst_offset = [GLOBAL_BB.i, GLOBAL_BB.j]/pt_scaling
-
-  src_nodes = (src_nodes .- src_offset)*scale
-  dst_nodes = (dst_nodes .- dst_offset)*scale
+  # src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]/pt_scaling
+  # dst_offset = [GLOBAL_BB.i, GLOBAL_BB.j]/pt_scaling
+  # src_nodes = (src_nodes .- src_offset)*scale
+  # dst_nodes = (dst_nodes .- dst_offset)*scale
+  src_nodes *= scale
+  dst_nodes *= scale
 
   O, O_bb = imfuse(imgA, A_offset, imgB, B_offset)
   imgc, img2 = view(O, pixelspacing=[1,1])
   vectors = [src_nodes; dst_nodes]
   println(size(vectors))
-  an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-  c = draw_indices(imgc, img2, src_nodes)
-  # draw_indices(imgc, img2, src_nodes)
+  an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1), 10)
+  c = draw_indices(imgc, img2, src_nodes, 48.0, [-40,-40])
 
   thumbnail_fn = string(join(warped_index[1:2], ","), "_prealigned_thumbnail.png")
   println("Writing ", thumbnail_fn)
