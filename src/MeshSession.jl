@@ -121,24 +121,26 @@ function prealign(section_range::UnitRange{Int64}, is_batch_start=false)
 end
 
 function premontage(section_range::UnitRange{Int64})
-  tiledir = joinpath(bucket_dir_path, "research/GABA/data/atlas/MasterUTSLdirectory/07122012S2/S2-W001/HighResImages_ROI1_7nm_120apa/S2-W001_Sec1_Montage/")
-  println(tiledir)
-  tiles = sort_dir(tiledir, "tif");
-  tiles = filter(x->contains(x,"Tile"), tiles)
+  for sec in section_range
+    index = (1, sec, 0, 0)   # Wafer #1 for now
+    overview_path = get_path(get_overview_index(index))
+    dir,name = splitdir(overview_path)
+    println(dir)
+    tiles = sort_dir(dir, "tif");
+    tiles = filter(x->contains(x,"Tile"), tiles)
 
-  overview = "../input_images/S2-W001_sec1_overview.tif"
-  offsets, = tiles_to_overview(tiles[end-1:end], overview, 0.07; tile_img_dir = tiledir, save_fused_img_to = "../output_images/S2-W001_sec1_overview_fused.tif")
+    save_fused_img_to = name[1:end-4]"_fused.png"
+    save_xcorr_img_to = name[1:end-4]"_xcorr.png"
+    offsets, = tiles_to_overview(tiles, overview_path, 0.07; tile_img_dir = dir,
+        save_fused_img_to = joinpath(PREMONTAGED_DIR, save_fused_img_to),
+        save_xcorr_img_to = joinpath(PREMONTAGED_DIR, save_xcorr_img_to))
 
-  log_path = joinpath(PREMONTAGED_DIR, "test.txt")
-  if !isfile(log_path)
-    f = open(log_path, "w")
+    offset_file = joinpath(PREMONTAGED_DIR, "premontaged_offsets_julimaps.txt")
+    f = open(offset_file, "a")
+    for pair in offsets
+      line = join((pair[1], pair[2]...), " ")
+      write(f, line, "\n")
+    end
     close(f)
-  else
-  	f = open(log_path, "a")
   end
-  for k in offsets
-      log_line = join(k)
-      write(f, log_line, "\n")
-  end
-  close(f)
 end
