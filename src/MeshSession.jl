@@ -122,8 +122,8 @@ function premontage(section_range::UnitRange{Int64})
     tiles = sort_dir(dir, "tif");
     tiles = filter(x->contains(x,"Tile"), tiles)
 
-    save_fused_img_to = name[1:end-4]"_fused.tif"
-    save_xcorr_img_to = name[1:end-4]"_xcorr.tif"
+    save_fused_img_to = name[1:end-4]"_fused.png"
+    save_xcorr_img_to = name[1:end-4]"_xcorr.png"
     offsets, = tiles_to_overview(tiles, overview_path, 0.07; tile_img_dir = dir,
         save_fused_img_to = joinpath(PREMONTAGED_DIR, save_fused_img_to),
         save_xcorr_img_to = joinpath(PREMONTAGED_DIR, save_xcorr_img_to))
