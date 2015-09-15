@@ -51,15 +51,15 @@ function update_offset_log!(log_path, image_name, offset, sz)
   if !isfile(log_path)
     f = open(log_path, "w")
     close(f)
-    offset_log = [image_name, string(parse_name(image_name)), offset..., sz...]'
+    offset_log = [image_name, offset..., sz...]'
   else  
     offset_log = readdlm(log_path)
     idx = findfirst(offset_log[:,1], image_name)
     if idx != 0
-      offset_log[idx, 3:4] = collect(offset)
-      offset_log[idx, 5:6] = collect(sz)
+      offset_log[idx, 2:3] = collect(offset)
+      offset_log[idx, 4:5] = collect(sz)
     else
-      log_line = [image_name, string(parse_name(image_name)), offset..., sz...]
+      log_line = [image_name, offset..., sz...]
       offset_log = vcat(offset_log, log_line')
     end
   end

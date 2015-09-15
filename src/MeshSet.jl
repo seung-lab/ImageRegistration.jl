@@ -169,6 +169,7 @@ function solve_meshset!(Ms)
 end
 
 function save(filename::String, Ms::MeshSet)
+  println("Saving meshset to ", filename)
   jldopen(filename, "w") do file
     write(file, "MeshSet", Ms);
   end
@@ -187,6 +188,7 @@ function save(Ms::MeshSet)
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
   end
 
+  println("Saving meshset to ", filename)
   jldopen(filename, "w") do file
     write(file, "MeshSet", Ms);
   end
