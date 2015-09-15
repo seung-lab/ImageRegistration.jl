@@ -1,3 +1,12 @@
+"""
+Return specified JLD file in provided directory
+"""
+function load_sample_meshset(dir, idx=1)
+  jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
+  fn = jld_filenames[idx]
+  println(joinpath(dir, fn))
+  return JLD.load(joinpath(dir, fn))["MeshSet"], fn
+end
 
 """
 Remove matches from meshset corresponding to the indices provided.
@@ -24,16 +33,16 @@ function remove_matches_from_meshset!(indices_to_remove, match_index, meshset)
     matches.src_points_indices = matches.src_points_indices[flag]
     matches.n -= no_pts_removed
     matches.dst_points = matches.dst_points[flag]
-    if is_prealigned(meshset.meshes[1].index)
+    if is_aligned(meshset.meshes[1].index)
       matches.dst_triangles = matches.dst_triangles[flag]
       matches.dst_weights = matches.dst_weights[flag]
       matches.disp_vectors = matches.disp_vectors[flag]
       meshset.m -= no_pts_removed
       meshset.m_e -= no_pts_removed
     else
-      src_mesh = meshset.meshes[1]
-      src_mesh.nodes = src_mesh.nodes[flag]
-      src_mesh.n -= no_pts_removed
+      dst_mesh = meshset.meshes[2]
+      dst_mesh.nodes = dst_mesh.nodes[flag]
+      dst_mesh.n -= no_pts_removed
     end
   end
 end
@@ -214,8 +223,8 @@ function review_matches(dir, method="movie")
     for (k, matches) in enumerate(meshset.matches)
       println("Inspecting matches at index ", k,)
       if method=="images"
-        @time src_bm_imgs = get_blockmatch_images(meshset, k, "src", meshset.params.block_size-400)
-        @time dst_bm_imgs = get_blockmatch_images(meshset, k, "dst", meshset.params.block_size-400)
+        @time src_bm_imgs = get_blockmatch_images(meshset, k, "src", meshset.params["block_size"]-400)
+        @time dst_bm_imgs = get_blockmatch_images(meshset, k, "dst", meshset.params["block_size"]-400)
         @time filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
         pts_to_remove = collect(edit_blockmatches(filtered_imgs))
       else
@@ -263,13 +272,16 @@ function save_blockmatch_imgs(meshset, k, blockmatch_ids=[], path=joinpath(ALIGN
   if !isdir(dir_path)
     mkdir(dir_path)
   end
-  block_radius = meshset.params.block_size
-  search_radius = meshset.params.search_r
+  block_radius = meshset.params["block_size"]
+  search_radius = meshset.params["search_r"]
   src_imgs = get_blockmatch_images(meshset, k, "src", block_radius)
   combined_radius = search_radius+block_radius
   dst_imgs_true = get_blockmatch_images(meshset, k, "dst", combined_radius)
   dst_imgs_adjusted = get_blockmatch_images(meshset, k, "dst", block_radius)
   println("save_blockmatch_imgs")
+  if blockmatch_ids == []
+    blockmatch_ids = 1:length(src_imgs)
+  end
   for (idx, (src_img, dst_img, dst_img_adjusted)) in enumerate(zip(src_imgs, dst_imgs_true, dst_imgs_adjusted))
     if idx in blockmatch_ids
       println(idx, "/", length(src_imgs))
@@ -279,20 +291,10 @@ function save_blockmatch_imgs(meshset, k, blockmatch_ids=[], path=joinpath(ALIGN
       imwrite(src_img, joinpath(dir_path, string(n , "_src_", k, "_", img_mark, ".jpg")))
       imwrite(dst_img_adjusted, joinpath(dir_path, string(n , "_dst_", k, "_", img_mark, ".jpg")))
       if !isnan(sum(xc))
-        imwrite(xcorr2Image(xc), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
+        imwrite(xcorr2Image(xc'), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
       end
     end
   end
-end
-
-"""
-Return first JLD file in provided directory
-"""
-function load_sample_meshset(dir, idx=1)
-  jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
-  fn = jld_filenames[idx]
-  println(joinpath(dir, fn))
-  return JLD.load(joinpath(dir, fn))["MeshSet"], fn
 end
 
 """
@@ -309,20 +311,6 @@ function sliceimg(img, point, radius::Int64)
   return img[i_range, j_range]
 end
 
-# """
-# Excerpt image for given range
-# """
-# function sliceimg(img, point::Array{1}, radius::Int64)
-#   point = ceil(Int64, point)
-#   imin = min(point[1]-radius, 1)
-#   jmin = min(point[2]-radius, 1)
-#   imax = min(point[1]+radius, size(img,1))
-#   jmax = min(point[2]+radius, size(img,2))
-#   i_range = imin:imax
-#   j_range = jmin:jmax
-#   return img[i_range, j_range]
-# end
-
 """
 Retrieve 1d array of block match pairs from the original images
 """
@@ -332,12 +320,12 @@ function get_blockmatch_images(meshset, k, mesh_type, radius)
   mesh = meshset.meshes[find_index(meshset, index)]
   src_points, dst_points = get_matched_points(meshset, k)
   # src_points_t, dst_points_t = get_matched_points_t(meshset, k)
-  scale = meshset.params.scaling_factor
+  scale = meshset.params["scaling_factor"]
   s = [scale 0 0; 0 scale 0; 0 0 1]
   img, _ = imwarp(get_ufixed8_image(mesh), s)
   offset = mesh.disp*scale
-  src_points *= scale
-  dst_points *= scale
+  # src_points *= scale
+  # dst_points *= scale
 
   bm_imgs = []
   for pt in (mesh_type == "src" ? src_points : dst_points)
@@ -647,3 +635,60 @@ function write_alignment_thumbnails(meshset, k, step="post")
   destroy(toplevel(imgc))
 end
 
+"""
+Cycle through JLD files in prealignment directory and save all blockmatches
+"""
+function save_prealignment_blockmatches(section_range::Array{Int64})
+  filenames = sort_dir(PREALIGNED_DIR)[section_range]
+  for filename in filenames
+    println("Saving blockmatches from ", filename)
+    meshset = JLD.load(joinpath(PREALIGNED_DIR, filename))["MeshSet"]
+    save_blockmatch_imgs(meshset, 1, [], joinpath(PREALIGNED_DIR, "blockmatches"))
+  end
+end
+
+"""
+Cycle through prealignment blockmatch section_range
+"""
+function remove_prealignment_blockmatches(section_range::Array{Int64}, save_imgs=true)
+  filenames = sort_dir(PREALIGNED_DIR)[section_range]
+  for filename in filenames
+    println("Select blockmatches to view from ", filename)
+    meshset = JLD.load(joinpath(PREALIGNED_DIR, filename))["MeshSet"]
+    blockmatch_ids = enter_array()
+    if length(blockmatch_ids) > 0
+      if save_imgs
+        save_blockmatch_imgs(meshset, 1, blockmatch_ids, joinpath(PREALIGNED_DIR, "blockmatches"))
+      end
+      remove_matches_from_meshset!(blockmatch_ids, 1, meshset)
+      edited_filename = update_filename(filename)
+      println("Saving JLD here: ", edited_filename)
+      @time save(joinpath(PREALIGNED_DIR, edited_filename), meshset)
+
+      log_file = open(joinpath(PREALIGNED_DIR, string(edited_filename[1:end-4], ".txt")), "w")
+      write(log_file, "Meshset from ", joinpath(PREALIGNED_DIR, filename), "\n")
+      log_line = string("Removed following matches from index ", 1, ":\n")
+      log_line = string(log_line, join(blockmatch_ids, "\n"))
+      write(log_file, log_line, "\n")
+      close(log_file)
+    end
+  end
+end
+
+"""
+Provide prompt to user to enter int array elements one at a time
+"""
+function enter_array()
+  println("Type integers and press return. Press return twice to end.")
+  output = []
+  is_int = true
+  while is_int
+    a = readline(STDIN)
+    if typeof(parse(a)) == Int64
+      push!(output, parse(a))
+    else
+      is_int = false
+    end
+  end
+  return output
+end
