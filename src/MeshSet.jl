@@ -96,6 +96,19 @@ function consolidate(Ms::MeshSet)
 end
 =#
 
+function affine_solve_meshset!(Ms)
+	tform = affine_solve(Ms, 1);
+	
+  	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes;
+  	nodes_t = Points(size(nodes));
+
+  for i in 1:size(nodes)
+  h_pt = [nodes[i]; 1];
+  nodes_t[i] = (h_pt * tform)[1:2]
+  end
+  Ms.meshes[Ms.matches_pairs[1][1]].nodes_t = nodes_t;
+  return Ms;
+end
 function solve_meshset!(Ms)
   match_coeff = Ms.params["match_coeff"];
   eta_gradient = Ms.params["eta_gradient"];
@@ -209,14 +222,14 @@ function add_pair_matches!(Ms, a, b)
 images = load_section_pair(Ms, a, b);
 
 matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
-matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
+#matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
 
 if typeof(matches_atob) != Void && (matches_atob) != Void
     add_matches(matches_atob, Ms);
         end
-if typeof(matches_btoa) != Void && (matches_btoa) != Void
+#=if typeof(matches_btoa) != Void && (matches_btoa) != Void
     add_matches(matches_btoa, Ms);
-        end
+        end=#
   return Ms;
 
 end
@@ -318,21 +331,21 @@ function load_section(offsets, section_num)
   return Ms, images;
 end
 
-function affine_approximate(Ms::MeshSet)
-  pts = get_matched_points(Ms)[1];
-  pts_t = get_matched_points_t(Ms)[1];
+function affine_solve(Ms::MeshSet, k)
+  pts_src = get_matched_points(Ms, k)[1];
+  pts_dst = get_matched_points(Ms, k)[2];
 
-  num_pts = size(pts, 1);
+  num_pts = size(pts_src, k);
 
-  hpts = Array{Float64, 2}(3, num_pts);
-  hpts_t = Array{Float64, 2}(3, num_pts);
+  hpts_src = Array{Float64, 2}(3, num_pts);
+  hpts_dst = Array{Float64, 2}(3, num_pts);
 
   for i in 1:num_pts
-  hpts[:, i] = [pts[i]; 1];
-  hpts_t[:, i] = [pts_t[i]; 1];
+  hpts_src[:, i] = [pts_src[i]; 1];
+  hpts_dst[:, i] = [pts_dst[i]; 1];
   end
 
-  return hpts_t / hpts;
+  return hpts_src' \ hpts_dst';
 end
 
 function decomp_affine(tform::Array{Float64, 2})
@@ -426,7 +439,7 @@ function make_stack(offsets, wafer_num, section_range)
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false;
-    if findfirst(indices, i) == 1
+    if findfirst(indices, i) == 1 #in 1:5:length(indices)
       is_fixed = true; println("$index is fixed");
     end
     add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
@@ -437,31 +450,6 @@ function make_stack(offsets, wafer_num, section_range)
   return Ms;
 end
 
-function make_stack(offsets, wafer_num, section_range, fixed_interval)
-  indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
-  Ms = MeshSet(PARAMS_ALIGNMENT);
-
-  dy = 0;
-  dx = 0;
-
-  for i in indices
-    name = offsets[i, 1];
-    index = offsets[i, 2];
-    dy += offsets[i, 3];
-    dx += offsets[i, 4];
-    size_i = offsets[i, 5]
-    size_j = offsets[i, 6]
-    is_fixed = false;
-    if findfirst(indices, i) in 1:fixed_interval:length(indices)
-      is_fixed = true; println("$index is fixed");
-    end
-    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
-  end
-
-  optimize_all_cores(Ms.params);
-
-  return Ms;
-end
 function load_section_pair(Ms, a, b)
   A_image = get_image(get_path(Ms.meshes[find_section(Ms,a)].name));
   B_image = get_image(get_path(Ms.meshes[find_section(Ms,b)].name));
@@ -530,5 +518,5 @@ function stats(Ms::MeshSet)
 
    println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
    println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
-  decomp_affine(affine_approximate(Ms));
+  decomp_affine(affine_solve(Ms));
 end
