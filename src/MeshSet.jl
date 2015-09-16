@@ -331,8 +331,8 @@ function load_section(offsets, section_num)
   for i in indices
     name = offsets[i, 1];
     index = offsets[i, 2];
-    dx = offsets[i, 3];
-    dy = offsets[i, 4];
+    dy = offsets[i, 3] / 0.07; ##################################
+    dx = offsets[i, 4] / 0.07; ##################################
     image = get_image(get_path(name));
     add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
     #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
