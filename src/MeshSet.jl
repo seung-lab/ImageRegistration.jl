@@ -100,13 +100,14 @@ function affine_solve_meshset!(Ms)
 	tform = affine_solve(Ms, 1);
 	
   	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes;
-  	nodes_t = Points(size(nodes));
+  	nodes_t = Points(size(nodes, 1));
 
-  for i in 1:size(nodes)
+  for i in 1:size(nodes, 1)
   h_pt = [nodes[i]; 1];
-  nodes_t[i] = (h_pt * tform)[1:2]
+  nodes_t[i] = (h_pt' * tform)[1:2]
   end
   Ms.meshes[Ms.matches_pairs[1][1]].nodes_t = nodes_t;
+  stats(Ms);
   return Ms;
 end
 function solve_meshset!(Ms)
@@ -165,7 +166,7 @@ function solve_meshset!(Ms)
   end
 
     print(Ms.params);
-    # stats(Ms);
+    stats(Ms);
 end
 
 function save(filename::String, Ms::MeshSet)
@@ -417,21 +418,22 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64)
   i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_PREALIGNMENT);
 
-  index_dst = (wafer_num, a, PREALIGNED_INDEX, PREALIGNED_INDEX);
-  name_dst = get_name(index_dst);  
+
+  name_dst = offsets[i_dst, 1];
+  index_dst = offsets[i_dst, 2];
   dy_dst = 0;
   dx_dst = 0;
-  size_i = offsets[i_a, 5]; 
-  size_j = offsets[i_a, 6];
+  size_i = offsets[i_dst, 5]; 
+  size_j = offsets[i_dst, 6];
 
   add_mesh(Mesh(name_dst, size_i, size_j, index_dst, dy_dst, dx_dst, true, PARAMS_PREALIGNMENT), Ms);
 
-  name = offsets[i_b, 1];
-  index = offsets[i_b, 2];
+  name = offsets[i_src, 1];
+  index = offsets[i_src, 2];
   dy = 0;
   dx = 0; 
-  size_i = offsets[i_b, 5];
-  size_j = offsets[i_b, 6];
+  size_i = offsets[i_src, 5];
+  size_j = offsets[i_src, 6];
 
   add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms);
   optimize_all_cores(Ms.params);
@@ -554,7 +556,7 @@ function stats(Ms::MeshSet)
    sig_t = std(res_norm_t);
    max_t = maximum(res_norm_t);
 
-   println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
-   println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
-  decomp_affine(affine_solve(Ms));
+   println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
+   println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
+ # decomp_affine(affine_solve(Ms));
 end
