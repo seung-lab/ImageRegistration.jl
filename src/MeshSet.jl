@@ -345,7 +345,7 @@ function load_section(offsets, section_num)
 end
 
 function affine_approximate(Ms::MeshSet, row, col)
-	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), Ms.N);
+	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N);
  
 	pts = Ms.meshes[ind].nodes;
 	pts_t = Ms.meshes[ind].nodes_t;
@@ -384,8 +384,8 @@ end
 
 function decomp_affine(tform::Array{Float64, 2})
 a = tform[1, 1];
-b = tform[1, 2];
-c = tform[2, 1];
+b = tform[2, 1];
+c = tform[1, 2];
 d = tform[2, 2];
 
 p = norm(a, b);
@@ -393,8 +393,8 @@ r = det(tform) / p;
 q = (a * c - b * d) / det(tform);
 theta = rad2deg(atan(b / a));
 
-t_i = tform[1, 3]
-t_j = tform[2, 3]
+t_i = tform[3, 1]
+t_j = tform[3, 2]
 
 println("Affine decomposition: in right-to-left order with the transformation matrix being v*T,");
 println("Translation: i-translation: $t_i, j-translation: $t_j");
