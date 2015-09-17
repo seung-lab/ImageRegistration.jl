@@ -344,11 +344,14 @@ function load_section(offsets, section_num)
   return Ms, images;
 end
 
-function affine_approximate(Ms::MeshSet, row, col)
-	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N);
- 
-	pts = Ms.meshes[ind].nodes;
-	pts_t = Ms.meshes[ind].nodes_t;
+function affine_approximate(Ms::MeshSet, ind)
+  return affine_approximate(Ms.meshes[ind]);
+end
+
+function affine_approximate(M::Mesh)
+
+  pts = M.nodes;
+  pts_t = M.nodes_t;
 
   num_pts = size(pts, 1);
 
@@ -361,7 +364,12 @@ function affine_approximate(Ms::MeshSet, row, col)
   end
 
   tform = hpts' \ hpts_t';
-  return decomp_affine(tform);
+  return tform, decomp_affine(tform);
+end
+
+function affine_approximate(Ms::MeshSet, row, col)
+	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N);
+ 	return affine_approximate(Ms.meshes[ind]);
 end
 
 
