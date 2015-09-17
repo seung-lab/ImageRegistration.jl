@@ -320,7 +320,7 @@ function get_matched_points_t(Ms::MeshSet)
   return src_points, dst_points;
 end
 function load_section(offsets, wafer_num, section_num)
-  indices = find(i -> offsets[i,2][1,2] == (wafer_num, section_num), 1:size(offsets, 1));
+  indices = find(i -> offsets[i,2][1:2] == (wafer_num, section_num), 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_MONTAGE);
   num_tiles = length(indices);
   paths = Array{String, 1}(num_tiles);
