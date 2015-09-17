@@ -100,13 +100,14 @@ function affine_solve_meshset!(Ms)
 	tform = affine_solve(Ms, 1);
 	
   	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes;
-  	nodes_t = Points(size(nodes));
+  	nodes_t = Points(size(nodes, 1));
 
-  for i in 1:size(nodes)
+  for i in 1:size(nodes, 1)
   h_pt = [nodes[i]; 1];
-  nodes_t[i] = (h_pt * tform)[1:2]
+  nodes_t[i] = (h_pt' * tform)[1:2]
   end
   Ms.meshes[Ms.matches_pairs[1][1]].nodes_t = nodes_t;
+  stats(Ms);
   return Ms;
 end
 function solve_meshset!(Ms)
@@ -165,7 +166,7 @@ function solve_meshset!(Ms)
   end
 
     print(Ms.params);
-    # stats(Ms);
+    stats(Ms);
 end
 
 function save(filename::String, Ms::MeshSet)
@@ -180,7 +181,7 @@ function save(Ms::MeshSet)
   lastindex = Ms.meshes[Ms.N].index;
 
 
-  if is_prealigned(firstindex) && is_montaged(lastindex)
+  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
     filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"));
@@ -217,19 +218,31 @@ diagonal_pairs = Pairings(0);
   return pairs;
 end
 
+function affine_add_pair_matches!(Ms, a, b)
+
+images = load_section_pair(Ms, a, b);
+
+matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
+
+if typeof(matches_atob) != Void && (matches_atob) != Void
+    add_matches(matches_atob, Ms);
+        end
+  return Ms;
+
+end
 function add_pair_matches!(Ms, a, b)
 
 images = load_section_pair(Ms, a, b);
 
 matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params);
-#matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
+matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params);
 
 if typeof(matches_atob) != Void && (matches_atob) != Void
     add_matches(matches_atob, Ms);
         end
-#=if typeof(matches_btoa) != Void && (matches_btoa) != Void
+if typeof(matches_btoa) != Void && (matches_btoa) != Void
     add_matches(matches_btoa, Ms);
-        end=#
+        end
   return Ms;
 
 end
@@ -319,8 +332,8 @@ function load_section(offsets, section_num)
   for i in indices
     name = offsets[i, 1];
     index = offsets[i, 2];
-    dx = offsets[i, 3];
-    dy = offsets[i, 4];
+    dy = offsets[i, 3] / 0.07; ##################################
+    dx = offsets[i, 4] / 0.07; ##################################
     image = get_image(get_path(name));
     add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
     #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
@@ -369,11 +382,11 @@ println("Shearing: j-shear: $q")
 println("Rotation: $theta deg.")
 end
 
-function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
+function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
 
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in batch, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_ALIGNMENT);
-
+#=
   index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX);
   name_aligned = get_name(index_aligned);  
   dy_aligned = 0;
@@ -382,7 +395,7 @@ function make_stack(offsets, wafer_num, fixed, batch::UnitRange{Int64})
   size_j = 36000;
 
   add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms);
-
+=#
   dy = 0;
   dx = 0;
 
@@ -400,7 +413,34 @@ end
 
   return Ms;
 end
-function make_stack(offsets, wafer_num, a, b)
+function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64)
+  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == a, 1:size(offsets, 1));
+  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
+  Ms = MeshSet(PARAMS_PREALIGNMENT);
+
+
+  name_dst = offsets[i_dst, 1];
+  index_dst = offsets[i_dst, 2];
+  dy_dst = 0;
+  dx_dst = 0;
+  size_i = offsets[i_dst, 5]; 
+  size_j = offsets[i_dst, 6];
+
+  add_mesh(Mesh(name_dst, size_i, size_j, index_dst, dy_dst, dx_dst, true, PARAMS_PREALIGNMENT), Ms);
+
+  name = offsets[i_src, 1];
+  index = offsets[i_src, 2];
+  dy = 0;
+  dx = 0; 
+  size_i = offsets[i_src, 5];
+  size_j = offsets[i_src, 6];
+
+  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms);
+  optimize_all_cores(Ms.params);
+
+  return Ms;
+end
+function make_stack(offsets, wafer_num, a::Int64, b::Int64)
   i = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_ALIGNMENT);
 
@@ -424,7 +464,7 @@ function make_stack(offsets, wafer_num, a, b)
 
   return Ms;
 end
-function make_stack(offsets, wafer_num, section_range)
+function make_stack(offsets, wafer_num, section_range, fixed_interval)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_ALIGNMENT);
 
@@ -439,7 +479,7 @@ function make_stack(offsets, wafer_num, section_range)
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false;
-    if findfirst(indices, i) == 1 #in 1:5:length(indices)
+    if findfirst(indices, i) in 1:fixed_interval:length(indices)
       is_fixed = true; println("$index is fixed");
     end
     add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms);
@@ -516,7 +556,7 @@ function stats(Ms::MeshSet)
    sig_t = std(res_norm_t);
    max_t = maximum(res_norm_t);
 
-   println("Residuals before solving elastically: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
-   println("Residuals after solving elastically: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
-  decomp_affine(affine_solve(Ms));
+   println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n");
+   println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n");
+ # decomp_affine(affine_solve(Ms));
 end

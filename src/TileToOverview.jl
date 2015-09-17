@@ -15,19 +15,22 @@ Args:
 * overviewScaling: scaling factor of the overview image compared to the full resolusion tile image.
 
 """
-function tile_to_overview(tile, overview, overview_scale::Real; diagnosis = false, overlay_array::Array = [])
+function tile_to_overview(tile, overview, overview_scale::Real; 
+				diagnosis = false, overlay_array::Array = [], xcorr_overlay::Array = [])
 
 	# Assuming strings are file paths
 	if isa(tile, String)
-		tile = getUfixed8Image(tile)
+		tile = get_ufixed8_image(tile)
 	end
 	if isa(overview, String)
-		overview = getUfixed8Image(overview)
+		overview = get_ufixed8_image(overview)
 	end
-	tile_to_overview(tile, overview, overview_scale; diagnosis = diagnosis, overlay_array = overlay_array)
+	return tile_to_overview(tile, overview, overview_scale; 
+			diagnosis = diagnosis, overlay_array = overlay_array, xcorr_overlay = xcorr_overlay)
 end
 
-function tile_to_overview(tile_img::Array, overview_img::Array, overview_scale::Real; diagnosis = false, overlay_array::Array = [])
+function tile_to_overview(tile_img::Array, overview_img::Array, overview_scale::Real; 
+				diagnosis = false, overlay_array::Array = [], xcorr_overlay::Array = [])
 
 	tile = tile_img
 	overview = overview_img
@@ -67,6 +70,22 @@ function tile_to_overview(tile_img::Array, overview_img::Array, overview_scale::
 		overlay_array[range_in_overlay...] += resampled[range_in_resampled...]
 	end
 
+	# Add onto xcorr overlay, masked to tile size centered at peak correlation
+	if length(xcorr_overlay) > 0 && size(xcorr_overlay)==size(overview)
+		xc_size = [size(xc)...]
+		half_tile = floor(Int, [size(resampled)...] / 2)
+		mask_begin = [offset...] - half_tile
+		mask_end = [offset...] + half_tile
+
+		# account for any potential cropping
+		mask_begin = max(zeros(Int, 2), mask_begin)
+		mask_end = min(xc_size, mask_end)
+
+		range_in_xc = [a:b for (a,b) in zip(mask_begin+1, mask_end)]
+		range_in_overlay = range_in_xc + half_tile
+		xcorr_overlay[range_in_overlay...] += xc[range_in_xc...]
+	end
+
 	return offset
 end
 
@@ -91,33 +110,50 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
                             overview_img,
                             overview_scale::Real;
                             tile_img_dir = "",
-                            save_fused_img_to = "")
+                            save_fused_img_to = "",
+                            save_xcorr_img_to = "")
 
                             #params=PARAMS_PREMONTAGE
   if isa(overview_img, String)
-  	overview = getUfixed8Image(overview_img)
+  	overview = get_ufixed8_image(overview_img)
   elseif isa(overview_img, Array)
   	overview = overview_img
   else
   	error("Invalid argument overview_img")
   end
   overlay = zeros(Float64, size(overview))
+  xcorr = zeros(Float64, size(overview))
   #offsets = Dict{Index, Array{Float64, 1}}()
   offsets = Dict{String, Vector}()
   for tilefile in tile_img_file_list
-  	println(tilefile)
+  	print(tilefile, "  ")
   	tile = joinpath(tile_img_dir, tilefile)
+  	offset = tile_to_overview(tile, overview, overview_scale; overlay_array = overlay, xcorr_overlay = xcorr)
   	#offsets[parseName(tilefile)] = 
-  	offsets[tilefile] = 
-  		tile_to_overview(tile, overview, overview_scale; overlay_array = overlay)
+  	offsets[tilefile] = offset
+  	println(offset)
   end
 
   if save_fused_img_to != ""
 	  #fused, fused_offset = imfuse(overview, [0,0], overlay, [0,0]) # having trouble writing this to file
 	  fused = cat(3, overview, min(overlay,1), zeros(size(overlay)))
 	  fused = convert(Image, fused)
-	  view(fused)
 	  imwrite(fused, save_fused_img_to)
+	  imgc, imgs = view(fused)
+	  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_fused_img_to)[2],
+	  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
+  end
+  if save_xcorr_img_to != ""
+  	  println("xcorr  min: ", minimum(xcorr), "  max: ",maximum(xcorr))
+  	  # clamp to [0,1]
+  	  xcorr = max(xcorr, 0)
+  	  xcorr = min(xcorr, 1)
+	  # stretch high value to 1
+	  xcorr /= maximum(xcorr)
+	  imwrite(xcorr, save_xcorr_img_to)
+	  imgc, imgs = view(make_isotropic(xcorr))
+	  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_xcorr_img_to)[2],
+	  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
   end
   return offsets, overlay
 end

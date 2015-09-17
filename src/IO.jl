@@ -10,7 +10,7 @@ end
 
 function get_uint8_image(path::String)
   img = imread(path)
-  return reinterpret(UInt8, data(img)[:,:,1]')
+  return reinterpret(UInt8, data(img)[:,:,1])
 end
 
 function get_image(index::Index)

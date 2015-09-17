@@ -210,20 +210,35 @@ function render_montaged(section_range::Array{Int64})
   end
 end
 
+<<<<<<< HEAD
 """
 Cycle through JLD files in aligned directory and render alignment
 """
 function render_aligned(section_range::Array{Int64})
+=======
+function warp_pad_write(mesh)
+    println("Warping ", mesh.name)
+    @time img, offset = meshwarp(mesh)
+    println(offset)
+    println(size(img))
+    img = rescopeimage(img, offset, global_bb)
+    println(size(img))
+    println("Writing ", mesh.name)
+    @time imwrite(img, joinpath(ALIGNED_DIR, string(mesh.name, ".tif")))
+end
+
+function render_aligned(section_range::UnitRange{Int64}, dir=ALIGNED_DIR)
+>>>>>>> a90eaf84db4758468af1f6c9f1a5086d54d12392
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
   # Log file for image offsets
-  log_path = joinpath(ALIGNED_DIR, "aligned_offsets.txt")
+  log_path = joinpath(dir, "aligned_offsets.txt")
 
-  filenames = sort_dir(ALIGNED_DIR)[section_range]
+  filenames = sort_dir(dir)[section_range]
   for filename in filenames
     println("Rendering meshes in ", filename)
-    meshset = JLD.load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
+    meshset = JLD.load(joinpath(dir, filename))["MeshSet"]
     images = Dict()
     
     # Check images dict for thumbnail, otherwise render, save, & resize it
@@ -241,7 +256,7 @@ function render_aligned(section_range::Array{Int64})
           @time img = rescopeimage(img, offset, GLOBAL_BB)
           println("Writing ", mesh.name)
           new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
-          @time imwrite(img, joinpath(ALIGNED_DIR, new_fn))
+          @time imwrite(img, joinpath(dir, new_fn))
           img, _ = imwarp(img, s)
 
           # Log image offsets
@@ -285,7 +300,7 @@ function render_aligned(section_range::Array{Int64})
 
       thumbnail_fn = string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","), "_aligned_thumbnail.png")
       println("Writing ", thumbnail_fn)
-      Cairo.write_to_png(imgc.c.back, joinpath(ALIGNED_DIR, "review", thumbnail_fn))
+      Cairo.write_to_png(imgc.c.back, joinpath(dir, "review", thumbnail_fn))
       destroy(toplevel(imgc))
     end
   end
