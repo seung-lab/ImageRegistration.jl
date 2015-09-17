@@ -66,6 +66,13 @@ function update_offset_log!(log_path, image_name, offset, sz)
   writedlm(log_path, offset_log)
 end
 
+"""
+Create array of alphabetized filenames that have file extension in directory
+"""
+function sort_dir(dir, file_extension="jld")
+    files_in_dir = filter(x -> x[end-2:end] == file_extension, readdir(dir))
+    return sort(files_in_dir, by=x->parse_name(x))
+end
 
 
 

@@ -175,11 +175,6 @@ function padimages(imgA, imgB)
   return imgA, imgB
 end
 
-function sort_dir(dir, file_extension="jld")
-    files_in_dir = filter(x -> x[end-2:end] == file_extension, readdir(dir))
-    return sort(files_in_dir, by=x->parse_name(x))
-end
-
 function get_global_bb(meshset)
     bbs = []
     println("Calculating global bounding box")
@@ -194,33 +189,31 @@ function get_global_bb(meshset)
     return global_bb
 end    
 
-function render_montaged(section_range::UnitRange{Int64})
+"""
+Cycle through JLD files in montaged directory and render montage
+"""
+function render_montaged(section_range::Array{Int64})
+  log_path = joinpath(MONTAGED_DIR, "montaged_offsets.txt")
   filenames = sort_dir(MONTAGED_DIR)[section_range]
-  for fn in filenames
-    println("Rendering ", fn[1:end-4])
-    meshset = JLD.load(joinpath(MONTAGED_DIR, fn))["MeshSet"]
+  for filename in filenames
+    println("Rendering ", filename[1:end-4])
+    meshset = JLD.load(joinpath(MONTAGED_DIR, filename))["MeshSet"]
     img, offset = merge_images_parallel(meshset.meshes)
     img = grayim(img)
-    img["spatialorder"] = ["y", "x"]
-    println("Writing ", fn[1:end-4])
-    @time imwrite(img, joinpath(MONTAGED_DIR, string(fn[1:end-4], ".tif")))
+    img["spatialorder"] = ["y","x"]
+    println("Writing ", filename[1:end-4])
+    new_filename = string(filename[1:end-4], ".tif")
+    @time imwrite(img, joinpath(MONTAGED_DIR, new_filename))
+    update_offset_log!(log_path, new_filename, [0,0], size(img))
 
     imfuse_section(meshset)
   end
 end
 
-function warp_pad_write(mesh)
-    println("Warping ", mesh.name)
-    @time img, offset = meshwarp(mesh)
-    println(offset)
-    println(size(img))
-    img = rescopeimage(img, offset, global_bb)
-    println(size(img))
-    println("Writing ", mesh.name)
-    @time imwrite(img, joinpath(ALIGNED_DIR, string(mesh.name, ".tif")))
-end
-
-function render_aligned(section_range::UnitRange{Int64})
+"""
+Cycle through JLD files in aligned directory and render alignment
+"""
+function render_aligned(section_range::Array{Int64})
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
@@ -298,7 +291,7 @@ function render_aligned(section_range::UnitRange{Int64})
   end
 end
 
-function write_alignment_blockmatches(section_range::UnitRange{Int64})
+function write_alignment_blockmatches(section_range::Array{Int64})
   filenames = sort_dir(ALIGNED_DIR)[section_range]
   for filename in filenames
     println("Rendering meshes in ", filename)

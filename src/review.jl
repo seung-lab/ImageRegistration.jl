@@ -223,8 +223,8 @@ function review_matches(dir, method="movie")
     for (k, matches) in enumerate(meshset.matches)
       println("Inspecting matches at index ", k,)
       if method=="images"
-        @time src_bm_imgs = get_blockmatch_images(meshset, k, "src", meshset.params["block_size"]-400)
-        @time dst_bm_imgs = get_blockmatch_images(meshset, k, "dst", meshset.params["block_size"]-400)
+        @time src_bm_imgs, _ = get_blockmatch_images(meshset, k, "src", meshset.params["block_size"]-400)
+        @time dst_bm_imgs, _ = get_blockmatch_images(meshset, k, "dst", meshset.params["block_size"]-400)
         @time filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
         pts_to_remove = collect(edit_blockmatches(filtered_imgs))
       else
@@ -274,24 +274,43 @@ function save_blockmatch_imgs(meshset, k, blockmatch_ids=[], path=joinpath(ALIGN
   end
   block_radius = meshset.params["block_size"]
   search_radius = meshset.params["search_r"]
-  src_imgs = get_blockmatch_images(meshset, k, "src", block_radius)
+  scale = meshset.params["scaling_factor"]
   combined_radius = search_radius+block_radius
-  dst_imgs_true = get_blockmatch_images(meshset, k, "dst", combined_radius)
-  dst_imgs_adjusted = get_blockmatch_images(meshset, k, "dst", block_radius)
+  src_imgs, src_bounds = get_blockmatch_images(meshset, k, "src", combined_radius)
+  dst_imgs, dst_bounds = get_blockmatch_images(meshset, k, "dst", block_radius)
+  src_points, dst_points = get_matched_points(meshset, k)
+  # dst_imgs_adjusted = get_blockmatch_images(meshset, k, "dst", block_radius)
   println("save_blockmatch_imgs")
   if blockmatch_ids == []
     blockmatch_ids = 1:length(src_imgs)
   end
-  for (idx, (src_img, dst_img, dst_img_adjusted)) in enumerate(zip(src_imgs, dst_imgs_true, dst_imgs_adjusted))
+  for (idx, (src_img, dst_img, src_point, src_bound)) in enumerate(zip(src_imgs, 
+                                                                dst_imgs, 
+                                                                src_points,
+                                                                src_bounds))
     if idx in blockmatch_ids
       println(idx, "/", length(src_imgs))
-      xc = normxcorr2(src_img, dst_img)
+      # xc = normxcorr2(src_img, dst_img)
+      xc_peak, xc = get_max_xc_vector(dst_img, src_img)
+      println(size(src_img))
+      println(size(dst_img))
+      println(size(xc))
       n = @sprintf("%03d", idx)
       img_mark = "good"
-      imwrite(src_img, joinpath(dir_path, string(n , "_src_", k, "_", img_mark, ".jpg")))
-      imwrite(dst_img_adjusted, joinpath(dir_path, string(n , "_dst_", k, "_", img_mark, ".jpg")))
+      dst_path = joinpath(dir_path, string(n , "_1_dst_", k, "_", img_mark, ".png"))
+      imwrite(dst_img, dst_path)
+      src_offset = src_point - collect(src_bound)
+      src_path = joinpath(dir_path, string(n , "_2_src_", k, "_", img_mark, ".png"))
+      imwrite_box(src_img, src_offset, block_radius, src_path)
+      # imwrite(dst_img, joinpath(dir_path, string(n , "_dst_", k, "_", img_mark, ".jpg")))
       if !isnan(sum(xc))
-        imwrite(xcorr2Image(xc'), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
+        r_max = maximum(xc);
+        rad = round(Int64, (size(xc, 1) - 1)/ 2)  
+        ind = findfirst(r_max .== xc)
+        xc_peak = [rem(ind, size(xc, 1)), cld(ind, size(xc, 1))]
+        xc_path = joinpath(dir_path, string(n , "_3_xc_", k, "_", img_mark, ".png"))
+        imwrite_box(xcorr2Image(xc'), xc_peak, 20, xc_path)
+        # imwrite(xcorr2Image(xc'), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
       end
     end
   end
@@ -306,9 +325,10 @@ function sliceimg(img, point, radius::Int64)
   jmin = max(point[2]-radius, 1)
   imax = min(point[1]+radius, size(img,1))
   jmax = min(point[2]+radius, size(img,2))
-  i_range = imin:imax
-  j_range = jmin:jmax
-  return img[i_range, j_range]
+  return imin, jmin, imax, jmax
+  # i_range = imin:imax
+  # j_range = jmin:jmax
+  # return img[i_range, j_range]
 end
 
 """
@@ -328,10 +348,15 @@ function get_blockmatch_images(meshset, k, mesh_type, radius)
   # dst_points *= scale
 
   bm_imgs = []
-  for pt in (mesh_type == "src" ? src_points : dst_points)
-    push!(bm_imgs, sliceimg(img, pt-offset, radius))
+  bm_bounds = []
+  # for pt in (mesh_type == "src" ? src_points : dst_points)
+  for pt in dst_points
+    imin, jmin, imax, jmax = sliceimg(img, pt-offset, radius)
+    push!(bm_imgs, img[imin:imax, jmin:jmax])
+    push!(bm_bounds, (imin+offset[1], jmin+offset[2]))
+    # push!(bm_imgs, sliceimg(img, pt-offset, radius))
   end
-  return bm_imgs
+  return bm_imgs, bm_bounds
 end
 
 """
