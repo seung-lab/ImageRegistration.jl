@@ -83,8 +83,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   tbb = snap_bb(wbb)
   # construct warped_img, pixels same Type as img, size calculated from tbb
   # WARNING: should have zero values, but unclear whether guaranteed by similar
-  # warped_img = similar(img, tbb.h+1, tbb.w+1)
-  warped_img = zeros(T, tbb.h+1, tbb.w+1)
+  warped_img = similar(img, tbb.h+1, tbb.w+1)
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
   M = inv(tform)   # inverse transform in global space

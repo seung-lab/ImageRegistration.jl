@@ -156,6 +156,7 @@ aligned_dir_path = "4_aligned"
 
 wafer_filename = "wafer_paths.txt"
 premontaged_offsets_filename = "premontaged_offsets.txt"
+montaged_offsets_filename = "montaged_offsets.txt"
 prealigned_offsets_filename = "prealigned_offsets.txt"
 aligned_offsets_filename = "aligned_offsets.txt"
 
@@ -171,10 +172,16 @@ global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, a
 
 waferpath_filename = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename)
 global WAFER_DIR_DICT = waferpaths2dict(waferpath_filename)
+
 premontaged_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_offsets_filename)
 global PREMONTAGED_OFFSETS = parse_offsets(premontaged_offsets_path)
+
+montaged_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path, montaged_offsets_filename)
+global MONTAGED_OFFSETS = parse_offsets(montaged_offsets_path)
+
 prealigned_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path, prealigned_offsets_filename)
 global PREALIGNED_OFFSETS = parse_offsets(prealigned_offsets_path)
+
 aligned_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_offsets_filename)
 global ALIGNED_OFFSETS = parse_offsets(aligned_offsets_path)
 

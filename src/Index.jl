@@ -18,3 +18,6 @@ function is_diagonal(Am::Mesh, Bm::Mesh)
   return false;
 end
 
+function get_overview_index(index::Index)
+  return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)
+end
