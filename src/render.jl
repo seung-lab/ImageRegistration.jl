@@ -210,25 +210,10 @@ function render_montaged(section_range::Array{Int64})
   end
 end
 
-<<<<<<< HEAD
 """
 Cycle through JLD files in aligned directory and render alignment
 """
 function render_aligned(section_range::Array{Int64})
-=======
-function warp_pad_write(mesh)
-    println("Warping ", mesh.name)
-    @time img, offset = meshwarp(mesh)
-    println(offset)
-    println(size(img))
-    img = rescopeimage(img, offset, global_bb)
-    println(size(img))
-    println("Writing ", mesh.name)
-    @time imwrite(img, joinpath(ALIGNED_DIR, string(mesh.name, ".tif")))
-end
-
-function render_aligned(section_range::UnitRange{Int64}, dir=ALIGNED_DIR)
->>>>>>> a90eaf84db4758468af1f6c9f1a5086d54d12392
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
