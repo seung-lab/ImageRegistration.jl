@@ -344,11 +344,32 @@ function load_section(offsets, section_num)
   return Ms, images;
 end
 
+function affine_approximate(Ms::MeshSet, row, col)
+	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), Ms.N);
+ 
+	pts = Ms.meshes[ind].nodes;
+	pts_t = Ms.meshes[ind].nodes_t;
+
+  num_pts = size(pts, 1);
+
+  hpts = Array{Float64, 2}(3, num_pts);
+  hpts_t = Array{Float64, 2}(3, num_pts);
+
+  for i in 1:num_pts
+  hpts[:, i] = [pts[i]; 1];
+  hpts_t[:, i] = [pts_t[i]; 1];
+  end
+
+  tform = hpts' \ hpts_t';
+  return decomp_affine(tform);
+end
+
+
 function affine_solve(Ms::MeshSet, k)
   pts_src = get_matched_points(Ms, k)[1];
   pts_dst = get_matched_points(Ms, k)[2];
 
-  num_pts = size(pts_src, k);
+  num_pts = size(pts_src, 1);
 
   hpts_src = Array{Float64, 2}(3, num_pts);
   hpts_dst = Array{Float64, 2}(3, num_pts);
@@ -375,11 +396,13 @@ theta = rad2deg(atan(b / a));
 t_i = tform[1, 3]
 t_j = tform[2, 3]
 
-println("Affine decomposition: in left-to-right order with the transformation matrix being T*v,");
+println("Affine decomposition: in right-to-left order with the transformation matrix being v*T,");
 println("Translation: i-translation: $t_i, j-translation: $t_j");
 println("Scaling:  i-scaling: $p, j-scaling: $r");
 println("Shearing: j-shear: $q")
 println("Rotation: $theta deg.")
+
+return t_i, t_j, p, r, q, theta;
 end
 
 function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
