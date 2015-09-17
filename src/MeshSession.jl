@@ -1,6 +1,6 @@
 
-function montage_section(n)
-  @time Ms, images = load_section(PREMONTAGED_OFFSETS, n);
+function montage_section(wafer_num, n)
+  @time Ms, images = load_section(PREMONTAGED_OFFSETS, wafer_num, n);
   @time add_all_matches!(Ms, images);
   @time solve_meshset!(Ms);
   save(Ms);
@@ -10,7 +10,7 @@ end
 function montage_sections(wafer_num, k::UnitRange{Int64})
   optimize_all_cores(PARAMS_MONTAGE);
   for n in k
-    @time montage_section(n);
+    @time montage_section(wafer_num, n);
   end
 
 end

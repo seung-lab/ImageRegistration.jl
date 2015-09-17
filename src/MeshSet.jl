@@ -1,4 +1,4 @@
-import PyPlot
+#import PyPlot
 
 type MeshSet
   params::Dict
@@ -319,8 +319,8 @@ function get_matched_points_t(Ms::MeshSet)
    end
   return src_points, dst_points;
 end
-function load_section(offsets, section_num)
-  indices = find(i -> offsets[i,2][2] == section_num, 1:size(offsets, 1));
+function load_section(offsets, wafer_num, section_num)
+  indices = find(i -> offsets[i,2][1:2] == (wafer_num, section_num), 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_MONTAGE);
   num_tiles = length(indices);
   paths = Array{String, 1}(num_tiles);
