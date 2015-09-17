@@ -124,6 +124,19 @@ function draw_points(imgc, img2, points, color=RGB(0,0,1), linewidth=1.0, shape=
     return an_points
 end 
 
+function imwrite_box(img, point, radius, path, color=RGB(0,1,0), linewidth=1.0)
+  upper_left = point - [radius, radius]
+  lower_right = point + [radius, radius]
+  imgc, img2 = view(img, pixelspacing=[1,1])
+  annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 
+                                        tuple(lower_right...),
+                                        color=color, 
+                                        linewidth=linewidth,
+                                        coord_order="yxyx"))
+  Cairo.write_to_png(imgc.c.back, path)
+  destroy(toplevel(imgc))
+end    
+
 function draw_points(img, points)
     imgc, img2 = view(img)
     return draw_points(imgc, img2, points)
