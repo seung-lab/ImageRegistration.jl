@@ -53,6 +53,7 @@ function prealign(wafer_num, dst, src)# k::UnitRange{Int64})
   @time affine_add_pair_matches!(Ms, src, dst);
   @time affine_solve_meshset!(Ms);
   save(Ms);
+  return Ms;
 end
 
 function align_to_fixed(wafer_num, aligned, prealigned)
