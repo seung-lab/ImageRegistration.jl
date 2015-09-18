@@ -200,11 +200,32 @@ function save(Ms::MeshSet)
     write(file, "MeshSet", Ms);
   end
 end
-#=
-function load(index::Index)
-  filepath = get_path(index);
-  Ms = load(index);
-end=#
+function load_montaged(wafer_num, sec_num)
+  index = (wafer_num, sec_num, 1, 1);
+	return load(index, index);
+end
+function load_prealigned(wafer_num, sec_num)
+  lastindex = (wafer_num, sec_num, MONTAGED_INDEX, MONTAGED_INDEX);
+  if sec_num == 1
+    if wafer_num == 1 println("Error loading 1,1-prealigned.jld - the first section is the identity"); return Void;
+  else firstindex = MONTAGED_OFFSETS[findlast(i->MONTAGED_OFFSETS[i,2][1] == wafer_num -1, 1:size(MONTAGED_OFFSETS, 1)), 2]
+  end
+  else firstindex = (wafer_num, sec_num-1, MONTAGED_INDEX, MONTAGED_INDEX);
+  end
+	return load(firstindex, lastindex);
+end
+function load(firstindex::Index, lastindex::Index)
+  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
+    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));
+  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
+    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"));
+  else 
+    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"));
+  end
+
+  println("Loading meshset from", filename)
+  return load(filename);
+  end
 function load(filename::String)
   Ms = JLD.load(filename, "MeshSet"); 
   return Ms;
