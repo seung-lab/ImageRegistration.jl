@@ -151,13 +151,17 @@ function block_match_at_point(A, pointInA, B, pointInB, block_radius, search_r)
   
 end
 
-function recompute_affine(meshset::MeshSet)
+function recompute_transform(meshset::MeshSet; method = "affine")
   params = meshset.params
   moving_pointslist = meshset.meshes[1].nodes
   fixed_pointslist = meshset.matches[1].dst_points
-  moving_points = points_to_3xN_matrix(moving_pointslist)
-  fixed_points = points_to_3xN_matrix(fixed_pointslist)
-  tform = find_affine(moving_points, fixed_points)
+  moving_points = points_to_Nx3_matrix(moving_pointslist)
+  fixed_points = points_to_Nx3_matrix(fixed_pointslist)
+  if method == "affine"
+    tform = find_affine(moving_points, fixed_points)
+  elseif method == "rigid"
+    tform = find_rigid(moving_points, fixed_points)
+  end
   tform = adjust_affine_for_scaling(tform, params["scaling_factor"])
   return tform
 end
@@ -238,7 +242,7 @@ function affine_align_sections(moving_img_filename::String,
   update_offset_log!(log_path, warped_fn, warped_offset, size(warped_img))
 end
 
-function compute_propogated_transform(index::Index)
+function compute_propogated_transform(index::Index; method = "affine")
   index = (index[1:2]..., 0, 0)
   filenames = filter(x -> x[end-2:end] == "jld", readdir(PREALIGNED_DIR))
   indices = [(parse_name(x), x) for x in filenames]
@@ -250,18 +254,18 @@ function compute_propogated_transform(index::Index)
     if indices[k][1] > index
       break
     end
-    if !isAdjacent(indices[k-1][1], indices[k][1], true)
+    if !is_adjacent(indices[k-1][1], indices[k][1], true)
       error("Missing section between ", indices[k-1][1], " and ", indices[k][1])
     end
   end
   T = diagm(ones(3))
-  for k in 2:length(indices)
+  for k in 1:length(indices)
     ind, fn = indices[k]
     if ind > index
       break
     end
-    meshset = load(joinpath(PREALIGNED_DIR, fn))["MeshSet"]
-    A = recompute_affine(meshset)
+    meshset = load(joinpath(PREALIGNED_DIR, fn))
+    A = recompute_transform(meshset; method = method)
     # row vector homogeneous point convention
     T *= A
   end
