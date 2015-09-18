@@ -344,7 +344,7 @@ function load_section(offsets, wafer_num, section_num)
   return Ms, images;
 end
 
-function affine_approximate(Ms::MeshSet, ind)
+function affine_approximate(Ms::MeshSet, ind = 2)
   return affine_approximate(Ms.meshes[ind]);
 end
 
@@ -363,8 +363,7 @@ function affine_approximate(M::Mesh)
   hpts_t[:, i] = [pts_t[i]; 1];
   end
 
-  tform = hpts' \ hpts_t';
-  return tform, decomp_affine(tform);
+  return hpts' \ hpts_t';;
 end
 
 function affine_approximate(Ms::MeshSet, row, col)
@@ -396,9 +395,9 @@ b = tform[2, 1];
 c = tform[1, 2];
 d = tform[2, 2];
 
-p = norm(a, b);
-r = det(tform) / p;
-q = (a * c - b * d) / det(tform);
+p = norm([a, b]);
+r = det(tform[1:2, 1:2]) / p;
+q = (a * c + b * d) / det(tform);
 theta = rad2deg(atan(b / a));
 
 t_i = tform[3, 1]
