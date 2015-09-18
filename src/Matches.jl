@@ -212,7 +212,7 @@ end=#
 		continue; end
 
 		disp_vector = v[1:2];
-		if norm(disp_vector) > mu + 3.5 * sigma; 
+		if norm(disp_vector) > mu + 2.5 * sigma; 
 		n_outlier +=1; 
 	      
 #=	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_src.jpg")));
