@@ -205,6 +205,7 @@ function load_montaged(wafer_num, sec_num)
   index = (wafer_num, sec_num, 1, 1);
 	return load(index, index);
 end
+
 function load_prealigned(wafer_num, sec_num)
   lastindex = (wafer_num, sec_num, MONTAGED_INDEX, MONTAGED_INDEX);
   if sec_num == 1
