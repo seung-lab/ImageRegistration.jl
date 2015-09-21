@@ -537,42 +537,48 @@ function load_nodes(meshset, section_range=1:10, downsample=1)
 end
 
 """
-INCOMPLETE
-
 Cycle through sections of the stack movie, with images staged for easier viewing
 """
-function scan_section_movie(meshset, section_range=1:10, divisions=8, downsample=1)
+function scan_section_movie(meshset, section_range=1:10, divisions=12, downsample=1)
+  # global_bb = get_global_bb(meshset)
   global_bb = GLOBAL_BB
   imgs = load_images(meshset, section_range, downsample)
-  nodes = load_nodes(meshset, section_range, downsample)
+  # nodes = load_nodes(meshset, section_range, downsample)
 
-  ispan = ceil(Int64, global_bb.h/divisions)
-  jspan = ceil(Int64, global_bb.w/divisions)
+  reduction = 2^downsample
+  ispan = ceil(Int64, global_bb.h/reduction/divisions)
+  jspan = ceil(Int64, global_bb.w/reduction/divisions)
   overlap = 200
-  for j=1:divisions
-    for i=1:divisions
-      imin = max((i-1)*ispan - overlap, 1)
-      jmin = max((j-1)*jspan - overlap, 1)
-      imax = min(i*ispan, global_bb.h)
-      jmax = min(j*jspan, global_bb.w)
-      slice_range = (imin:imax, jmin:jmax)
 
-      img_sections = [img[slice_range...] for img in imgs]
-      img_movie = Image(cat(3, img_sections...), timedim=3)
-      imgc, img2 = view(img_movie, pixelspacing=[1,1])
-      n_groups = length(nodes)
-      for (idx, node_group) in enumerate(nodes)
-        r = idx*1.0 / n_groups
-        an_pts = draw_points(imgc, img2, node_group .- [imin, jmin], RGB(r,0,0))
-      end
+  for j=1:divisions, i=1:divisions
+    imin = max((i-1)*ispan - overlap, 1)
+    jmin = max((j-1)*jspan - overlap, 1)
+    imax = min(i*ispan, floor(Int64, global_bb.h/reduction))
+    jmax = min(j*jspan, floor(Int64, global_bb.w/reduction))
+    slice_range = (imin:imax, jmin:jmax)
 
-      e = Condition()
-      c = canvas(imgc)
-      win = Tk.toplevel(c)
-      bind(win, "<Destroy>", path->notify(e))
+    println(slice_range)
+    img_sections = [img[slice_range...] for img in imgs]
+    img_movie = Image(cat(3, img_sections...), timedim=3)
+    imgc, img2 = view(img_movie, pixelspacing=[1,1])
+    # n_groups = length(nodes)
+    # for (idx, node_group) in enumerate(nodes)
+    #   r = idx*1.0 / n_groups
+    #   an_pts = draw_points(imgc, img2, node_group .- [imin, jmin], RGB(r,0,0))
+    # end
 
-      wait(e)
+    e = Condition()
+    c = canvas(imgc)
+    win = Tk.toplevel(c)
+
+    function exit_movie()
+      destroy(win)
+      notify(e)
     end
+    bind(win, "<Destroy>", path->notify(e))
+    bind(win, "<Escape>", path->exit_movie())
+
+    wait(e)
   end
 end
 

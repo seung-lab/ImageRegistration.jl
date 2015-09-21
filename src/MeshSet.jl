@@ -200,18 +200,12 @@ function save(Ms::MeshSet)
     write(file, "MeshSet", Ms);
   end
 end
-<<<<<<< HEAD
-=======
 
->>>>>>> b95f333edcfba16435e28fa1c8dfd3cf3f6fec1b
 function load_montaged(wafer_num, sec_num)
   index = (wafer_num, sec_num, 1, 1);
 	return load(index, index);
 end
-<<<<<<< HEAD
-=======
 
->>>>>>> b95f333edcfba16435e28fa1c8dfd3cf3f6fec1b
 function load_prealigned(wafer_num, sec_num)
   lastindex = (wafer_num, sec_num, MONTAGED_INDEX, MONTAGED_INDEX);
   if sec_num == 1
