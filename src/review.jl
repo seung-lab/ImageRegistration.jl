@@ -180,10 +180,8 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
   # an_pts, an_vectors = draw_vectors(imgc, img2, vectors)
   an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,0,0))
   an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,1,0))
-  pts_to_remove = edit_matches(imgc, img2, an_dst_pts)
-  src_img = 0; dst_img = 0; imgc = 0; img2 = 0;
-  gc()
-  return pts_to_remove
+  # pts_to_remove = edit_matches(imgc, img2, an_dst_pts)
+  # return pts_to_remove
 end
 
 """
@@ -450,8 +448,6 @@ end
 
 """
 `IMFUSE_SECTION` - Stitch section with seam overlays.
-
-INCOMPLETE
 """
 function imfuse_section(meshset, downsample=3)
   img_reds = []
@@ -510,32 +506,34 @@ function imfuse_section(meshset, downsample=3)
 end 
 
 """
-Display index k match pair meshes are two frames in movie to scroll between
+Load meshset rendered images at downsampled rate as list
 """
-function section_movie(meshset, slice_range=(20000:24000, 20000:24000), downsample=2)
-  global_bb = get_global_bb(meshset)
-  offset = [global_bb.i, global_bb.j]
-  all_imgs = []
-  all_nodes = []
-  for mesh in meshset.meshes
-    @time img = get_ufixed8_image((mesh.index[1], mesh.index[2], -4, -4))
-    img = img[slice_range...]
-    nodes = hcat(mesh.nodes_t...) .- offset
+function load_images(meshset, section_range=1:10, downsample=1)
+  imgs = []
+  for mesh in meshset.meshes[section_range]
+    img = get_ufixed8_image((mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1))
     for i = 1:downsample
       img = restrict(img)
+    end
+    push!(imgs, img)
+  end
+  return imgs
+end
+
+"""
+Load aligned meshset mesh nodes
+"""
+function load_nodes(meshset, section_range=1:10, downsample=1)
+  global_bb = GLOBAL_BB
+  global_nodes = []
+  for mesh in meshset.meshes[section_range]
+    nodes = hcat(mesh.nodes_t...) .- collect((global_bb.i, global_bb.j))
+    for i = 1:downsample
       nodes /= 2
     end
-    push!(all_imgs, img)
-    push!(all_nodes, collect(nodes))
+    push!(global_nodes, [nodes])
   end
-  imgs = Image(cat(3, all_imgs...), timedim=3)
-  imgc, img2 = view(imgs)
-  n_groups = length(all_nodes)
-  for (idx, node_group) in enumerate(all_nodes)
-    r = idx*1.0 / n_groups
-    an_pts = draw_points(imgc, img2, node_group, RGB(r,0,0))
-  end
-  return imgc, img2
+  return global_nodes
 end
 
 """
@@ -543,43 +541,29 @@ INCOMPLETE
 
 Cycle through sections of the stack movie, with images staged for easier viewing
 """
-function scan_section_movie(meshset, divisions=8, downsample=2)
-  global_bb = get_global_bb(meshset)
-  all_nodes = []
-  for mesh in meshset.meshes
-    nodes = hcat(mesh.nodes_t...) .- offset
-    for i = 1:downsample
-      nodes /= 2
-    end
-    push!(all_nodes, [nodes])
-  end
+function scan_section_movie(meshset, section_range=1:10, divisions=8, downsample=1)
+  global_bb = GLOBAL_BB
+  imgs = load_images(meshset, section_range, downsample)
+  nodes = load_nodes(meshset, section_range, downsample)
 
   ispan = ceil(Int64, global_bb.h/divisions)
   jspan = ceil(Int64, global_bb.w/divisions)
   overlap = 200
   for j=1:divisions
     for i=1:divisions
-      imin = min((i-1)*ispan - overlap, 1)
-      jmin = min((j-1)*jspan - overlap, 1)
+      imin = max((i-1)*ispan - overlap, 1)
+      jmin = max((j-1)*jspan - overlap, 1)
       imax = min(i*ispan, global_bb.h)
       jmax = min(j*jspan, global_bb.w)
       slice_range = (imin:imax, jmin:jmax)
 
-      all_imgs = []
-      for mesh in meshset.meshes
-        img = get_ufixed8_image((mesh.index[1], mesh.index[2], -4, -4))[slice_range...]
-        # img = get_ufixed8_image(mesh)
-        for i = 1:downsample/2
-          img = restrict(img)
-        end
-        push!(all_imgs, img)
-      end
-      imgs = Image(cat(3, all_imgs...), timedim=3)
-      imgc, img2 = view(imgs)
-      n_groups = length(all_nodes)
-      for (idx, node_group) in enumerate(all_nodes)
+      img_sections = [img[slice_range...] for img in imgs]
+      img_movie = Image(cat(3, img_sections...), timedim=3)
+      imgc, img2 = view(img_movie, pixelspacing=[1,1])
+      n_groups = length(nodes)
+      for (idx, node_group) in enumerate(nodes)
         r = idx*1.0 / n_groups
-        an_pts = draw_points(imgc, img2, node_group, RGB(r,0,0))
+        an_pts = draw_points(imgc, img2, node_group .- [imin, jmin], RGB(r,0,0))
       end
 
       e = Condition()
@@ -591,7 +575,6 @@ function scan_section_movie(meshset, divisions=8, downsample=2)
     end
   end
 end
-
 
 function write_prealignment_thumbnails(downsample=8)
   img_filenames = filter(x -> x[end-2:end] == "tif", readdir(PREALIGNED_DIR))
