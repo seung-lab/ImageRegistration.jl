@@ -109,9 +109,11 @@ end
 function tiles_to_overview(tile_img_file_list::Vector{ByteString}, 
                             overview_img,
                             overview_scale::Real;
+                            scale_offsets_to_tile_unit = true,
                             tile_img_dir = "",
                             save_fused_img_to = "",
-                            save_xcorr_img_to = "")
+                            save_xcorr_img_to = "",
+                            show_review_imgs = false)
 
                             #params=PARAMS_PREMONTAGE
   if isa(overview_img, String)
@@ -128,9 +130,14 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
   for tilefile in tile_img_file_list
   	print(tilefile, "  ")
   	tile = joinpath(tile_img_dir, tilefile)
+  	gc()
   	offset = tile_to_overview(tile, overview, overview_scale; overlay_array = overlay, xcorr_overlay = xcorr)
-  	#offsets[parseName(tilefile)] = 
-  	offsets[tilefile] = offset
+  	if scale_offsets_to_tile_unit
+  		offsets[tilefile] = offset / overview_scale
+  	else
+    	#offsets[parseName(tilefile)] = offset
+    	offsets[tilefile] = offset
+  	end
   	println(offset)
   end
 
@@ -139,9 +146,11 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
 	  fused = cat(3, overview, min(overlay,1), zeros(size(overlay)))
 	  fused = convert(Image, fused)
 	  imwrite(fused, save_fused_img_to)
-	  imgc, imgs = view(fused)
-	  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_fused_img_to)[2],
-	  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
+	  if show_review_imgs
+		  imgc, imgs = view(fused)
+		  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_fused_img_to)[2],
+		  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
+	  end
   end
   if save_xcorr_img_to != ""
   	  println("xcorr  min: ", minimum(xcorr), "  max: ",maximum(xcorr))
@@ -151,9 +160,11 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
 	  # stretch high value to 1
 	  xcorr /= maximum(xcorr)
 	  imwrite(xcorr, save_xcorr_img_to)
-	  imgc, imgs = view(make_isotropic(xcorr))
-	  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_xcorr_img_to)[2],
-	  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
+	  if show_review_imgs
+		  imgc, imgs = view(make_isotropic(xcorr))
+		  ImageView.annotate!(imgc, imgs, ImageView.AnnotationText(0,0, splitdir(save_xcorr_img_to)[2],
+		  		halign="left", valign="top", fontsize=round(minimum(size(overview))/50), color=RGB(0.5,0.5,0.5)))
+	  end
   end
   return offsets, overlay
 end

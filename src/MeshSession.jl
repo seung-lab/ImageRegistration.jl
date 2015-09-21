@@ -132,22 +132,22 @@ function prealign(section_range::UnitRange{Int64}, is_batch_start=false)
   end
 end
 
-function premontage(section_range::UnitRange{Int64})
+function premontage(wafer::Int, section_range::UnitRange{Int64})
   for sec in section_range
-    index = (1, sec, 0, 0)   # Wafer #1 for now
+    index = (wafer, sec, 0, 0)
     overview_path = get_path(get_overview_index(index))
     dir,name = splitdir(overview_path)
     println(dir)
     tiles = sort_dir(dir, "tif");
     tiles = filter(x->contains(x,"Tile"), tiles)
 
-    save_fused_img_to = name[1:end-4]"_fused.png"
+    save_fused_img_to = name[1:end-4]"_fused.jpg"
     save_xcorr_img_to = name[1:end-4]"_xcorr.png"
     offsets, = tiles_to_overview(tiles, overview_path, 0.07; tile_img_dir = dir,
         save_fused_img_to = joinpath(PREMONTAGED_DIR, save_fused_img_to),
         save_xcorr_img_to = joinpath(PREMONTAGED_DIR, save_xcorr_img_to))
 
-    offset_file = joinpath(PREMONTAGED_DIR, "premontaged_offsets_julimaps.txt")
+    offset_file = joinpath(PREMONTAGED_DIR, "premontaged_offsets_tilescale.txt")
     f = open(offset_file, "a")
     for pair in offsets
       line = join((pair[1], pair[2]...), " ")
