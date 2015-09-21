@@ -27,12 +27,18 @@ end
 
 
 function test2()
-  getimage(path) = convert(Array{Float64, 2}, convert(Array, imread(path)))
-  moving_section = getimage("../output_images/(1,1)_montage.tif")
-  fixed_section = getimage("../output_images/(1,2)_montage.tif")
+  getimage(path) = convert(Array{Ufixed8, 2}, convert(Array, imread(path)))
+  #moving_section = getimage("../output_images/(1,1)_montage.tif")
+  #fixed_section = getimage("../output_images/(1,2)_montage.tif")
+  m = "/usr/people/smu/seungmount/research/Julimaps/datasets/piriform/2_montaged/1,77_montaged.tif"
+  f = "/usr/people/smu/seungmount/research/Julimaps/datasets/piriform/2_montaged/1,78_montaged.tif"
+  moving_section = getimage(m)
+  fixed_section = getimage(f)
   println(size(moving_section))
   println(size(fixed_section))
-  trans, moving_points, fixed_points, res1, res2 = affine_align_sections(moving_section, fixed_section, PARAMS_PREALIGNMENT; return_points=true)
+  trans, moving_points, fixed_points, res1, res2 = affine_align_images(moving_section, fixed_section, PARAMS_PREALIGNMENT; return_points=true)
+  res1 = res1.'
+  res2 = res2.'
   moving_points = points_to_3xN_matrix(moving_points)
   fixed_points = points_to_3xN_matrix(fixed_points)
 
@@ -54,7 +60,7 @@ function test2()
   moving_points = moving_points/downsample
   fixed_points = fixed_points/downsample
   
-  trans = adjust_affine_for_scaling(trans.', downsample).'
+  trans = adjust_affine_for_scaling(trans, downsample)
   out_img, offset = imwarp(fixed_section, inv(trans))
   println(offset)
   fused, fused_offset = imfuse(moving_section, [0,0], out_img, offset)
