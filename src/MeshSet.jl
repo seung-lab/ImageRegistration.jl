@@ -96,20 +96,26 @@ function consolidate(Ms::MeshSet)
 end
 =#
 
+"""
+Calculate affine transform of the matches, and set nodes_t of the moving mesh
+"""
 function affine_solve_meshset!(Ms)
-	tform = affine_solve(Ms, 1);
-	
-  	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes;
-  	nodes_t = Points(size(nodes, 1));
+	tform = affine_solve(Ms, 1);	
+	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes;
+	nodes_t = Points(size(nodes, 1));
 
   for i in 1:size(nodes, 1)
-  h_pt = [nodes[i]; 1];
-  nodes_t[i] = (h_pt' * tform)[1:2]
+    h_pt = [nodes[i]; 1];
+    nodes_t[i] = (h_pt' * tform)[1:2]
   end
   Ms.meshes[Ms.matches_pairs[1][1]].nodes_t = nodes_t;
   stats(Ms);
   return Ms;
 end
+
+function rigid_solve_meshset!(Ms)
+end
+
 function solve_meshset!(Ms)
   match_coeff = Ms.params["match_coeff"];
   eta_gradient = Ms.params["eta_gradient"];

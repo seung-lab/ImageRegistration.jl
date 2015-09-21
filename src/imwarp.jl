@@ -1,5 +1,6 @@
 function imwarp(meshset::MeshSet)
-  tform = recompute_affine(meshset)
+  # tform = recompute_affine(meshset)
+  tform = affine_approximate(meshset)
   img = get_ufixed8_image(meshset.meshes[2])
   @time img, offset = imwarp(img, tform)
   return img, offset
@@ -83,7 +84,8 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   tbb = snap_bb(wbb)
   # construct warped_img, pixels same Type as img, size calculated from tbb
   # WARNING: should have zero values, but unclear whether guaranteed by similar
-  warped_img = similar(img, tbb.h+1, tbb.w+1)
+  # warped_img = similar(img, tbb.h+1, tbb.w+1)
+  warped_img = zeros(T, tbb.h+1, tbb.w+1)
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
   M = inv(tform)   # inverse transform in global space

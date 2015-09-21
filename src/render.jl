@@ -210,10 +210,98 @@ function render_montaged(section_range::Array{Int64})
   end
 end
 
+function write_thumbnail(path, img, vectors, factor)
+  imgc, img2 = view(img, pixelspacing=[1,1])
+  a, b = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1), factor)
+  c = draw_indices(imgc, img2, vectors[1:2,:])
+  println("Writing ", path)
+  Cairo.write_to_png(imgc.c.back, path)
+  destroy(toplevel(imgc))
+end
+
+"""
+Calculate prealignment transforms from first section through section_num
+"""
+function calculate_global_tform(section_num::Int64, dir=PREALIGNED_DIR)
+  dir = PREALIGNED_DIR
+  section_range = collect(1:section_num-1)
+  global_tform = eye(3)
+  filenames = sort_dir(dir)[section_range]
+  for (k, filename) in enumerate(filenames)
+    meshset = JLD.load(joinpath(dir, filename))["MeshSet"]
+    tform = affine_approximate(meshset)
+    global_tform *= tform
+  end
+  return global_tform
+end
+
+"""
+Cycle through JLD files in prealigned directory and render prealignment
+"""
+function render_prealigned(section_range::Array{Int64})
+  dir = PREALIGNED_DIR
+  scale = 0.0625
+  s = [scale 0 0; 0 scale 0; 0 0 1]
+  imgA = []
+  A_offset = [0,0]
+  src_offset = [0,0]
+  global_tform = calculate_global_tform(section_range[1])
+  println("src_offset to start: ", src_offset)
+  println("global_tform to start:\n", global_tform)
+
+  function process_image(mesh, tform)
+    img = get_ufixed8_image(mesh)
+    # Shrink for thumbnail
+    println("Warping ", mesh.name)
+    @time thumbnail, thumbnail_offset = imwarp(img, global_tform*s)
+    @time img, offset = imwarp(img, global_tform)
+    println("Writing ", mesh.name)
+    new_fn = string(join(mesh.index[1:2], ","), "_prealigned.tif")
+    @time imwrite(img, joinpath(dir, new_fn))
+    update_offset_log!(log_path, new_fn, offset, size(img))
+    return thumbnail, thumbnail_offset, offset
+  end
+
+  # Log file for image offsets
+  log_path = joinpath(dir, "prealigned_offsets.txt")
+
+  filenames = sort_dir(dir)[section_range]
+  for (k, filename) in enumerate(filenames)
+    println("Rendering meshes in ", filename)
+    meshset = JLD.load(joinpath(dir, filename))["MeshSet"]
+    if k == 1
+      src_mesh = meshset.meshes[1]
+      imgA, A_offset, src_offset = process_image(src_mesh, global_tform)
+    end
+
+    dst_mesh = meshset.meshes[2]
+    tform = affine_approximate(meshset)
+    global_tform *= tform
+    imgB, B_offset, dst_offset = process_image(dst_mesh, global_tform)
+
+    # Build thumbnail
+    dst_offset *= scale
+    src_nodes, dst_nodes = get_matched_points_t(meshset, 1)
+    O, O_bb = imfuse(imgA, A_offset, imgB, B_offset)
+    src_nodes = hcat(src_nodes...)[1:2, :]*scale .- src_offset
+    dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
+
+    thumbnail_fn = string(join(dst_mesh.index[1:2], ","), "_prealigned_thumbnail.png")
+    path = joinpath(PREALIGNED_DIR, "review", thumbnail_fn)
+    vectors = [src_nodes; dst_nodes]
+    write_thumbnail(path, O, vectors, 1.0)
+
+    imgA = imgB
+    A_offset = B_offset
+    src_offset = dst_offset
+  end
+end
+
 """
 Cycle through JLD files in aligned directory and render alignment
 """
 function render_aligned(section_range::Array{Int64})
+  dir = ALIGNED_DIR
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
