@@ -113,9 +113,9 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	end
 	
 	if write_blockmatches == true
-	A_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
-	B_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
-	#matched_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
+	A_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
+	B_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
+	#matched_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
 	xc_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
 	if is_prealigned(Am.index)
 		blockmatch_impath = joinpath(ALIGNED_DIR, "blockmatches", string(Am.name, "-", Bm.name));
