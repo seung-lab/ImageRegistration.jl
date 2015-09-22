@@ -41,12 +41,12 @@ end
 function get_max_xc_vector(A, B)
 
   	if std(A) == 0 || std(B) == 0
-	  return NO_MATCH;
+	  return NO_MATCH, 0;
 	end
 
 	xc = normxcorr2(A, B);
 	r_max = maximum(xc);
-	if isnan(r_max) return NO_MATCH; end
+	if isnan(r_max) return NO_MATCH, 0; end
 	rad = round(Int64, (size(xc, 1) - 1)/ 2)	
 
 	ind = findfirst(r_max .== xc);
@@ -54,18 +54,21 @@ function get_max_xc_vector(A, B)
 	x1 = size(xc, 1);
 	x2 = size(xc, 2);
 
-	if ind == 0 return NO_MATCH; end
+	if ind == 0 return NO_MATCH, 0; end
 	(i_max, j_max) = (rem(ind, size(xc, 1)), cld(ind, size(xc, 1)));
 	if i_max == 0 i_max = size(xc, 1); end
 	#println("$i_max, $j_max, $r_max");
 	return [i_max - 1 - rad; j_max - 1 - rad; r_max], xc;
 end
 
-function Matches(A, Am::Mesh, B, Bm::Mesh, params::Dict)
+function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockmatches = true)
 
 	if (Am==Bm)
 		return Void;
 	end
+
+	A = imfilter_gaussian(A_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
+	B = imfilter_gaussian(B_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
 
 	src_index = Am.index;
 	dst_index = Bm.index;
@@ -90,11 +93,8 @@ function Matches(A, Am::Mesh, B, Bm::Mesh, params::Dict)
 	disp_vectors_mags_i = Array{Float64, 1}(0);
 	disp_vectors_mags_j = Array{Float64, 1}(0);
 	disp_vectors_mags_f = Array{Float64, 1}(0);
-#=
-	A_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
-	B_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
-	xc_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
-=#
+
+
 	src_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n_upperbound);
 	dst_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n_upperbound);
 
@@ -111,21 +111,26 @@ function Matches(A, Am::Mesh, B, Bm::Mesh, params::Dict)
 	src_ranges[idx] = get_range(A, pt, Am.disp, block_size);
 	dst_ranges[idx] = get_range(B, pt, Bm.disp, b_rad);
 	end
-#=
-	if is_pre_aligned(Am.index)
+	
+	if write_blockmatches == true
+	A_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
+	B_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
+	#matched_im_array = Array{Array{UInt8, 2}, 1}(n_upperbound);
+	xc_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
+	if is_prealigned(Am.index)
 		blockmatch_impath = joinpath(ALIGNED_DIR, "blockmatches", string(Am.name, "-", Bm.name));
         else
-		blockmatch_impath = joinpath(MONTAGED_DIR, "blockmatches", string(Am.name, "-", Bm.name));
+		blockmatch_impath = joinpath(PREALIGNED_DIR, "blockmatches", string(Am.name, "-", Bm.name));
         end
 	if !isdir(blockmatch_impath)
 		mkdir(blockmatch_impath);
 	end
-=#
+	end
 
+	r_vals = Array{Float64, 1}(0);
 	inc_total() = (n_total += 1;)
 	inc_not_enough_dyn_range() = (n_not_enough_dyn_range += 1;)
 
-	#if (is_prealigned(Am.index) && is_prealigned(Bm.index))
 	k = 1;
 	nextidx() = (idx=k; k+=1; idx);
 	@sync begin
@@ -147,38 +152,33 @@ function Matches(A, Am::Mesh, B, Bm::Mesh, params::Dict)
 						inc_not_enough_dyn_range();
 						continue;
 					end
-					#A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
-				#	B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
-					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
-				#	max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im, B_im); 
-				if max_vect_xc[1] == 0 disp_vectors_raw[idx] = NO_MATCH; else
-				disp_vectors_raw[idx] = max_vect_xc[1];
-			      end
-				#	xc_im_array[idx] = (max_vect_xc[2] .+ 1)./ 2;
-	#				A_im_array[idx] = A_im;	
-	#				B_im_array[idx] = B_im;	
 
+					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
+					disp_vectors_raw[idx] = max_vect_xc[1];
+					if max_vect_xc[1] != NO_MATCH
+						push!(r_vals, (disp_vectors_raw[idx])[3]); 
+						if write_blockmatches == true
+
+												A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
+												#B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
+												matched_range = get_range(B, Am.nodes[idx]+(disp_vectors_raw[idx])[1:2], Bm.disp, block_size)
+												B_im = B[matched_range[1], matched_range[2]];
+												xc_im_array[idx] = (max_vect_xc[2] .+ 1)./ 2;
+															A_im_array[idx] = A_im;	
+															B_im_array[idx] = B_im;	
+									end						
 					println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
+					end
 				end
 			end
 		end
 	end
       	end
-	#=else
-	for idx in 1:n_upperbound
-		if src_ranges[idx] == NO_RANGE || src_range[idx] == NO_RANGE
-			disp_vectors_raw[idx] = NO_MATCH;
-			continue;
-		end
-		inc_total();
-		if maximum(A[src_ranges[idx][1], src_ranges[idx][2]]) / minimum(A[src_ranges[idx][1], src_ranges[idx][2]]) < min_dyn_range_ratio
-			disp_vectors_raw[idx] = NO_MATCH;
-			inc_not_enough_dyn_range();
-			continue;
-		end
-		disp_vectors_raw[idx] = get_max_xc_vector(A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
+
+	bins = hist(r_vals, 20)[1]; counts = hist(r_vals, 20)[2];
+	for i in 1:(length(bins)-1)
+		println("$(bins[i])-$(bins[i+1]): $(counts[i])");
 	end
-	end=#
 
 	for idx in 1:n_upperbound
 	  	v = disp_vectors_raw[idx];
@@ -203,43 +203,49 @@ function Matches(A, Am::Mesh, B, Bm::Mesh, params::Dict)
 
 		if v[3] < min_r; 
 		  
-		n_low_r +=1; 
-	#= 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_low_r_", n_low_r,"_src.jpg")));
-	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_low_r_", n_low_r,"_dst.jpg")));
+		n_low_r +=1;
+		if write_blockmatches == true
+	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_low_r_", n_low_r,"_src.tif")));
+	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_low_r_", n_low_r,"_dst.tif")));
 if (!isnan(sum(xc_im_array[idx])))	 
-  imwrite(grayim(xc_im_array[idx]'), joinpath(blockmatch_impath, string("bad_low_r_", n_low_r,"_xc.jpg")));
-end=#
+  imwrite(grayim(xc_im_array[idx]'), joinpath(blockmatch_impath, string("bad_low_r_", n_low_r,"_xc.tif")));
+end
+end
 		continue; end
 
 		disp_vector = v[1:2];
-		if norm(disp_vector) > mu + 2.5 * sigma; 
+		if norm(disp_vector) > mu + params["outlier_sigmas"] * sigma; 
 		n_outlier +=1; 
-	      
-#=	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_src.jpg")));
-	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_dst.jpg")));
+if write_blockmatches == true	      
+	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_src.tif")));
+	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_dst.tif")));
 if (!isnan(sum(xc_im_array[idx])))	 
-	 	imwrite(grayim((xc_im_array[idx])'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_xc.jpg")));
-	      end=#
+	 	imwrite(grayim((xc_im_array[idx])'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_xc.tif")));
+	      end
+	      end
 	      	continue; end
 
 
 		dst_point = Am.nodes[idx] + disp_vector;
 		dst_triangle = find_mesh_triangle(Bm, dst_point[1], dst_point[2]); 
 		if dst_triangle == NO_TRIANGLE n_no_triangle +=1; 
-	#=	
-	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_triangle_", n_no_triangle,"_src.jpg")));
-	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_triangle_", n_no_triangle,"_dst.jpg")));
+		if write_blockmatches == true
+	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_triangle_", n_no_triangle,"_src.tif")));
+	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_triangle_", n_no_triangle,"_dst.tif")));
 if (!isnan(sum(xc_im_array[idx])))	 
-	 	imwrite(grayim((xc_im_array[idx])'), joinpath(blockmatch_impath, string("bad_triangle_", n_no_triangle,"_xc.jpg")));
+	 	imwrite(grayim((xc_im_array[idx])'), joinpath(blockmatch_impath, string("bad_triangle_", n_no_triangle,"_xc.tif")));
 		
-	      end		=#
+	      end		
+	      end
 		continue; end
-		n += 1;#=
-	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("accepted_", n,"_src.jpg")));
-	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("accepted_", n,"_dst.jpg")));
+		n += 1;
+		if write_blockmatches == true
+	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("accepted_", n,"_src.tif")));
+	 	imwrite(grayim((B_im_array[idx]/255)'), joinpath(blockmatch_impath, string("accepted_", n,"_dst.tif")));
 if (!isnan(sum(xc_im_array[idx])))	 
-	 	imwrite(grayim((xc_im_array[idx])'), joinpath(blockmatch_impath, string("accepted_", n,"_xc.jpg")));
-	      end=#
+	 	imwrite(grayim((xc_im_array[idx])'), joinpath(blockmatch_impath, string("accepted_", n,"_xc.tif")));
+	      end
+	      end
 		push!(src_points_indices, idx);
 		push!(disp_vectors, disp_vector);
 		push!(disp_vectors_mags_f, norm(disp_vector));
