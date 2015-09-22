@@ -201,11 +201,21 @@ function save(Ms::MeshSet)
   end
 end
 
+"""
+Load montaged meshset for given wafer and section
+
+`load_montaged(wafer_num, sec_num)`
+"""
 function load_montaged(wafer_num, sec_num)
   index = (wafer_num, sec_num, 1, 1);
 	return load(index, index);
 end
 
+"""
+Load prealigned meshset for given wafer and section
+
+`load_prealigned(wafer_num, sec_num)`
+"""
 function load_prealigned(wafer_num, sec_num)
   lastindex = (wafer_num, sec_num, MONTAGED_INDEX, MONTAGED_INDEX);
   if sec_num == 1
@@ -216,6 +226,7 @@ function load_prealigned(wafer_num, sec_num)
   end
 	return load(firstindex, lastindex);
 end
+
 function load(firstindex::Index, lastindex::Index)
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"));

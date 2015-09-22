@@ -5,6 +5,8 @@ import os
 import csv
 
 resize_factor = 0.25
+sec_start = 1
+sec_end = 10
 
 bucket_dir_path = '/usr/people/tmacrina/seungmount'
 datasets_dir_path = "research/Julimaps/datasets"
@@ -24,19 +26,20 @@ dir_path = os.path.join(bucket_dir_path, datasets_dir_path, cur_dataset, prealig
 offsets_csv = open(os.path.join(dir_path, prealigned_offsets_filename))
 image_reader = csv.reader(offsets_csv, delimiter='\t')
 
-for row in image_reader:
-  filename = row[0]
-  i_offset = int(row[1])
-  j_offset = int(row[2])
-  path = os.path.join(dir_path, filename)
-  imp = IJ.openImage(path)
-  name = imp.getTitle()
-  ip = imp.getProcessor()
-  ip.setInterpolationMethod(ImageProcessor.BILINEAR)
-  ip.translate(j_offset, i_offset)
-  ip = ip.resize(int(imp.getWidth()*resize_factor)) # will scale & crop
-  new_imp = ImagePlus(name, ip)
-  new_imp.show()
+for idx, row in enumerate(image_reader):
+  if idx in range(sec_start,sec_end):
+    filename = row[0]
+    i_offset = int(row[1])
+    j_offset = int(row[2])
+    path = os.path.join(dir_path, filename)
+    imp = IJ.openImage(path)
+    name = imp.getTitle()
+    ip = imp.getProcessor()
+    ip.setInterpolationMethod(ImageProcessor.BILINEAR)
+    ip.translate(j_offset, i_offset)
+    ip = ip.resize(int(imp.getWidth()*resize_factor)) # will scale & crop
+    new_imp = ImagePlus(name, ip)
+    new_imp.show()
 
 # To put to stack:
 # Image > Stacks > Images to Stack (align to top-left)
