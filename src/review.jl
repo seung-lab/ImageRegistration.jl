@@ -517,7 +517,10 @@ function load_images(meshset, section_range=1:10, downsample=1)
     end
     push!(imgs, img)
   end
-  return imgs
+  reduction = 2^downsample
+  bounding_box = BoundingBox(GLOBAL_BB.i, GLOBAL_BB.j,
+                              GLOBAL_BB.h/reduction, GLOBAL_BB.w/reduction)
+  return imgs, bounding_box
 end
 
 """
@@ -539,33 +542,34 @@ end
 """
 Cycle through sections of the stack movie, with images staged for easier viewing
 """
-function scan_section_movie(meshset, section_range=1:10, divisions=12, downsample=1)
-  # global_bb = get_global_bb(meshset)
-  global_bb = GLOBAL_BB
-  imgs = load_images(meshset, section_range, downsample)
-  # nodes = load_nodes(meshset, section_range, downsample)
-
-  reduction = 2^downsample
-  ispan = ceil(Int64, global_bb.h/reduction/divisions)
-  jspan = ceil(Int64, global_bb.w/reduction/divisions)
+function scan_section_movie(imgs, bounding_box, divisions=12)
+  ispan = ceil(Int64, bounding_box.h/divisions)
+  jspan = ceil(Int64, bounding_box.w/divisions)
   overlap = 200
+
+  overview = restrict(restrict(imgs[1]))
+  imgc_overview, img2_overview = view(overview, pixelspacing=[1,1])
+  box = annotate!(imgc_overview, img2_overview, AnnotationBox((0,0), (0,0),
+                                                          color=RGB(0,1,0),
+                                                          coord_order="yxyx"))
 
   for j=1:divisions, i=1:divisions
     imin = max((i-1)*ispan - overlap, 1)
     jmin = max((j-1)*jspan - overlap, 1)
-    imax = min(i*ispan, floor(Int64, global_bb.h/reduction))
-    jmax = min(j*jspan, floor(Int64, global_bb.w/reduction))
+    imax = min(i*ispan, floor(Int64, bounding_box.h))
+    jmax = min(j*jspan, floor(Int64, bounding_box.w))
     slice_range = (imin:imax, jmin:jmax)
+
+    box.ann.data.top = imin/4
+    box.ann.data.left = jmin/4
+    box.ann.data.bottom = imax/4
+    box.ann.data.right = jmax/4
+    ImageView.redraw(imgc_overview)
 
     println(slice_range)
     img_sections = [img[slice_range...] for img in imgs]
     img_movie = Image(cat(3, img_sections...), timedim=3)
     imgc, img2 = view(img_movie, pixelspacing=[1,1])
-    # n_groups = length(nodes)
-    # for (idx, node_group) in enumerate(nodes)
-    #   r = idx*1.0 / n_groups
-    #   an_pts = draw_points(imgc, img2, node_group .- [imin, jmin], RGB(r,0,0))
-    # end
 
     e = Condition()
     c = canvas(imgc)
