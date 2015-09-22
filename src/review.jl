@@ -710,3 +710,84 @@ function enter_array()
   end
   return output
 end
+
+"""
+Cycle through sections of the stack movie, with images staged for easier viewing
+"""
+function deprecated_movie(imgs, bounding_box, divisions=12)
+  ispan = ceil(Int64, bounding_box.h/divisions)
+  jspan = ceil(Int64, bounding_box.w/divisions)
+  overlap = 200
+
+  overview = restrict(restrict(imgs[1]))
+  imgc_overview, img2_overview = view(overview, pixelspacing=[1,1])
+  box = annotate!(imgc_overview, img2_overview, AnnotationBox((0,0), (0,0),
+                                                          color=RGB(0,1,0),
+                                                          coord_order="yxyx"))
+
+  i = 0
+  j = 1
+
+  function next()
+    i += 1
+    if i >= divisions
+      i = 1
+      j += 1
+      if j >= divisions
+        notify(e)
+      end
+    end
+    goto(i, j)
+  end
+
+  function back()
+    i -= 1
+    if i <= 0
+      i = divisions
+      j -= 1
+      if j <= 0
+        notify(e)
+      end
+    end
+    goto(i, j)
+  end
+
+  function goto(i, j)
+    imin = max((i-1)*ispan - overlap, 1)
+    jmin = max((j-1)*jspan - overlap, 1)
+    imax = min(i*ispan, floor(Int64, bounding_box.h))
+    jmax = min(j*jspan, floor(Int64, bounding_box.w))
+    slice_range = (imin:imax, jmin:jmax)
+
+    box.ann.data.top = imin/4
+    box.ann.data.left = jmin/4
+    box.ann.data.bottom = imax/4
+    box.ann.data.right = jmax/4
+    ImageView.redraw(imgc_overview)
+
+    println(slice_range)
+    img_sections = [img[slice_range...] for img in imgs]
+    img_movie = Image(cat(3, img_sections...), timedim=3)
+    imgc, img2 = view(img_movie, pixelspacing=[1,1])
+
+    c = canvas(imgc)
+    win = Tk.toplevel(c)
+
+    function exit_win()
+      destroy(win)
+      next()
+    end
+    bind(win, "<Destroy>", path->exit_win())
+    bind(win, "<Escape>", path->exit_win())
+  end
+
+  if i == 0
+    e = Condition()
+    c_overview = canvas(imgc_overview)
+    win_overview = Tk.toplevel(c_overview)
+
+    bind(win_overview, "<Destroy>", path->notify(e))
+    next()
+  end
+  wait(e)
+end
