@@ -112,6 +112,10 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	dst_ranges[idx] = get_range(B, pt, Bm.disp, b_rad);
 	end
 	
+	A_im_array = Array{Array{Float64, 2}, 1}(0);
+	B_im_array = Array{Array{Float64, 2}, 1}(0);
+	#matched_im_array = Array{Array{Float64, 2}, 1}(0);
+	xc_im_array = Array{Array{Float64, 2}, 1}(0);
 	if write_blockmatches == true
 	A_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
 	B_im_array = Array{Array{Float64, 2}, 1}(n_upperbound);
