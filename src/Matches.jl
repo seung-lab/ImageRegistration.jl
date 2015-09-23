@@ -61,7 +61,7 @@ function get_max_xc_vector(A, B)
 	return [i_max - 1 - rad; j_max - 1 - rad; r_max], xc;
 end
 
-function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockmatches = true)
+function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockmatches = false)
 
 	if (Am==Bm)
 		return Void;
@@ -167,7 +167,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 															A_im_array[idx] = A_im;	
 															B_im_array[idx] = B_im;	
 									end						
-					println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
+					#println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
 					end
 				end
 			end
