@@ -67,8 +67,13 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 		return Void;
 	end
 
+	if params["gaussian_sigma"] != 0
 	A = imfilter_gaussian(A_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
 	B = imfilter_gaussian(B_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
+	else
+	A = A_orig;
+	B = B_orig;
+	end
 
 	src_index = Am.index;
 	dst_index = Bm.index;
@@ -81,6 +86,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	n_outlier = 0;
 	n_no_triangle = 0;
 	n_not_enough_dyn_range = 0;
+	n_too_much_blotting = 0;
 	n_upperbound = Am.n;
 
 	src_points_indices = Array(Int64, 0);
@@ -98,7 +104,10 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	src_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n_upperbound);
 	dst_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n_upperbound);
 
+	outlier_sigmas = params["outlier_sigmas"];
 	min_dyn_range_ratio = params["min_dyn_range_ratio"];
+	blot_threshold = params["blot_threshold"];
+	max_blotting_ratio = params["max_blotting_ratio"];
 	block_size = params["block_size"];
 	search_r = params["search_r"];
 	min_r = params["min_r"];
@@ -134,6 +143,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	r_vals = Array{Float64, 1}(0);
 	inc_total() = (n_total += 1;)
 	inc_not_enough_dyn_range() = (n_not_enough_dyn_range += 1;)
+	inc_too_much_blotting() = (n_too_much_blotting += 1;)
 
 	k = 1;
 	nextidx() = (idx=k; k+=1; idx);
@@ -154,6 +164,12 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 					if maximum(A[src_ranges[idx][1], src_ranges[idx][2]]) / minimum(A[src_ranges[idx][1], src_ranges[idx][2]]) < min_dyn_range_ratio
 						disp_vectors_raw[idx] = NO_MATCH;
 						inc_not_enough_dyn_range();
+						continue;
+					end
+
+					if length(find(i-> (A[src_ranges[idx][1], src_ranges[idx][2]])[i] < blot_threshold, 1:length(A[src_ranges[idx][1], src_ranges[idx][2]]))) / length(A[src_ranges[idx][1], src_ranges[idx][2]]) > max_blotting_ratio
+						disp_vectors_raw[idx] = NO_MATCH;
+						inc_too_much_blotting();
 						continue;
 					end
 
@@ -200,6 +216,15 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	sigma = std(disp_vectors_mags);
 	max = maximum(disp_vectors_mags);
 
+	disp_vectors_i = collect(collect(zip(disp_vectors...))[1]);
+	disp_vectors_j = collect(collect(zip(disp_vectors...))[2]);
+
+	mu_i = mean(disp_vectors_i);
+	sigma_i = std(disp_vectors_i);
+
+	mu_j = mean(disp_vectors_j);
+	sigma_j = std(disp_vectors_j);
+
 	for idx in 1:n_upperbound
 		v = disp_vectors_raw[idx];	
 		if v == NO_MATCH continue; end
@@ -218,7 +243,7 @@ end
 		continue; end
 
 		disp_vector = v[1:2];
-		if norm(disp_vector) > mu + params["outlier_sigmas"] * sigma; 
+		if (norm(disp_vector) > mu + outlier_sigmas * sigma) || (disp_vector[1] > mu_i + outlier_sigmas * sigma_i) || (disp_vector[1] < mu_i - outlier_sigmas * sigma_i)  || (disp_vector[2] > mu_j + outlier_sigmas * sigma_j) || (disp_vector[2] < mu_j - outlier_sigmas * sigma_j)
 		n_outlier +=1; 
 if write_blockmatches == true	      
 	 	imwrite(grayim((A_im_array[idx]/255)'), joinpath(blockmatch_impath, string("bad_outlier_", n_outlier,"_src.tif")));
@@ -274,7 +299,7 @@ if (!isnan(sum(xc_im_array[idx])))
 	return Void;
 	end
 
-	println("###\n$p1 -> $p2: $n_upperbound in mesh, $n_total in overlap, $n accepted.\nRejections: $n_not_enough_dyn_range (low dynamic range), $n_low_r (low r), $n_outlier (outliers), $n_no_triangle (outside triangles).\nDisplacement statistics:\nNorms, before filtering: mean = $mu, sigma = $sigma, max = $max\nNorms, after filtering: mean = $mu_f, sigma = $sigma_f, max = $max_f\ni-coord. after filtering: mean = $mu_i, sigma = $sigma_i, max = $max_i\nj-coord. after filtering: mean = $mu_j, sigma = $sigma_j, max = $max_j\n###");
+	println("###\n$p1 -> $p2: $n_upperbound in mesh, $n_total in overlap, $n accepted.\nRejections: $n_not_enough_dyn_range (low dynamic range), $n_too_much_blotting (too much blotting), $n_low_r (low r), $n_outlier (outliers), $n_no_triangle (outside triangles).\nDisplacement statistics:\nNorms, before filtering: mean = $mu, sigma = $sigma, max = $max\nNorms, after filtering: mean = $mu_f, sigma = $sigma_f, max = $max_f\ni-coord. after filtering: mean = $mu_i, sigma = $sigma_i, max = $max_i\nj-coord. after filtering: mean = $mu_j, sigma = $sigma_j, max = $max_j\n###");
 
 	matches = Matches(src_index, dst_index, n, src_points_indices, dst_points, dst_triangles, dst_weights, disp_vectors);
 	return matches;
