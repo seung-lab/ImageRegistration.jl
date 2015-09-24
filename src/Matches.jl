@@ -67,8 +67,8 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 		return Void;
 	end
 
-	A = imfilter_gaussian(A_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
-	B = imfilter_gaussian(B_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
+	A = A_orig;
+	B = B_orig;
 
 	src_index = Am.index;
 	dst_index = Bm.index;

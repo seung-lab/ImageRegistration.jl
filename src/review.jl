@@ -1,14 +1,4 @@
 """
-Return specified JLD file in provided directory
-"""
-function load_sample_meshset(dir, idx=1)
-  jld_filenames = filter(x -> x[end-2:end] == "jld", readdir(dir))
-  fn = jld_filenames[idx]
-  println(joinpath(dir, fn))
-  return JLD.load(joinpath(dir, fn))["MeshSet"], fn
-end
-
-"""
 Remove matches from meshset corresponding to the indices provided.
 
 Args:
@@ -365,7 +355,7 @@ function create_filtered_images(src_imgs, dst_imgs)
   images = []
   for (n, (src_img, dst_img)) in enumerate(zip(src_imgs, dst_imgs))
     println(n, "/", length(src_imgs))
-    src_img, dst_img = padimages(src_img, dst_img)
+    src_img, dst_img = match_padding(src_img, dst_img)
     diff_img = convert(Image{RGB}, src_img-dst_img)
     imgA = grayim(Image(src_img))
     imgB = grayim(Image(dst_img))
@@ -540,9 +530,107 @@ function load_nodes(meshset, section_range=1:10, downsample=1)
 end
 
 """
+Ripped from ImageView > navigation.jl
+"""
+function stop_playing!(state::ImageView.NavigationState)
+    if state.timer != nothing
+        close(state.timer)
+        state.timer = nothing
+    end
+end
+
+"""
+Ripped from ImageView > navigation.jl
+"""
+function updatet(ctrls, state)
+  Tk.set_value(ctrls.editt, string(state.t))
+  Tk.set_value(ctrls.scalet, state.t)
+  enableback = state.t > 1
+  Tk.set_enabled(ctrls.stepback, enableback)
+  Tk.set_enabled(ctrls.playback, enableback)
+  enablefwd = state.t < state.tmax
+  Tk.set_enabled(ctrls.stepfwd, enablefwd)
+  Tk.set_enabled(ctrls.playfwd, enablefwd)
+end
+
+"""
+Ripped from ImageView > navigation.jl
+"""
+function incrementt(inc, ctrls, state, showframe)
+    state.t += inc
+    updatet(ctrls, state)
+    showframe(state)
+end
+
+"""
+Ripped from ImageView > navigation.jl
+"""
+function playt(inc, ctrls, state, showframe)
+    if !(state.fps > 0)
+        error("Frame rate is not positive")
+    end
+    stop_playing!(state)
+    dt = 1/state.fps
+    state.timer = Timer(timer -> stept(inc, ctrls, state, showframe), dt, dt)
+end
+
+"""
+Ripped from ImageView > navigation.jl
+"""
+function stept(inc, ctrls, state, showframe)
+    if 1 <= state.t+inc <= state.tmax
+        incrementt(inc, ctrls, state, showframe)
+    else
+        stop_playing!(state)
+    end
+end
+
+"""
+Create loop of the image
+"""
+function start_loop(imgc, img2, fps=6)
+  state = imgc.navigationstate
+  ctrls = imgc.navigationctrls
+  showframe = state -> ImageView.reslice(imgc, img2, state)
+  set_fps!(state, fps)
+
+  if !(state.fps > 0)
+      error("Frame rate is not positive")
+  end
+  stop_playing!(state)
+  dt = 1/state.fps
+  state.timer = Timer(timer -> loopt(ctrls, state, showframe), dt, dt)
+end
+
+"""
+Higher level call for ImageView outputs
+"""
+function stop_loop(imgc)
+  stop_playing!(imgc.navigationstate)
+end
+
+"""
+Endlessly repeat forward loop (continuous stept)
+"""
+function loopt(ctrls, state, showframe)
+  inc = 1
+  if state.t+inc < 1 || state.tmax < state.t+inc
+      state.t = 0
+  end
+  incrementt(inc, ctrls, state, showframe)
+end
+
+"""
+Building on ImageView > navigation.jl
+"""
+function set_fps!(state, fps)
+  state.fps = fps
+end
+
+"""
 Cycle through sections of the stack movie, with images staged for easier viewing
 """
-function scan_section_movie(imgs, bounding_box, divisions=12)
+function scan_stack_movie(imgs, bounding_box, divisions=12, perm=[1,2,3])
   ispan = ceil(Int64, bounding_box.h/divisions)
   jspan = ceil(Int64, bounding_box.w/divisions)
   overlap = 200
@@ -553,6 +641,7 @@ function scan_section_movie(imgs, bounding_box, divisions=12)
                                                           color=RGB(0,1,0),
                                                           coord_order="yxyx"))
 
+  println("Displaying axes with permutation: ", perm)
   for j=1:divisions, i=1:divisions
     imin = max((i-1)*ispan - overlap, 1)
     jmin = max((j-1)*jspan - overlap, 1)
@@ -568,14 +657,17 @@ function scan_section_movie(imgs, bounding_box, divisions=12)
 
     println(slice_range)
     img_sections = [img[slice_range...] for img in imgs]
-    img_movie = Image(cat(3, img_sections...), timedim=3)
+    img_stack = cat(3, img_sections..., reverse(img_sections[2:end-1])...)
+    img_movie = Image(permutedims(img_stack, perm), timedim=3)
     imgc, img2 = view(img_movie, pixelspacing=[1,1])
+    start_loop(imgc, img2, 6)
 
     e = Condition()
     c = canvas(imgc)
     win = Tk.toplevel(c)
 
     function exit_movie()
+      stop_loop(imgc)
       destroy(win)
       notify(e)
     end
