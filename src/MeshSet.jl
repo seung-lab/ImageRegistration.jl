@@ -483,7 +483,7 @@ end
 
   return Ms;
 end
-function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64)
+function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = true)
   i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == a, 1:size(offsets, 1));
   i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_PREALIGNMENT);
@@ -500,13 +500,15 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64)
 
   name = offsets[i_src, 1];
   index = offsets[i_src, 2];
-  dy = offsets[i_src, 3];
-  dx = offsets[i_dst, 4]; 
+  dy = dy_dst + offsets[i_src, 3];
+  dx = dx_dst + offsets[i_src, 4]; 
   size_i = offsets[i_src, 5];
   size_j = offsets[i_src, 6];
 
   add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms);
+  if optimize == true
   optimize_all_cores(Ms.params);
+  end
 
   return Ms;
 end
@@ -561,8 +563,8 @@ function make_stack(offsets, wafer_num, section_range, fixed_interval)
 end
 
 function load_section_pair(Ms, a, b)
-  A_image = get_image(get_path(Ms.meshes[find_section(Ms,a)].name));
-  B_image = get_image(get_path(Ms.meshes[find_section(Ms,b)].name));
+  @time A_image = get_image(get_path(Ms.meshes[find_section(Ms,a)].name));
+  @time B_image = get_image(get_path(Ms.meshes[find_section(Ms,b)].name));
       return A_image, B_image; 
 end
 

@@ -66,13 +66,12 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	if (Am==Bm)
 		return Void;
 	end
-
+	println("Matching $(Am.index) -> $(Bm.index):")
+	A = A_orig;
+	B = B_orig;
 	if params["gaussian_sigma"] != 0
 	A = imfilter_gaussian(A_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
 	B = imfilter_gaussian(B_orig, [params["gaussian_sigma"], params["gaussian_sigma"]])
-	else
-	A = A_orig;
-	B = B_orig;
 	end
 
 	src_index = Am.index;
@@ -145,6 +144,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	inc_not_enough_dyn_range() = (n_not_enough_dyn_range += 1;)
 	inc_too_much_blotting() = (n_too_much_blotting += 1;)
 
+						       println("Completed preprocessing...");
 	k = 1;
 	nextidx() = (idx=k; k+=1; idx);
 	@sync begin
@@ -161,31 +161,32 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 						continue;
 					end
 					inc_total();
-					if maximum(A[src_ranges[idx][1], src_ranges[idx][2]]) / minimum(A[src_ranges[idx][1], src_ranges[idx][2]]) < min_dyn_range_ratio
+
+						A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
+						B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
+					if maximum(A_im) / minimum(A_im) < min_dyn_range_ratio
 						disp_vectors_raw[idx] = NO_MATCH;
 						inc_not_enough_dyn_range();
 						continue;
 					end
-
-					if length(find(i-> (A[src_ranges[idx][1], src_ranges[idx][2]])[i] < blot_threshold, 1:length(A[src_ranges[idx][1], src_ranges[idx][2]]))) / length(A[src_ranges[idx][1], src_ranges[idx][2]]) > max_blotting_ratio
+#=
+					if length(find(i-> A_im[i] < blot_threshold, 1:length(A_im))) / length(A_im) > max_blotting_ratio
 						disp_vectors_raw[idx] = NO_MATCH;
 						inc_too_much_blotting();
 						continue;
-					end
+					end=#
 
-					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A[src_ranges[idx][1], src_ranges[idx][2]],  B[dst_ranges[idx][1], dst_ranges[idx][2]]);
+					max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im,  B_im);
 					disp_vectors_raw[idx] = max_vect_xc[1];
 					if max_vect_xc[1] != NO_MATCH
 						push!(r_vals, (disp_vectors_raw[idx])[3]); 
 						if write_blockmatches == true
 
-												A_im = A[src_ranges[idx][1], src_ranges[idx][2]];
-												#B_im = B[dst_ranges[idx][1], dst_ranges[idx][2]];
 												matched_range = get_range(B, Am.nodes[idx]+(disp_vectors_raw[idx])[1:2], Bm.disp, block_size)
-												B_im = B[matched_range[1], matched_range[2]];
+												matched_im = B[matched_range[1], matched_range[2]];
 												xc_im_array[idx] = (max_vect_xc[2] .+ 1)./ 2;
 															A_im_array[idx] = A_im;	
-															B_im_array[idx] = B_im;	
+															B_im_array[idx] = matched_im;	
 									end						
 					#println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])");
 					end
@@ -194,6 +195,8 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 		end
 	end
       	end
+	
+	println("Starting postprocessing and filtering...");
 
 	bins = hist(r_vals, 20)[1]; counts = hist(r_vals, 20)[2];
 	for i in 1:(length(bins)-1)
@@ -216,8 +219,8 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	sigma = std(disp_vectors_mags);
 	max = maximum(disp_vectors_mags);
 
-	disp_vectors_i = collect(collect(zip(disp_vectors...))[1]);
-	disp_vectors_j = collect(collect(zip(disp_vectors...))[2]);
+	disp_vectors_i = collect(collect(zip(disp_vectors_raw...))[1]);
+	disp_vectors_j = collect(collect(zip(disp_vectors_raw...))[2]);
 
 	mu_i = mean(disp_vectors_i);
 	sigma_i = std(disp_vectors_i);
