@@ -491,8 +491,8 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = tr
 
   name_dst = offsets[i_dst, 1];
   index_dst = offsets[i_dst, 2];
-  dy_dst = 0; #offsets[i_dst, 3];
-  dx_dst = 0; #offsets[i_dst, 4];
+  dy_dst = offsets[i_dst, 3];
+  dx_dst = offsets[i_dst, 4];
   size_i = offsets[i_dst, 5]; 
   size_j = offsets[i_dst, 6];
 
@@ -500,8 +500,8 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = tr
 
   name = offsets[i_src, 1];
   index = offsets[i_src, 2];
-  dy = dy_dst + offsets[i_src, 3];
-  dx = dx_dst + offsets[i_src, 4]; 
+  dy = offsets[i_src, 3];
+  dx = offsets[i_src, 4]; 
   size_i = offsets[i_src, 5];
   size_j = offsets[i_src, 6];
 
@@ -540,14 +540,11 @@ function make_stack(offsets, wafer_num, section_range, fixed_interval)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1));
   Ms = MeshSet(PARAMS_ALIGNMENT);
 
-  dy = 0;
-  dx = 0;
-
   for i in indices
     name = offsets[i, 1];
     index = offsets[i, 2];
-    dy += offsets[i, 3];
-    dx += offsets[i, 4];
+    dy = offsets[i, 3];
+    dx = offsets[i, 4];
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false;
