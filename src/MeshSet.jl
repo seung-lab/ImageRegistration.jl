@@ -491,8 +491,8 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = tr
 
   name_dst = offsets[i_dst, 1];
   index_dst = offsets[i_dst, 2];
-  dy_dst = offsets[i_dst, 3];
-  dx_dst = offsets[i_dst, 4];
+  dy_dst = 0; #offsets[i_dst, 3];
+  dx_dst = 0; #offsets[i_dst, 4];
   size_i = offsets[i_dst, 5]; 
   size_j = offsets[i_dst, 6];
 
