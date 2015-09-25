@@ -80,6 +80,7 @@ function imfuse(A, offset_A, B, offset_B)
         B = padimage(B, 0, 0, -szC[2], 0)
     end
     O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
+    #O = Overlay((A,B), (RGB(1.,0.,0.), RGB(0.,0.6,0.)))
     BB_O = min(offset_A, offset_B)
     return O, BB_O
 end

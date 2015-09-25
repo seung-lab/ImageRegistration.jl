@@ -28,10 +28,13 @@ end
 
 function test2()
   getimage(path) = convert(Array{Ufixed8, 2}, convert(Array, imread(path)))
+  getimage = get_ufixed8_image
   #moving_section = getimage("../output_images/(1,1)_montage.tif")
   #fixed_section = getimage("../output_images/(1,2)_montage.tif")
   m = "/usr/people/smu/seungmount/research/Julimaps/datasets/piriform/2_montaged/1,77_montaged.tif"
   f = "/usr/people/smu/seungmount/research/Julimaps/datasets/piriform/2_montaged/1,78_montaged.tif"
+  #m = "/usr/people/smu/seungmount/research/Julimaps/datasets/piriform/2_montaged/1,86_montaged.tif"
+  #f = "/usr/people/smu/seungmount/research/Julimaps/datasets/piriform/2_montaged/1,87_montaged.tif"
   moving_section = getimage(m)
   fixed_section = getimage(f)
   println(size(moving_section))
@@ -72,6 +75,7 @@ function test2()
   draw_vectors(make_isotropic(fixed_section), hcat(vcat(fixed_points, p22), scalebar+100))
   draw_vectors(make_isotropic(fused), hcat(vcat(moving_points.-fused_offset, p11.-fused_offset), scalebar)) # todo: check offset
     #ccp.write_image_from_points(moving_points[1:2,:].', p11[2:-1:1,:].', "test_outputs/write_name.jpg")
+  decomp_affine(trans)
 end
 
 function test3()
@@ -79,4 +83,27 @@ function test3()
   fixed_section = "../output_images/(1,2)_montage.tif"
   A, meshset = affine_align_sections(moving_section, fixed_section)
   return meshset
+end
+
+function test_tile_align()
+  # test on tiles
+  params = copy(PARAMS_PREALIGNMENT)
+  params["scaling_factor"] = 1
+  params["mesh_length"] = 5000
+  params["block_size"] = 300
+  params["search_r"] = 1200
+  params["min_r"] = 0.1
+  sec = 77
+  for row in 1:1:4
+    for col in 1:1:4
+      index = (1, sec, row, col)
+      moving_section = get_ufixed8_image(index)
+      index = (1, sec+1, row, col)
+      fixed_section = get_ufixed8_image(index)
+      println(size(moving_section))
+      println(size(fixed_section))
+      trans, = affine_align_images(moving_section, fixed_section, PARAMS_PREALIGNMENT; return_points=true)
+      decomp_affine(trans)
+    end
+  end
 end
