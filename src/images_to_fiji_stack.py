@@ -26,11 +26,14 @@ dir_path = os.path.join(bucket_dir_path, datasets_dir_path, cur_dataset, prealig
 offsets_csv = open(os.path.join(dir_path, prealigned_offsets_filename))
 image_reader = csv.reader(offsets_csv, delimiter='\t')
 
+i_offset = 0
+j_offset = 0
+
 for idx, row in enumerate(image_reader):
   if idx in range(sec_start,sec_end):
     filename = row[0]
-    i_offset = int(row[1])
-    j_offset = int(row[2])
+    i_offset += int(row[1])
+    j_offset += int(row[2])
     path = os.path.join(dir_path, filename)
     imp = IJ.openImage(path)
     name = imp.getTitle()
