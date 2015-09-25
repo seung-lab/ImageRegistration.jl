@@ -61,7 +61,7 @@ function get_max_xc_vector(A, B)
 	return [i_max - 1 - rad; j_max - 1 - rad; r_max], xc;
 end
 
-function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockmatches = false)
+function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockmatches = true)
 
 	if (Am==Bm)
 		return Void;
