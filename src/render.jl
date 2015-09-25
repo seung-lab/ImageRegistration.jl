@@ -30,30 +30,13 @@ function merge_images(imgs, offsets)
         h = bb.h-1
         merged_img[i:i+h, j:j+w] = max(merged_img[i:i+h, j:j+w], img)
         imgs[idx] = 0
-        gc(); gc();
     end
     return merged_img, [global_ref.i, global_ref.j]
 end
 
 """
-`MERGE_IMAGES` - Using array of Mesh objects
-"""
-function merge_images(meshes)
-    warps = map(meshwarp, meshes)
-    return merge_images([[x[i] for x in warps] for i=1:2]...)
-end
-
-"""
-`MERGE_IMAGES_PARALLEL` - Using array of Mesh objects, in parallel
-"""
-function merge_images_parallel(meshes)
-    warps = pmap(meshwarp, meshes)
-    return merge_images([[x[i] for x in warps] for i=1:2]...)
-end   
-
-"""
-Overlay two images on top of each other using their offsets. Colors one
-image red, the other green, and the overlap yellow.
+`IMFUSE` - Overlay two images on top of each other using their offsets. Colors 
+one image red, the other green, and the overlap yellow.
 Uses rounded interpolation.
 
 Args:
@@ -67,7 +50,7 @@ Returns:
 
 * O: Image object combining both image A & B
 
-    imfuse(A, offset_A, B, offset_B)
+    `imfuse(A, offset_A, B, offset_B)`
 """
 function imfuse(A, offset_A, B, offset_B)
     # pad to common origin
@@ -104,7 +87,7 @@ end
 """
 `PADIMAGE` - Specify image padding in each of four directions
     
-    new_img = padimage(img, xlow, ylow, xhigh, yhigh)
+    `new_img = padimage(img, xlow, ylow, xhigh, yhigh)`
 
      _________________________________  
     |                                 |  
@@ -166,7 +149,12 @@ function rescopeimage(img, offset, bb)
   return z
 end
 
-function padimages(imgA, imgB)
+"""
+`MATCH_PADDING` - For each dimension, pad images to match the larger of the two
+
+  `imgA, imgB = match_padding(imgA, imgB)`
+"""
+function match_padding(imgA, imgB)
   szA = collect(size(imgA))
   szB = collect(size(imgB))
   szC = max(szA, szB)
@@ -198,7 +186,8 @@ function render_montaged(section_range::Array{Int64})
   for filename in filenames
     println("Rendering ", filename[1:end-4])
     meshset = JLD.load(joinpath(MONTAGED_DIR, filename))["MeshSet"]
-    img, offset = merge_images_parallel(meshset.meshes)
+    warps = pmap(meshwarp, meshset.meshes)
+    img, offset = merge_images([[x[i] for x in warps] for i=1:2]...)
     img = grayim(img)
     img["spatialorder"] = ["y","x"]
     println("Writing ", filename[1:end-4])
