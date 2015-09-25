@@ -430,6 +430,7 @@ function affine_solve(Ms::MeshSet, k)
 end
 
 function decomp_affine(tform::Array{Float64, 2})
+# http://math.stackexchange.com/questions/78137/decomposition-of-a-nonsquare-affine-matrix
 a = tform[1, 1];
 b = tform[2, 1];
 c = tform[1, 2];
