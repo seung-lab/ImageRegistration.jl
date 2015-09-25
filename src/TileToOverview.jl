@@ -126,19 +126,21 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
   overlay = zeros(Float64, size(overview))
   xcorr = zeros(Float64, size(overview))
   #offsets = Dict{Index, Array{Float64, 1}}()
-  offsets = Dict{String, Vector}()
+  offsets = Vector{Tuple{String,Vector}}()  # Can be used to easily construct a Dict{String, Vector} if needed
   for tilefile in tile_img_file_list
   	print(tilefile, "  ")
   	tile = joinpath(tile_img_dir, tilefile)
   	gc()
   	offset = tile_to_overview(tile, overview, overview_scale; overlay_array = overlay, xcorr_overlay = xcorr)
   	if scale_offsets_to_tile_unit
-  		offsets[tilefile] = offset / overview_scale
+  		push!(offsets, (tilefile, offset / overview_scale))
   	else
     	#offsets[parseName(tilefile)] = offset
-    	offsets[tilefile] = offset
+    	#offsets[tilefile] = offset
+      push!(offsets, (tilefile, offset))
   	end
   	println(offset)
+    #break
   end
 
   if save_fused_img_to != ""
