@@ -262,11 +262,12 @@ function is_first_section(index)
 end
 
 """
-Find first row of the offset file that matches index and return offset array
+Find first row of the offset file that matches index and return cumulative sum 
+of previous offset arrays
 """
 function find_offset(offset_file, index)
-  if findfirst(offset_file[2,:], index) != 0
-    return offset_file[findfirst(offset_file[2,:], index)][3:4]
+  if findfirst(offset_file[:,2], index) != 0
+    return offset_file[findfirst(offset_file[:,2], index), 3:4]
   else
     return [0,0]
   end
