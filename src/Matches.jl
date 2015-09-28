@@ -61,7 +61,7 @@ function get_max_xc_vector(A, B)
 	return [i_max - 1 - rad; j_max - 1 - rad; r_max], xc;
 end
 
-function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockmatches = true)
+function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockmatches = false)
 
 	if (Am==Bm)
 		return Void;
@@ -203,10 +203,14 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 		println("$(bins[i])-$(bins[i+1]): $(counts[i])");
 	end
 
+	disp_vectors_i = Array{Float64, 1}(0);
+	disp_vectors_j = Array{Float64, 1}(0);
 	for idx in 1:n_upperbound
 	  	v = disp_vectors_raw[idx];
 		if v != NO_MATCH && v[3] >= min_r
 			push!(disp_vectors_mags, norm(v[1:2]));
+			push!(disp_vectors_i, v[1]);
+			push!(disp_vectors_j, v[2]);
 		end
 	end
 
@@ -214,13 +218,9 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict, write_blockma
 	return Void;
 	end
 
-
 	mu = mean(disp_vectors_mags);
 	sigma = std(disp_vectors_mags);
 	max = maximum(disp_vectors_mags);
-
-	disp_vectors_i = collect(collect(zip(disp_vectors_raw...))[1]);
-	disp_vectors_j = collect(collect(zip(disp_vectors_raw...))[2]);
 
 	mu_i = mean(disp_vectors_i);
 	sigma_i = std(disp_vectors_i);

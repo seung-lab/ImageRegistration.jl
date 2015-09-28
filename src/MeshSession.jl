@@ -144,9 +144,15 @@ function premontage(wafer::Int, section_range::UnitRange{Int64})
 
     save_fused_img_to = name[1:end-4]"_fused.jpg"
     save_xcorr_img_to = name[1:end-4]"_xcorr.png"
-    offsets, = tiles_to_overview(tiles, overview_path, 0.07; tile_img_dir = dir,
+    if cur_dataset == "zebrafish"   ##################
+      scale = 0.05
+    else  # piriform
+      scale = 0.07
+    end
+    offsets, = tiles_to_overview(tiles, overview_path, scale; tile_img_dir = dir,
         save_fused_img_to = joinpath(PREMONTAGED_DIR, save_fused_img_to),
-        save_xcorr_img_to = joinpath(PREMONTAGED_DIR, save_xcorr_img_to))
+        save_xcorr_img_to = joinpath(PREMONTAGED_DIR, save_xcorr_img_to),
+        show_review_imgs = false)
 
     offset_file = joinpath(PREMONTAGED_DIR, "premontaged_offsets_tilescale.txt")
     f = open(offset_file, "a")

@@ -23,6 +23,7 @@ function affine_align_images(moving_img::Array{}, fixed_img::Array{},
   fixed_points = points_to_Nx3_matrix(fixed_pointslist)
 
   tform = find_affine(moving_points, fixed_points)
+  #tform = find_rigid(moving_points, fixed_points)
   residualIn2 = moving_points*tform - fixed_points
   rmsIn2 = mean( sum(residualIn2.^2, 1) )^0.5
   fixed_pointsin1 = fixed_points*inv(tform)
@@ -67,7 +68,7 @@ function generate_match_points(moving_img::Array{}, fixed_img::Array{},
   border = border > combined_radius ? border : combined_radius
   println("border excluded: ", border)
 
-  step = floor(Int, (overlap - 2*border - 1) ./ (grid_size-1))
+  step = floor(Int, (overlap - 2*border - 1) ./ (grid_size))
   points = [[x; y] for x = 1+border:step[1]:overlap[1]-border, 
                                 y = 1+border:step[2]:overlap[2]-border]
   points = points[:]

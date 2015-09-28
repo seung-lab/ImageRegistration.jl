@@ -55,7 +55,11 @@ end
 
 function get_name(index::Index)
     if is_overview(index)
-    return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2])
+        if cur_dataset == "zebrafish"
+            return string("MontageOverviewImage_W00", index[1], "_sec", index[2])
+        else
+            return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2])
+        end
     elseif is_montaged(index)
     return string(index[1], ",", index[2], "_montaged")
     elseif is_prealigned(index)
@@ -75,7 +79,11 @@ end
 function get_path(index::Index)
     name = get_name(index)
     if is_overview(index)
-        section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+        if cur_dataset == "zebrafish"
+            section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
+        else
+            section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+        end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
     elseif is_montaged(index)
         path = joinpath(MONTAGED_DIR, string(name, ".tif"))
@@ -84,7 +92,11 @@ function get_path(index::Index)
     elseif is_aligned(index)
         path = joinpath(ALIGNED_DIR, string(name, ".tif"))
     else
-        section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+        if cur_dataset == "zebrafish"
+            section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
+        else
+            section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+        end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
     end
     println(path)
@@ -147,6 +159,7 @@ elseif isfile("../bucket_dir_path.txt")
 end
 datasets_dir_path = "research/Julimaps/datasets"
 cur_dataset = "piriform"
+#cur_dataset = "zebrafish"
 affine_dir_path = "~"
 
 premontaged_dir_path = "1_premontaged"
@@ -154,7 +167,7 @@ montaged_dir_path = "2_montaged"
 prealigned_dir_path = "3_prealigned"
 aligned_dir_path = "4_aligned"
 
-wafer_filename = "wafer_paths_piriform_seungom04.txt"
+wafer_filename = "wafer_paths.txt"
 premontaged_offsets_filename = "premontaged_offsets.txt"
 montaged_offsets_filename = "montaged_offsets.txt"
 prealigned_offsets_filename = "prealigned_offsets.txt"

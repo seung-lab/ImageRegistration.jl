@@ -80,6 +80,7 @@ function imfuse(A, offset_A, B, offset_B)
         B = padimage(B, 0, 0, -szC[2], 0)
     end
     O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
+    #O = Overlay((A,B), (RGB(1.,0.,0.), RGB(0.,0.6,0.)))
     BB_O = min(offset_A, offset_B)
     return O, BB_O
 end
@@ -395,8 +396,8 @@ function render_prealigned(section_range::Array{Int64})
     tform = affine_approximate(meshset)
 
     src_nodes, dst_nodes = get_matched_points(meshset, 1)
-    src_nodes = points_to_Nx3_matrix(src_nodes)*global_tform
-    dst_nodes = points_to_Nx3_matrix(dst_nodes)*global_tform*tform
+    src_nodes = points_to_Nx3_matrix(src_nodes)*global_tform*tform
+    dst_nodes = points_to_Nx3_matrix(dst_nodes)*global_tform
 
     global_tform *= tform
     dst_montaged_offset = collect(montaged_offsets[section_range[k]+1, 3:4])
@@ -412,16 +413,14 @@ function render_prealigned(section_range::Array{Int64})
     update_offset_log!(log_path, new_fn, dst_offset-src_offset, size(dst_img))
 
     # Build thumbnail
-    src_nodes = src_nodes[:,1:2]'*scale
-    dst_nodes = dst_nodes[:,1:2]'*scale
-    src_nodes .-= src_offset*scale
-    dst_nodes .-= dst_offset*scale
-
-    vectors = [src_nodes; dst_nodes]
-
     thumbnail_fn = string(join(dst_mesh.index[1:2], ","), "_prealigned_thumbnail.png")
     path = joinpath(PREALIGNED_DIR, "review", thumbnail_fn)
     O, O_bb = imfuse(imgA, A_offset, imgB, B_offset)
+    src_nodes = src_nodes[:,1:2]'*scale
+    dst_nodes = dst_nodes[:,1:2]'*scale
+    src_nodes .-= O_bb
+    dst_nodes .-= O_bb
+    vectors = [src_nodes; dst_nodes]
     write_thumbnail(path, O, vectors, 1.0)
   end
 end

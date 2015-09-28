@@ -371,14 +371,14 @@ function load_section(offsets, wafer_num, section_num)
 
 
   for i in indices
-    name = offsets[i, 1]
-    index = offsets[i, 2]
-    dy = offsets[i, 3] / 0.07; ##################################
-    dx = offsets[i, 4] / 0.07; ##################################
-    image = get_image(get_path(name))
-    add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms)
-    #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2))
-    #image_shared[:, :] = image[:, :]
+    name = offsets[i, 1];
+    index = offsets[i, 2];
+    dy = offsets[i, 3] #/ 0.07; ##################################
+    dx = offsets[i, 4] #/ 0.07; ##################################
+    image = get_image(get_path(name));
+    add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
+    #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
+    #image_shared[:, :] = image[:, :];
     push!(images, image)
   end
 
@@ -466,10 +466,11 @@ function affine_solve(Ms::MeshSet, k)
 end
 
 function decomp_affine(tform::Array{Float64, 2})
-a = tform[1, 1]
-b = tform[2, 1]
-c = tform[1, 2]
-d = tform[2, 2]
+# http://math.stackexchange.com/questions/78137/decomposition-of-a-nonsquare-affine-matrix
+a = tform[1, 1];
+b = tform[2, 1];
+c = tform[1, 2];
+d = tform[2, 2];
 
 p = norm([a, b])
 r = det(tform[1:2, 1:2]) / p
@@ -524,22 +525,21 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = tr
   i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1))
   Ms = MeshSet(PARAMS_PREALIGNMENT)
 
-
-  name_dst = offsets[i_dst, 1]
-  index_dst = offsets[i_dst, 2]
-  dy_dst = 0; #offsets[i_dst, 3]
-  dx_dst = 0; #offsets[i_dst, 4]
+  name_dst = offsets[i_dst, 1];
+  index_dst = offsets[i_dst, 2];
+  dy_dst = 0;#offsets[i_dst, 3];
+  dx_dst = 0;#offsets[i_dst, 4];
   size_i = offsets[i_dst, 5]; 
   size_j = offsets[i_dst, 6]
 
   add_mesh(Mesh(name_dst, size_i, size_j, index_dst, dy_dst, dx_dst, true, PARAMS_PREALIGNMENT), Ms)
 
-  name = offsets[i_src, 1]
-  index = offsets[i_src, 2]
-  dy = dy_dst + offsets[i_src, 3]
-  dx = dx_dst + offsets[i_src, 4]; 
-  size_i = offsets[i_src, 5]
-  size_j = offsets[i_src, 6]
+  name = offsets[i_src, 1];
+  index = offsets[i_src, 2];
+  dy = offsets[i_src, 3];
+  dx = offsets[i_src, 4]; 
+  size_i = offsets[i_src, 5];
+  size_j = offsets[i_src, 6];
 
   add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms)
   if optimize == true
@@ -576,14 +576,11 @@ function make_stack(offsets, wafer_num, section_range, fixed_interval)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
   Ms = MeshSet(PARAMS_ALIGNMENT)
 
-  dy = 0
-  dx = 0
-
   for i in indices
-    name = offsets[i, 1]
-    index = offsets[i, 2]
-    dy += offsets[i, 3]
-    dx += offsets[i, 4]
+    name = offsets[i, 1];
+    index = offsets[i, 2];
+    dy = offsets[i, 3];
+    dx = offsets[i, 4];
     size_i = offsets[i, 5]
     size_j = offsets[i, 6]
     is_fixed = false
