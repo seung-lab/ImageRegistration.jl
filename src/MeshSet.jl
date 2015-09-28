@@ -372,8 +372,8 @@ function load_section(offsets, wafer_num, section_num)
   for i in indices
     name = offsets[i, 1];
     index = offsets[i, 2];
-    dy = offsets[i, 3] / 0.07; ##################################
-    dx = offsets[i, 4] / 0.07; ##################################
+    dy = offsets[i, 3] #/ 0.07; ##################################
+    dx = offsets[i, 4] #/ 0.07; ##################################
     image = get_image(get_path(name));
     add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
     #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
@@ -492,8 +492,8 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = tr
 
   name_dst = offsets[i_dst, 1];
   index_dst = offsets[i_dst, 2];
-  dy_dst = offsets[i_dst, 3];
-  dx_dst = offsets[i_dst, 4];
+  dy_dst = 0;#offsets[i_dst, 3];
+  dx_dst = 0;#offsets[i_dst, 4];
   size_i = offsets[i_dst, 5]; 
   size_j = offsets[i_dst, 6];
 

@@ -167,7 +167,7 @@ montaged_dir_path = "2_montaged"
 prealigned_dir_path = "3_prealigned"
 aligned_dir_path = "4_aligned"
 
-wafer_filename = "wafer_paths_piriform_seungom04.txt"
+wafer_filename = "wafer_paths.txt"
 premontaged_offsets_filename = "premontaged_offsets.txt"
 montaged_offsets_filename = "montaged_offsets.txt"
 prealigned_offsets_filename = "prealigned_offsets.txt"
