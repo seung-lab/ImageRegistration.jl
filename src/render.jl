@@ -307,7 +307,7 @@ end
 """
 Prealignment where offsets are global
 """
-function render_prealignment(indexA, indexB)
+function render_prealigned(indexA, indexB)
   dir = PREALIGNED_DIR
   fixed = Dict()
 
@@ -341,12 +341,12 @@ function render_prealignment(indexA, indexB)
     if k==1
       fixed = stage_image(meshset.meshes[1], global_tform)
       if is_first_section(indexA)
-        # save_image(fixed, dir, log_path)
+        save_image(fixed, dir, log_path)
       end
     end
     tform = affine_approximate(meshset)
     moving = stage_image(meshset.meshes[2], global_tform*tform)
-    # save_image(moving, dir, log_path)
+    save_image(moving, dir, log_path)
     moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
     fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)*global_tform
     moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*global_tform*tform
@@ -355,73 +355,6 @@ function render_prealignment(indexA, indexB)
     fixed = moving
     moving = 0
     global_tform *= tform
-  end
-end
-
-"""
-Cycle through JLD files in prealigned directory and render prealignment
-"""
-function render_prealigned(section_range::Array{Int64})
-  # prealignment offsets are serial
-  dir = PREALIGNED_DIR
-  scale = 0.0625
-  s = [scale 0 0; 0 scale 0; 0 0 1]
-  imgA = []
-  A_offset = [0,0]
-  src_offset = [0,0]
-
-  # Log file for image offsets
-  log_path = joinpath(dir, "prealigned_offsets.txt")
-  prealigned_offsets = parse_offsets(log_path)
-  montaged_offsets = parse_offsets(joinpath(MONTAGED_DIR, "montaged_offsets.txt"))
-  global_tform = calculate_global_tform(section_range[1])
-  println("src_offset to start: ", src_offset)
-  println("global_tform to start:\n", global_tform)
-
-  filenames = sort_dir(dir)[section_range]
-  for (k, filename) in enumerate(filenames)
-    println("Rendering meshes in ", filename)
-    meshset = JLD.load(joinpath(dir, filename))["MeshSet"]
-
-    src_mesh = meshset.meshes[1]
-    src_montaged_offset = [0,0]
-    println("src_montaged_offset: ", src_montaged_offset)
-    src_img = get_ufixed8_image(src_mesh)
-    # Shrink for thumbnail
-    println("Warping ", src_mesh.name)
-    @time imgA, A_offset = imwarp(src_img, global_tform*s, src_montaged_offset)
-    @time src_img, src_offset = imwarp(src_img, global_tform, src_montaged_offset)
-
-    dst_mesh = meshset.meshes[2]
-    tform = affine_approximate(meshset)
-
-    src_nodes, dst_nodes = get_matched_points(meshset, 1)
-    src_nodes = points_to_Nx3_matrix(src_nodes)*global_tform*tform
-    dst_nodes = points_to_Nx3_matrix(dst_nodes)*global_tform
-
-    global_tform *= tform
-    dst_montaged_offset = collect(montaged_offsets[section_range[k]+1, 3:4])
-    println("dst_montaged_offset: ", dst_montaged_offset)
-    dst_img = get_ufixed8_image(dst_mesh)
-    # Shrink for thumbnail
-    println("Warping ", dst_mesh.name)
-    @time imgB, B_offset = imwarp(dst_img, global_tform*s, dst_montaged_offset)
-    @time dst_img, dst_offset = imwarp(dst_img, global_tform, dst_montaged_offset)
-    println("Writing ", dst_mesh.name)
-    new_fn = string(join(dst_mesh.index[1:2], ","), "_prealigned.tif")
-    @time imwrite(dst_img, joinpath(dir, new_fn))
-    update_offset_log!(log_path, new_fn, dst_offset-src_offset, size(dst_img))
-
-    # Build thumbnail
-    thumbnail_fn = string(join(dst_mesh.index[1:2], ","), "_prealigned_thumbnail.png")
-    path = joinpath(PREALIGNED_DIR, "review", thumbnail_fn)
-    O, O_bb = imfuse(imgA, A_offset, imgB, B_offset)
-    src_nodes = src_nodes[:,1:2]'*scale
-    dst_nodes = dst_nodes[:,1:2]'*scale
-    src_nodes .-= O_bb
-    dst_nodes .-= O_bb
-    vectors = [src_nodes; dst_nodes]
-    write_thumbnail(path, O, vectors, 1.0)
   end
 end
 
