@@ -21,12 +21,12 @@
 | 09/20/15 | Prealignment | 1,139 failed to prealign due to lack of points | Large offset | Manually entered offset | Yes |
 | 09/20/15 | Prealignment | 1,140 failed to prealign due to lack of points | Large offset | Manually entered offset | Yes |
 | 09/22/15 | Montage | 1,56 failed to montage well | Noisy image | Reran with a lower xc threshold | Yes |
-| 09/26/15 | Prealignment | 1,119-121 has bad prealignment due to lack of points | Wide mesh | Reran with fine mesh | No |
-| 09/26/15 | Prealignment | 1,129-132 has bad prealignment due to lack of points | Wide mesh | Reran with fine mesh | No |
-| 09/26/15 | Prealignment | 1,141-143 has bad prealignment due to lack of points | Wide mesh | Reran with fine mesh | No |
-| 09/26/15 | Prealignment | 1,155-158 has bad prealignment due to lack of points | Large offset | Manually entered offset | No |
-| 09/26/15 | Prealignment | 1,167-168 has bad prealignment due to lack of points | Large offset | Manually entered offset | No |
-| 09/26/15 | Premontage | 2,3 has bad premontage due to an extra tile | NA | NA | No |
-| 09/26/15 | Premontage | 2,52 has bad premontage due to an extra tile | NA | NA | No |
-| 09/26/15 | Premontage | 3,22 has bad premontage due to an extra tile | NA | NA | No |
+| 09/28/15 | Prealignment | 1,119-121 has bad prealignment due to lack of points | Wide mesh | Reran with fine mesh | No |
+| 09/28/15 | Prealignment | 1,129-132 has bad prealignment due to lack of points | Wide mesh | Reran with fine mesh | No |
+| 09/28/15 | Prealignment | 1,141-143 has bad prealignment due to lack of points | Wide mesh + large offset | Reran with fine mesh / manually entered offset | No |
+| 09/28/15 | Prealignment | 1,155-158 has bad prealignment due to lack of points | Large offset | Manually entered offset | No |
+| 09/28/15 | Prealignment | 1,167-168 has bad prealignment due to lack of points | Large offset | Manually entered offset | No |
+| 09/28/15 | Premontage | 2,3 has bad premontage due to an extra tile | NA | NA | No |
+| 09/28/15 | Premontage | 2,52 has bad premontage due to an extra tile | NA | NA | No |
+| 09/28/15 | Premontage | 3,22 has bad premontage due to an extra tile | NA | NA | No |
 
