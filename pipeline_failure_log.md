@@ -26,3 +26,4 @@
 | 09/26/15 | Prealignment | 1,141-143 has bad prealignment due to lack of points | Wide mesh | Reran with fine mesh | No |
 | 09/26/15 | Prealignment | 1,155-158 has bad prealignment due to lack of points | Large offset | Manually entered offset | No |
 | 09/26/15 | Prealignment | 1,167-168 has bad prealignment due to lack of points | Large offset | Manually entered offset | No |
+| 09/26/15 | Premontage | 2,3 has bad premontage due to an extra tile | NA | NA | No |
