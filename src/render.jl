@@ -199,6 +199,9 @@ function render_montaged(section_range::Array{Int64})
   end
 end
 
+"""
+Write thumbnail image with vectors and match indices overlayed
+"""
 function write_thumbnail(path, img, vectors, factor)
   imgc, img2 = view(img, pixelspacing=[1,1])
   a, b = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1), factor)
@@ -211,23 +214,154 @@ end
 """
 Calculate prealignment transforms from first section through section_num
 """
-function calculate_global_tform(section_num::Int64, dir=PREALIGNED_DIR)
-  dir = PREALIGNED_DIR
-  section_range = collect(1:section_num-1)
+function calculate_global_tform(index, dir=PREALIGNED_DIR)
   global_tform = eye(3)
-  filenames = sort_dir(dir)[section_range]
-  for (k, filename) in enumerate(filenames)
-    meshset = JLD.load(joinpath(dir, filename))["MeshSet"]
-    tform = affine_approximate(meshset)
-    global_tform *= tform
+  if index != (1,1,-2,-2)
+    index_pairs = create_sequential_index_pairs((1,1,-2,-2), index)
+    for (indexA, indexB) in index_pairs
+      meshset = load(indexA, indexB)
+      tform = affine_approximate(meshset)
+      global_tform *= tform
+    end
   end
   return global_tform
+end
+
+"""
+INCOMPLETE
+
+Lazy function to generate list of indices between indexA and indexB
+
+Fixes to include:
+* switch between wafers
+* check indexA[3:4] against indexB[3:4]
+"""
+function create_range(indexA, indexB)
+  return [(indexA[1], i, indexA[3:4]...) for i in indexA[2]:indexB[2]]
+end
+
+function create_sequential_index_pairs(indexA, indexB)
+  indices = create_range(indexA, indexB)
+  return zip(indices[1:end-1], indices[2:end])
+end
+
+"""
+Copy a section from one process step to the next
+"""
+function copy_section_through(index)
+  println("copy_section_through INCOMPLETE")
+  return
+end
+
+"""
+Test if an index is the first section in the stack
+"""
+function is_first_section(index)
+  return index[1] == 1 & index[2] == 1
+end
+
+"""
+Find first row of the offset file that matches index and return offset array
+"""
+function find_offset(offset_file, index)
+  if findfirst(offset_file[2,:], index) != 0
+    return offset_file[findfirst(offset_file[2,:], index)][3:4]
+  else
+    return [0,0]
+  end
+end
+
+"""
+Find appropriate offset file and pull out the offset array for the index
+"""
+function load_offset(index)
+  if is_montaged(index)
+    return find_offset(PREALIGNED_OFFSETS, index)
+  elseif is_aligned(index)
+    return find_offset(PREALIGNED_OFFSETS, index)
+  else
+    return [0,0]
+  end
+end
+
+"""
+Return Dictionary of staged image to remove redundancy in loading
+"""
+function stage_image(mesh, tform, scale=0.0625)
+  s = [scale 0 0; 0 scale 0; 0 0 1]
+  stage = Dict()
+  stage["index"] = mesh.index
+  img = get_ufixed8_image(mesh)
+  montaged_offset = load_offset(mesh.index)
+  println("tform: ", tform)
+  println("montaged_offset: ", montaged_offset)
+  println("Warping ", mesh.name)
+  stage["img"], stage["offset"] = imwarp(img, tform, montaged_offset)
+  println("Warping thumbnail for ", mesh.name)
+  stage["thumb"], stage["thumb_offset"] = imwarp(img, tform*s, montaged_offset)
+  stage["scale"] = scale
+  return stage
+end
+
+"""
+Prealignment where offsets are global
+"""
+function render_prealignment(indexA, indexB)
+  dir = PREALIGNED_DIR
+  fixed = Dict()
+
+  global_tform = calculate_global_tform(indexA)
+  log_path = joinpath(dir, "prealigned_offsets.txt")
+
+  function save_image(stage, dir, log_path)
+    fn = string(join(stage["index"][1:2], ","), "_prealigned.tif")
+    update_offset_log!(log_path, fn, stage["offset"], size(stage["img"]))
+    println("Writing ", fn)
+    @time imwrite(stage["img"], joinpath(dir, fn))
+  end
+
+  function save_thumbnails(A, B)
+    fn = string(join(A["index"][1:2], ","), "_prealigned_thumbnail.png")
+    println("Saving thumbnail ", fn)
+    path = joinpath(dir, "review", fn)
+    O, O_bb = imfuse(A["thumb"], A["thumb_offset"], B["thumb"], B["thumb_offset"])
+    moving_nodes = A["nodes"][:,1:2]'*A["scale"]
+    fixed_nodes = B["nodes"][:,1:2]'*B["scale"]
+    moving_nodes .-= O_bb
+    fixed_nodes .-= O_bb
+    vectors = [moving_nodes; fixed_nodes]
+    write_thumbnail(path, O, vectors, 1.0)
+  end
+
+  index_pairs = create_sequential_index_pairs(indexA, indexB)
+  for (k, (indexA, indexB)) in enumerate(index_pairs)
+    println("\nPrealigning ", indexA, " & ", indexB)
+    meshset = load(indexA, indexB)
+    if k==1
+      fixed = stage_image(meshset.meshes[1], global_tform)
+      if is_first_section(indexA)
+        # save_image(fixed, dir, log_path)
+      end
+    end
+    tform = affine_approximate(meshset)
+    moving = stage_image(meshset.meshes[2], global_tform*tform)
+    # save_image(moving, dir, log_path)
+    moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
+    fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)*global_tform
+    moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*global_tform*tform
+    save_thumbnails(fixed, moving)
+    fixed = 0
+    fixed = moving
+    moving = 0
+    global_tform *= tform
+  end
 end
 
 """
 Cycle through JLD files in prealigned directory and render prealignment
 """
 function render_prealigned(section_range::Array{Int64})
+  # prealignment offsets are serial
   dir = PREALIGNED_DIR
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]
