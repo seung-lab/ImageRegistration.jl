@@ -3,6 +3,7 @@ An image registration and image transformation package for Julia.
 
 ## Installation
 Use the package manager:
+
 `Pkg.add("ImageRegistration")`
 
 ## Dependencies
