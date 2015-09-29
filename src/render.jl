@@ -221,7 +221,8 @@ function calculate_global_tform(index, dir=PREALIGNED_DIR)
     index_pairs = create_sequential_index_pairs((1,1,-2,-2), index)
     for (indexA, indexB) in index_pairs
       meshset = load(indexA, indexB)
-      tform = affine_approximate(meshset)
+      # tform = affine_approximate(meshset)
+      tform = regularized_approximate(meshset, lambda=0.9)
       global_tform *= tform
     end
   end
@@ -258,7 +259,7 @@ end
 Test if an index is the first section in the stack
 """
 function is_first_section(index)
-  return index[1] == 1 & index[2] == 1
+  return index[1] == 1 && index[2] == 1
 end
 
 """
@@ -267,7 +268,7 @@ of previous offset arrays
 """
 function find_offset(offset_file, index)
   if findfirst(offset_file[:,2], index) != 0
-    return offset_file[findfirst(offset_file[:,2], index), 3:4]
+    return collect(sum(offset_file[1:findfirst(offset_file[:,2], index), 3:4], 1))
   else
     return [0,0]
   end
@@ -278,7 +279,7 @@ Find appropriate offset file and pull out the offset array for the index
 """
 function load_offset(index)
   if is_montaged(index)
-    return find_offset(PREALIGNED_OFFSETS, index)
+    return find_offset(MONTAGED_OFFSETS, index)
   elseif is_aligned(index)
     return find_offset(PREALIGNED_OFFSETS, index)
   else
@@ -289,7 +290,7 @@ end
 """
 Return Dictionary of staged image to remove redundancy in loading
 """
-function stage_image(mesh, tform, scale=0.0625)
+function stage_image(mesh, tform, scale=0.05)
   s = [scale 0 0; 0 scale 0; 0 0 1]
   stage = Dict()
   stage["index"] = mesh.index
@@ -323,7 +324,7 @@ function render_prealigned(indexA, indexB)
   end
 
   function save_thumbnails(A, B)
-    fn = string(join(A["index"][1:2], ","), "_prealigned_thumbnail.png")
+    fn = string(join(B["index"][1:2], ","), "_prealigned_thumbnail.png")
     println("Saving thumbnail ", fn)
     path = joinpath(dir, "review", fn)
     O, O_bb = imfuse(A["thumb"], A["thumb_offset"], B["thumb"], B["thumb_offset"])
@@ -345,7 +346,7 @@ function render_prealigned(indexA, indexB)
         save_image(fixed, dir, log_path)
       end
     end
-    tform = affine_approximate(meshset)
+    tform = regularized_approximate(meshset, lambda=0.9)
     moving = stage_image(meshset.meshes[2], global_tform*tform)
     save_image(moving, dir, log_path)
     moving_nodes, fixed_nodes = get_matched_points(meshset, 1)

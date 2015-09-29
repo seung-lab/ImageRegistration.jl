@@ -404,6 +404,13 @@ end
 """
 Apply some weighted combination of affine and rigid, gauged by lambda
 """
+function regularized_approximate(Ms::MeshSet; lambda=0.9, ind=2)
+  return regularized_approximate(Ms.meshes[ind], lambda)
+end
+
+"""
+Apply some weighted combination of affine and rigid, gauged by lambda
+"""
 function regularized_approximate(M::Mesh, lambda=0.9)
   affine = affine_approximate(M)
   rigid = rigid_approximate(M)
