@@ -5,8 +5,8 @@ import os
 import csv
 
 resize_factor = 0.02
-sec_start = 1
-sec_end = 60
+sec_start = 61
+sec_end = 168
 
 bucket_dir_path = '/usr/people/tmacrina/seungmount'
 datasets_dir_path = "research/Julimaps/datasets"

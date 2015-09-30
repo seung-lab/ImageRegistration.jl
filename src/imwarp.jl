@@ -1,11 +1,3 @@
-function imwarp(meshset::MeshSet)
-  # tform = recompute_affine(meshset)
-  tform = affine_approximate(meshset)
-  img = get_ufixed8_image(meshset.meshes[2])
-  @time img, offset = imwarp(img, tform)
-  return img, offset
-end
-
 """
 `IMWARP` - Apply affine transform to image using bilinear interpolation
 

@@ -1,16 +1,6 @@
 # Adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
-function meshwarp(mesh::Mesh)
-    @time img = get_ufixed8_image(mesh)
-    src_nodes = hcat(mesh.nodes...)'
-    dst_nodes = hcat(mesh.nodes_t...)'
-    offset = mesh.disp
-    node_dict = incidence2dict(mesh.edges)
-    triangles = dict2triangles(node_dict)
-    return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
-end
-
 """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
 
@@ -99,7 +89,7 @@ function meshwarp{T}(img::Array{T},
 end
 
 """
-`POLY2SOURCE` - Run fillpoly2 and findn over the basic bounding box of a given triangle
+`POLY2SOURCE` - Run fillpoly and findn over the basic bounding box of a given triangle
 """ 
 function poly2source(pts_i, pts_j)
     # Find bb of vertices (vertices in global space)
@@ -108,7 +98,7 @@ function poly2source(pts_i, pts_j)
     # Create image based on number of pixels in bb that will identify triangle
     mask = zeros(Bool, bottom-top+1, right-left+1)
     # Convert vertices into pixel space and fill the mask to identify triangle
-    fillpoly2!(mask, pts_j-left+1, pts_i-top+1, true)
+    fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
     # Create list of pixel coordinates that are contained by the triangle
     us, vs = findn(mask)
     # Convert that list of pixel coordinates back into global space
@@ -118,9 +108,9 @@ function poly2source(pts_i, pts_j)
 end
 
 """
-`FILLPOLY2!` - Fill pixels contained inside a polygon
+`FILLPOLY!` - Fill pixels contained inside a polygon
 
-    M = fillpoly2!(M, px, py, value)
+    M = fillpoly!(M, px, py, value)
 
 * `M`: 2D array, image
 * `px`: 1D array, x-components of polygon vertices
@@ -139,7 +129,7 @@ Bugs:
 * The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
 * The "corner case" where a grid line intersects a single vertex of the polygon does not appear to be properly treated.  The corner case is nongeneric if px and py are floats.  But the corner case could be common if px and py are ints, which seems encouraged by the parametric typing.
 """ 
-function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
+function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
     @assert length(py) == length(px)    
     left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
     # Scan poly from left to right
@@ -172,75 +162,6 @@ function fillpoly2!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, val
         end
     end
     return M
-end
-
-"""
-`POLY2MASK` - convert convex polygon into binary image mask
-
-    mask, offset = poly2mask(vi, vj)
-
-* `mask`: 2D array, binary image of polygon
-* `offset`: 2-element array, position of `mask[1,1]` in global space
-* `vi`: 1D array, i-components of polygon vertices, global space
-* `vj`: 1D array, j-components of polygon vertices, global space
-
-    mask[i,j]=true iff (i-1+offset[1],j-1+offset[2]) is in the interior or edges of the polygon.
-
-The vertices should be sequentially ordered in `vi` and `vj`, either
-clockwise or counterclockwise.  The polygon should *not* be closed,
-i.e., the last vertex should *not* repeat the first.
-
-The bounding box of `mask` is defined as the smallest integer-valued
-rectangle that contains the polygon, so `offset` is always integer-valued.
-
-""" 
-function poly2mask(vi::Vector{Float64}, vj::Vector{Float64})
-    @assert length(vi) == length(vj)
-    # Find bounding box
-    top, bottom = floor(Int,minimum(vi)), ceil(Int,maximum(vi))
-    left, right = floor(Int,minimum(vj)), ceil(Int,maximum(vj))
-    # Create mask and offset
-    mask = zeros(Bool, bottom-top+1, right-left+1)
-    offset = [top, left]
-    nvertices = length(vi)  # number of vertices
-    push!(vi,vi[1]); push!(vj,vj[1])  # close polygon
-    for i=top:bottom   # loop over grid lines of constant i (horizontal)
-        # define set to store intersections between grid line and polygon
-        jinter = Set{Float64}() # use set rather than array to eliminate repetitions that occur if i-component of vertex is integral
-
-        for n=1:nvertices   # loop over edges (1,2), (2,3),...,(m,1)
-            # examine intersection between grid line and each edge
-            # two possibilities
-            if (vi[n] <= i && i <= vi[n+1]) || (vi[n+1] <= i && i <= vi[n])
-                if vi[n] == vi[n+1]  # (1) intersection is entire edge
-                    push!(jinter, vj[n])
-                    push!(jinter, vj[n+1])
-                    break
-                else # (2) intersection is single point
-                    push!(jinter, vj[n] + (i-vi[n]) * (vj[n+1]-vj[n])/(vi[n+1]-vi[n]))
-                end            
-            end
-        end
-        println(i,' ',jinter)   # for debugging
-        ninter = length(jinter) # number of intersections could be 0,1,2
-        jinter = sort([vals for vals in jinter])
-        if ninter == 2 # intersects two interior points of edges, one vertex and one interior point of edge, or two vertices
-            jleft = ceil(Int,jinter[1])
-            jright = floor(Int,jinter[2])
-            if jleft<=jright
-                mask[i-offset[1]+1,(jleft:jright)-offset[2]+1] = true
-            end
-        elseif ninter==1 # intersects at single vertex only
-            j = floor(Int,jinter[1])
-            if j != jinter[1]
-                error("single intersection should be integer-valued")
-            end
-            mask[i-offset[1]+1,j-offset[2]+1] = true
-        elseif ninter != 0  # 0 is the only other possibility if no bugs
-            error("should be 0 intersections but it isn't")
-        end
-    end
-    mask, offset
 end
 
 function demo_meshwarp()

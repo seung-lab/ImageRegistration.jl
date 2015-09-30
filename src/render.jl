@@ -6,176 +6,41 @@
 # display images with meshes.
 
 """
-`MERGE_IMAGES` - Place images in global reference image
-
-    merged_img, [bb.i, bb.j] = merge_images(imgs, offsets)
-
-* `imgs`: 1D array, images (2D arrays)
-* `offsets`: 1D array, 2-element array positions of corresponding image 
-  in 'imgs` in global space
-
-""" 
-function merge_images(imgs, offsets)
-    bbs = []
-    for (img, offset) in zip(imgs, offsets)
-        push!(bbs, BoundingBox(offset..., size(img)...))
-    end
-    global_ref = sum(bbs)
-    merged_img = zeros(global_ref.h, global_ref.w)
-    for (idx, (img, bb)) in enumerate(zip(imgs, bbs))
-        println("Merging tile ", idx)
-        i = bb.i - global_ref.i+1
-        j = bb.j - global_ref.j+1
-        w = bb.w-1
-        h = bb.h-1
-        merged_img[i:i+h, j:j+w] = max(merged_img[i:i+h, j:j+w], img)
-        imgs[idx] = 0
-    end
-    return merged_img, [global_ref.i, global_ref.j]
+Multiple dispatch for imwarp on Mesh object
+"""
+function imwarp(meshset::MeshSet)
+  # tform = recompute_affine(meshset)
+  tform = affine_approximate(meshset)
+  img = get_ufixed8_image(meshset.meshes[2])
+  @time img, offset = imwarp(img, tform)
+  return img, offset
 end
 
 """
-`IMFUSE` - Overlay two images on top of each other using their offsets. Colors 
-one image red, the other green, and the overlap yellow.
-Uses rounded interpolation.
-
-Args:
-
-* A: image A (2D array)
-* offset_A: 2-element array for global position of image A
-* B: image B (2D array)
-* offset_B: 2-element array for global position of image A
-
-Returns:
-
-* O: Image object combining both image A & B
-
-    `imfuse(A, offset_A, B, offset_B)`
+Multiple dispatch for meshwarp on Mesh object
 """
-function imfuse(A, offset_A, B, offset_B)
-    # pad to common origin
-    BB_C = offset_B - offset_A
-    if BB_C[1] > 0
-        B = padimage(B, 0, BB_C[1], 0, 0)
-    elseif BB_C[1] < 0
-        A = padimage(A, 0, -BB_C[1], 0, 0)
-    end 
-    if BB_C[2] > 0
-        B = padimage(B, BB_C[2], 0, 0, 0)
-    elseif BB_C[2] < 0
-        A = padimage(A, -BB_C[2], 0, 0, 0)
-    end 
-    # pad to match sizes
-    szA = collect(size(A))
-    szB = collect(size(B))
-    szC = szB - szA
-    if szC[1] > 0
-        A = padimage(A, 0, 0, 0, szC[1])
-    elseif szC[1] < 0
-        B = padimage(B, 0, 0, 0, -szC[1])
-    end 
-    if szC[2] > 0
-        A = padimage(A, 0, 0, szC[2], 0)
-    elseif szC[2] < 0
-        B = padimage(B, 0, 0, -szC[2], 0)
-    end
-    O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
-    #O = Overlay((A,B), (RGB(1.,0.,0.), RGB(0.,0.6,0.)))
-    BB_O = min(offset_A, offset_B)
-    return O, BB_O
-end
-
-"""
-`PADIMAGE` - Specify image padding in each of four directions
-    
-    `new_img = padimage(img, xlow, ylow, xhigh, yhigh)`
-
-     _________________________________  
-    |                                 |  
-    |             ylow                |  
-    |         ______________          |  
-    |        |              |         |  
-    |  xlow  |     img      |  xhigh  |  
-    |        |              |         |  
-    |        |______________|         |  
-    |                                 |  
-    |             yhigh               |  
-    |_________________________________|  
-
-Args:
-
-* img: 2D or 3D array
-* xlow: amount to pad in x prior to the image
-* ylow: amount to pad in y prior to the image
-* xhigh: amount to pad in x after to the image
-* yhigh: amount to pad in y after to the image
-
-Returns:
-
-* new_img: original img, extended with rows and columns of zeros
-"""
-function padimage(img, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64)
-    h = ylow + size(img, 1) + yhigh
-    w = xlow + size(img, 2) + xhigh
-    z = zeros(h, w)
-    z[ylow+1:ylow+size(img,1), xlow+1:xlow+size(img,2)] = img
-    return z
-end
-
-"""
-`RESCOPE` - Crop/pad an image to fill a bounding box
-    
-    new_img = rescope(img, offset, boundingbox)
-
-Args:
-
-* img: 2D or 3D array
-* offset: 2-element array, specifying i & j offset from global origin
-* bb: bounding box object in the global reference space
-
-Returns:
-
-* new_img: original img, cropped &/or extended with rows and columns of zeros
-"""
-function rescopeimage(img, offset, bb)
-  z = zeros(Ufixed8, bb.h+1, bb.w+1)
-  imgbb = BoundingBox(offset..., size(img,1)-1, size(img,2)-1)
-  xbb = imgbb - bb
-  if !isnan(xbb.i) || !isnan(xbb.j) || !isnan(xbb.h) || !isnan(xbb.h)
-    crop_img = xbb.i-offset[1]+1 : xbb.i-offset[1]+1+xbb.h, 
-                  xbb.j-offset[2]+1 : xbb.j-offset[2]+1+xbb.w
-    crop_z = xbb.i-bb.i+1:xbb.i-bb.i+1+xbb.h, xbb.j-bb.j+1:xbb.j-bb.j+1+xbb.w
-    z[crop_z...] = img[crop_img...]
-  end
-  return z
-end
-
-"""
-`MATCH_PADDING` - For each dimension, pad images to match the larger of the two
-
-  `imgA, imgB = match_padding(imgA, imgB)`
-"""
-function match_padding(imgA, imgB)
-  szA = collect(size(imgA))
-  szB = collect(size(imgB))
-  szC = max(szA, szB)
-  imgA = padimage(imgA, 0, 0, reverse(szC-szA)...)
-  imgB = padimage(imgB, 0, 0, reverse(szC-szB)...)
-  return imgA, imgB
+function meshwarp(mesh::Mesh)
+  @time img = get_ufixed8_image(mesh)
+  src_nodes = hcat(mesh.nodes...)'
+  dst_nodes = hcat(mesh.nodes_t...)'
+  offset = mesh.disp
+  node_dict = incidence2dict(mesh.edges)
+  triangles = dict2triangles(node_dict)
+  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end
 
 function get_global_bb(meshset)
-    bbs = []
-    println("Calculating global bounding box")
-    for mesh in meshset.meshes
-        nodes = hcat(mesh.nodes_t...)'
-        push!(bbs, snap_bb(find_mesh_bb(nodes)))
-    end
-    global_bb = sum(bbs)
-    global_bb.h += 1
-    global_bb.w += 1
-    println(global_bb)
-    return global_bb
+  bbs = []
+  println("Calculating global bounding box")
+  for mesh in meshset.meshes
+      nodes = hcat(mesh.nodes_t...)'
+      push!(bbs, snap_bb(find_mesh_bb(nodes)))
+  end
+  global_bb = sum(bbs)
+  global_bb.h += 1
+  global_bb.w += 1
+  println(global_bb)
+  return global_bb
 end    
 
 """
@@ -230,64 +95,6 @@ function calculate_global_tform(index, dir=PREALIGNED_DIR)
 end
 
 """
-INCOMPLETE
-
-Lazy function to generate list of indices between indexA and indexB
-
-Fixes to include:
-* switch between wafers
-* check indexA[3:4] against indexB[3:4]
-"""
-function create_range(indexA, indexB)
-  return [(indexA[1], i, indexA[3:4]...) for i in indexA[2]:indexB[2]]
-end
-
-function create_sequential_index_pairs(indexA, indexB)
-  indices = create_range(indexA, indexB)
-  return zip(indices[1:end-1], indices[2:end])
-end
-
-"""
-Copy a section from one process step to the next
-"""
-function copy_section_through(index)
-  println("copy_section_through INCOMPLETE")
-  return
-end
-
-"""
-Test if an index is the first section in the stack
-"""
-function is_first_section(index)
-  return index[1] == 1 && index[2] == 1
-end
-
-"""
-Find first row of the offset file that matches index and return cumulative sum 
-of previous offset arrays
-"""
-function find_offset(offset_file, index)
-  if findfirst(offset_file[:,2], index) != 0
-    return collect(sum(offset_file[1:findfirst(offset_file[:,2], index), 3:4], 1))
-  else
-    return [0,0]
-  end
-end
-
-"""
-Find appropriate offset file and pull out the offset array for the index
-"""
-function load_offset(index)
-  if is_montaged(index)
-    return find_offset(MONTAGED_OFFSETS, index)
-  elseif is_aligned(index)
-    return find_offset(PREALIGNED_OFFSETS, index)
-  else
-    return [0,0]
-  end
-end
-
-"""
 Return Dictionary of staged image to remove redundancy in loading
 """
 function stage_image(mesh, tform, scale=0.05)
@@ -307,7 +114,17 @@ function stage_image(mesh, tform, scale=0.05)
 end
 
 """
+Copy a section from one process step to the next
+"""
+function copy_section_through(index)
+  println("copy_section_through INCOMPLETE")
+  return
+end
+
+"""
 Prealignment where offsets are global
+
+INCOMPLETE - Incorrect placement of correspondences on the thumbnails
 """
 function render_prealigned(indexA, indexB)
   dir = PREALIGNED_DIR
@@ -365,7 +182,7 @@ Cycle through JLD files in aligned directory and render alignment
 """
 function render_aligned(file_index)
   dir = ALIGNED_DIR
-  scale = 0.0625
+  scale = 0.02
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
   # Log file for image offsets
