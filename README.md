@@ -1,4 +1,4 @@
-![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg "travis")
+[![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg?branch=master)](https://travis-ci.org/seung-lab/Julimaps)
 
 # Julimaps
 JULia IMAge Processing Suite:
