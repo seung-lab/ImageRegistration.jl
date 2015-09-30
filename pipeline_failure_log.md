@@ -31,4 +31,5 @@
 | 09/29/15 | Premontage | 3,22 has bad premontage due to an extra tile | NA | NA | No |
 | 09/29/15 | Premontage | 3,90 has bad premontage | NA | NA | No |
 | 09/29/15 | Premontage | 3,133 has bad premontage | NA | NA | No |
+| 09/30/15 | Premontage | 3,147 has bad premontage | NA | NA | No |
 
