@@ -262,7 +262,7 @@ function affine_add_pair_matches!(Ms, a, b)
 
 images = load_section_pair(Ms, a, b)
 
-matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params)
+matches_atob = get_blockmatches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params)
 
 if typeof(matches_atob) != Void && (matches_atob) != Void
     add_matches(matches_atob, Ms)
@@ -274,8 +274,8 @@ function add_pair_matches!(Ms, a, b)
 
 images = load_section_pair(Ms, a, b)
 
-matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params)
-matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params)
+matches_atob = get_blockmatches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params)
+matches_btoa = get_blockmatches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params)
 
 if typeof(matches_atob) != Void && (matches_atob) != Void
     add_matches(matches_atob, Ms)
@@ -301,7 +301,7 @@ matches_array = cell(n)
               break
             end
           (a, b) = pairs[idx]
-          matches_array[idx] = Matches(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params)
+          matches_array[idx] = get_blockmatches(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params)
         end
 for k in 1:n
     M = matches_array[k]

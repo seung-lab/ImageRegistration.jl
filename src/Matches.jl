@@ -74,7 +74,7 @@ function write_blockmatches(A, B, xc, idx, partial_fn)
   end
 end
 
-function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
+function get_blockmatches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   if (Am==Bm)
     return Void
   end
@@ -337,14 +337,14 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   println("max = $max_j")
   println("###\n")
 
-  matches = Matches(src_index, dst_index, n, src_points_indices, dst_points, dst_triangles, dst_weights, disp_vectors)
+  matches = get_blockmatches(src_index, dst_index, n, src_points_indices, dst_points, dst_triangles, dst_weights, disp_vectors)
   return matches
 end
 
 # multiple dispatch for when called remotely - A, B are remote references to the mesh
-function Matches(A, A_rr::RemoteRef, B, B_rr::RemoteRef, params_rr::RemoteRef)
+function get_blockmatches(A, A_rr::RemoteRef, B, B_rr::RemoteRef, params_rr::RemoteRef)
   Am = take!(A_rr)
   Bm = take!(B_rr)
   params = take!(params_rr)
-  return Matches(A, Am, B, Bm, params)
+  return get_blockmatches(A, Am, B, Bm, params)
 end
