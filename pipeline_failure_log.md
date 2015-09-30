@@ -28,6 +28,6 @@
 | 09/28/15 | Prealignment | 1,167-168 has bad prealignment due to lack of points | Large offset | Manually entered offset | No |
 | 09/28/15 | Premontage | 2,3 has bad premontage due to an extra tile | NA | NA | No |
 | 09/28/15 | Premontage | 2,52 has bad premontage due to an extra tile | NA | NA | No |
-| 09/28/15 | Premontage | 3,22 has bad premontage due to an extra tile | NA | NA | No |
-| 09/28/15 | Premontage | 3,23 has bad premontage | NA | NA | No |
+| 09/29/15 | Premontage | 3,22 has bad premontage due to an extra tile | NA | NA | No |
+| 09/29/15 | Premontage | 3,90 has bad premontage | NA | NA | No |
 
