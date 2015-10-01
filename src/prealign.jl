@@ -172,8 +172,8 @@ function affine_align_sections(moving_img_filename::String,
                                                 params=PARAMS_PREALIGNMENT)
   meshset = MeshSet(params)
   meshset.N = 2
-  moving_mesh = Mesh(moving_img_filename)
-  fixed_mesh = Mesh(fixed_img_filename)
+  moving_mesh = build_mesh(moving_img_filename)
+  fixed_mesh = build_mesh(fixed_img_filename)
   meshset.meshes = [fixed_mesh, moving_mesh]
 
   fixed_img = get_ufixed8_image(meshset.meshes[1])

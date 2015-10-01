@@ -68,7 +68,6 @@ end
 
 # extension:
 # Params_session.jl: optimize_all_cores(params::Params)
-#
 function optimize_all_cores(img_d::Int64)
     img = rand(img_d, img_d)
 	@sync begin
@@ -81,20 +80,23 @@ function optimize_all_cores(img_d::Int64)
     return Void;
 end
     
-function normxcorr2(template,img)
-    # "normalized cross correlation": slide template across img,
-    # compute Pearson correlation coefficient for each template location
-    # result has same size as MATLAB-style 'valid' convolution
-    # efficient algorithm of J. P. Lewis
-    # http://scribblethink.org/Work/nvisionInterface/nip.html
-    #
-    # return NaN for image patch or template with zero variance
-    # Pearson correlation coefficient is undefined in this case
-    # 
-    # need some argument checking
-    # e.g. sizes of template should be less than those of img
-    # this works for arrays.  extend to Image defined in Holy's package?
+"""
+`NORMXCORR2` - normalized cross correlation
+slide template across img, compute Pearson correlation coefficient for each 
+template location result has same size as MATLAB-style 'valid' convolution
+efficient algorithm of J. P. Lewis
+http://scribblethink.org/Work/nvisionInterface/nip.html
 
+` correlogram = normxcorr2(template,img)`
+
+return NaN for image patch or template with zero variance
+Pearson correlation coefficient is undefined in this case
+
+need some argument checking
+e.g. sizes of template should be less than those of img
+this works for arrays.  extend to Image defined in Holy's package?
+"""
+function normxcorr2(template,img)
     # sufficient to subtract mean from just one variable
     dt=template-mean(template)
     templatevariance=sum(dt.^2)

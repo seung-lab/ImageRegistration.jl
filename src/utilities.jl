@@ -74,6 +74,3 @@ function sort_dir(dir, file_extension="jld")
     return sort(files_in_dir, by=x->parse_name(x))
 end
 
-
-
-

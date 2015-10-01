@@ -376,7 +376,7 @@ function load_section(offsets, wafer_num, section_num)
     dy = offsets[i, 3] #/ 0.07; ##################################
     dx = offsets[i, 4] #/ 0.07; ##################################
     image = get_image(get_path(name));
-    add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
+    add_mesh(build_mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
     #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
     #image_shared[:, :] = image[:, :];
     push!(images, image)
@@ -508,7 +508,7 @@ function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
   size_i = 36000; 
   size_j = 36000
 
-  add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms)
+  add_mesh(build_mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms)
 =#
   dy = 0
   dx = 0
@@ -521,7 +521,7 @@ function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
   size_i = offsets[i, 5]
   size_j = offsets[i, 6]
 
-  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
+  add_mesh(build_mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
 end
   optimize_all_cores(Ms.params)
 
@@ -539,7 +539,7 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = tr
   size_i = offsets[i_dst, 5]; 
   size_j = offsets[i_dst, 6]
 
-  add_mesh(Mesh(name_dst, size_i, size_j, index_dst, dy_dst, dx_dst, true, PARAMS_PREALIGNMENT), Ms)
+  add_mesh(build_mesh(name_dst, size_i, size_j, index_dst, dy_dst, dx_dst, true, PARAMS_PREALIGNMENT), Ms)
 
   name = offsets[i_src, 1];
   index = offsets[i_src, 2];
@@ -548,7 +548,7 @@ function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = tr
   size_i = offsets[i_src, 5];
   size_j = offsets[i_src, 6];
 
-  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms)
+  add_mesh(build_mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms)
   if optimize == true
   optimize_all_cores(Ms.params)
   end
@@ -566,7 +566,7 @@ function make_stack(offsets, wafer_num, a::Int64, b::Int64)
   size_i = 36000; 
   size_j = 36000
 
-  add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms)
+  add_mesh(build_mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms)
   name = offsets[i, 1]
   index = offsets[i, 2]
   dy = offsets[i, 3]
@@ -574,7 +574,7 @@ function make_stack(offsets, wafer_num, a::Int64, b::Int64)
   size_i = offsets[i, 5]
   size_j = offsets[i, 6]
 
-  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
+  add_mesh(build_mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
   optimize_all_cores(Ms.params)
 
   return Ms
@@ -594,7 +594,7 @@ function make_stack(offsets, wafer_num, section_range, fixed_interval)
     if findfirst(indices, i) in 1:fixed_interval:length(indices)
       is_fixed = true; println("$index is fixed")
     end
-    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms)
+    add_mesh(build_mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms)
   end
 
   optimize_all_cores(Ms.params)
@@ -619,7 +619,7 @@ function load_stack(offsets, wafer_num, section_range)
   dx = offsets[i, 4]
   dy = offsets[i, 3]
   image = get_image(get_path(name))
-  add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
+  add_mesh(build_mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
   
   image_shared = SharedArray(UInt8, size(image, 1), size(image, 2))
   image_shared[:, :] = image[:, :]

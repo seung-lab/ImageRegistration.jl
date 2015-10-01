@@ -1,7 +1,3 @@
-#using Julimaps
-#using Images
-#importall IO
-
 type Mesh
 	name::String;						# name of the image file
 
@@ -24,9 +20,9 @@ type Mesh
 	edge_coeffs::FloatProperty	   			# 1-by-m dense vector of floats that stores the spring coefficients.
 end
 
-Mesh() = Mesh("", (0,0,0,0), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
-Mesh(index::Index) = Mesh(get_name(index), index, [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
-Mesh(name::String) = Mesh(name, parse_name(name), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+build_mesh() = build_mesh("", (0,0,0,0), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+build_mesh(index::Index) = build_mesh(get_name(index), index, [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
+build_mesh(name::String) = build_mesh(name, parse_name(name), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
 
 ### IO EXTENSIONS
 function get_path(mesh::Mesh)
@@ -57,9 +53,7 @@ function get_image(mesh::Mesh)
 	return get_image(mesh.name);
 end
 
-
-
-function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length::Int64, mesh_coeff::Float64)
+function build_mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length::Int64, mesh_coeff::Float64)
 	(Ai, Aj) = (size_i,size_j);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
@@ -105,32 +99,32 @@ function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length
 	edge_lengths = edge_lengths[1:m];
 	edge_coeffs = edge_coeffs[1:m];
 
-	return Mesh(name, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
+	return build_mesh(name, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
 end
 
 
 # Mesh
-function Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, mesh_length, mesh_coeff::Float64)
+function build_mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, mesh_length, mesh_coeff::Float64)
 	(size_i, size_j) = size(image);
-	return Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Float64, mesh_length, mesh_coeff::Float64);
+	return build_mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Float64, mesh_length, mesh_coeff::Float64);
 end
 
-function Mesh(name, index::Index, dy, dx, tile_fixed, mesh_length::Float64, mesh_coeff::Float64)
+function build_mesh(name, index::Index, dy, dx, tile_fixed, mesh_length::Float64, mesh_coeff::Float64)
 	image = get_image(get_path(name));
-	return Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
+	return build_mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
 end
 
-function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params::Dict)
-	return Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
+function build_mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params::Dict)
+	return build_mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
 end
 
-function Mesh(name, size, index::Index, dy, dx, tile_fixed, params::Dict)
-	return Mesh(name, size, size, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
+function build_mesh(name, size, index::Index, dy, dx, tile_fixed, params::Dict)
+	return build_mesh(name, size, size, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
 end
 
-function Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, params::Dict)
+function build_mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, params::Dict)
 	(size_i, size_j) = size(image);
-	Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
+	build_mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
 end
 
 
@@ -247,13 +241,13 @@ function find_mesh_triangle(Am, i, j)
 	return (ind0, ind1, ind2);
 end
 
-# Convert Cartesian coordinate to triple of barycentric coefficients
+"""
+Convert Cartesian coordinate to triple of barycentric coefficients
+"""
 function get_triangle_weights(Am, triangle, pi, pj)
 	R = vcat(Am.nodes[triangle[1]]', Am.nodes[triangle[2]]', Am.nodes[triangle[3]]')
 	R = hcat(R, ones(Float64, 3, 1));
 	r = hcat(pi, pj, 1.0);
-
 	V = r * R^-1;
-
 	return (V[1], V[2], V[3]);
 end
