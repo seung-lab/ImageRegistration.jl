@@ -1,23 +1,3 @@
-function is_internal(sz, pt::Point, radius)
-  above_min_i = pt[1] > radius
-  above_min_j = pt[2] > radius
-  below_max_i = pt[1] <= (sz[1]-radius)
-  below_max_j = pt[2] <= (sz[2]-radius)
-  return above_min_i && above_min_j && below_max_i && below_max_j
-end
-
-function get_range(sz, pt::Point, offset::Point, radius)
-  if !is_internal(sz, pt-offset, radius)
-    return NO_RANGE
-  end
-  pt_local = pt-offset
-  i = round(Int64, ceil(pt_local[1]))
-  j = round(Int64, ceil(pt_local[2]))
-  i_range = i-radius:i+radius
-  j_range = j-radius:j+radius
-  return i_range, j_range
-end
-
 """
 `GET_MAX_XC_VECTOR` - Find the cross correlation peak between two images
 
@@ -29,7 +9,6 @@ end
 * y: y displacement from the correlogram center to its peak
 * r_value: the value of the correlogram at its peak
 * correlogram: 2D array representing the cross corelation between A & B
-
 """
 function get_max_xc_vector(A, B)
   if std(A) == 0 || std(B) == 0
@@ -84,11 +63,7 @@ processors:
 """
 function get_blockmatches(mesh, src_img, dst_img, src_offset, dst_offset, params)
   n = count_nodes(mesh)
-
-  src_points = Points(0)
-  dst_points = Points(0)
   displacements = Array{Array{Float64, 1}, 1}(n)
-
   src_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n)
   dst_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n)
 
@@ -100,7 +75,6 @@ function get_blockmatches(mesh, src_img, dst_img, src_offset, dst_offset, params
   src_sz = size(src_img)
   dst_sz = size(dst_img)
 
-  # preprocessing
   for i in 1:n
     pt = mesh.src_nodes[i]
     src_ranges[i] = get_range(src_sz, pt, src_offset, block_size)
@@ -134,6 +108,9 @@ function get_blockmatches(mesh, src_img, dst_img, src_offset, dst_offset, params
   end
   end
 
+  mesh_indices = []
+  src_points = Points(0)
+  dst_points = Points(0)
   for i in 1:n
     v = displacements[i]
     if v == NO_MATCH 
@@ -142,11 +119,38 @@ function get_blockmatches(mesh, src_img, dst_img, src_offset, dst_offset, params
     if v[3] < min_r 
       continue
     end
+    push!(mesh_indices, i)
     push!(src_points, mesh.src_nodes[i])
     push!(dst_points, mesh.src_nodes[i] + v[1:2])
   end
   if length(dst_points) == 0
     return Void
   end
-  return Matches(src_points, dst_points)
+  return Matches(mesh_indices, src_points, dst_points)
+end
+
+"""
+Is a point contained within an image perimeter, less a certain radius?
+"""
+function is_internal(sz, pt::Point, radius)
+  above_min_i = pt[1] > radius
+  above_min_j = pt[2] > radius
+  below_max_i = pt[1] <= (sz[1]-radius)
+  below_max_j = pt[2] <= (sz[2]-radius)
+  return above_min_i && above_min_j && below_max_i && below_max_j
+end
+
+"""
+From global point and offset, calculate range of pixels within radius to slice
+"""
+function get_range(sz, pt::Point, offset::Point, radius)
+  if !is_internal(sz, pt-offset, radius)
+    return NO_RANGE
+  end
+  pt_local = pt-offset
+  i = round(Int64, ceil(pt_local[1]))
+  j = round(Int64, ceil(pt_local[2]))
+  i_range = i-radius:i+radius
+  j_range = j-radius:j+radius
+  return i_range, j_range
 end
