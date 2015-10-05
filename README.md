@@ -80,6 +80,49 @@ Working with the ImageView package, there are some functions included to help vi
 * imfuse visualization function (see Overlay type in Images for a start)
 
 ### Examples
+Load two images
+```
+imgA = imread("test/test_images/imgA.jpg")
+imgB = imread("test/test_images/imgA.jpg")
+```
+
+Set the parameters for the blockmatch
+```
+params = default_params()
+params["min_r"] = 0.1
+```
+
+Blockmatch the first image to the second image
+```
+mesh, matches = blockmatch(imgA, imgB, params=params)
+```
+
+View the blockmatch vector field
+```
+using ImageView
+imgc, img2 = view(imgA, pixelspacing=[1,1]) # See ImageView package
+draw_vectors(imgc, img2, matches)
+```
+
+Calculate rigid transform and render the first image with it
+```
+tform = calculate_rigid(matches)
+rigid_imgA, rigid_offset = imwarp(imgA, tform)
+```
+
+Convert the matches to a mesh and render the piecewise affine transform of the first image
+```
+warped_mesh = matches2mesh(matches, mesh)
+warped_imgA, warped_offset = meshwarp(imgA, warped_mesh)
+```
+
+Compare the images
+```
+view(imgB, pixelspacing=[1,1])
+view(rigid_imgA, pixelspacing=[1,1])
+view(warped_imgA, pixelspacing=[1,1])
+```
+
 Manually create a mesh with src_nodes and deformed dst_nodes (just to hit home the point), then use meshwarp to deform the image via piecewise affine transforms.
 ```
 img = load_test_image() # load test/test_images/turtle.jpg
