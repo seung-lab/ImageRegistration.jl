@@ -87,7 +87,7 @@ Working with the ImageView package, there are some functions included to help vi
 ### Examples
 Load two images
 ```
-imgA. imgB = load_test_images() # Loading two images from test/test_images
+imgA, imgB = load_test_images() # Loading two images from test/test_images
 ```
 
 Set the parameters for the blockmatch
