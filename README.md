@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/seung-lab/ImageRegistration.svg?branch=master)](https://travis-ci.org/seung-lab/ImageRegistration)
 
 # ImageRegistration.jl
-An image registration package toolbox for Julia. 
+An image registration toolbox for Julia. 
 
 * Create point set correspondences
 * Calculate geometric transforms
