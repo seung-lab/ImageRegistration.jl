@@ -51,6 +51,9 @@ All transforms are calculated and applied as right-hand matrix mulitplication. S
 * **meshwarp**: apply a piecewise transform, as defined by a Mesh, to an image
 
 ## Additional information
+### Works with arrays only
+For now, the blockmatch function only works on arrays, not on Image types. So if you read in an image using Images' imread, make sure to convert that type to just the data array.
+
 ### Indexing notation
 Since Julia stores arrays in column-majored order, this package uses row-column indexing (row represented by "i", and column represented by "j"). For example, the coordinate [5,2] will access the element in the 5th row and 2nd column of an array.
 
