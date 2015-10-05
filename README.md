@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg?branch=registration)](https://travis-ci.org/seung-lab/Julimaps)
+
 # Registration & Transforms
 An image registration package for Julia. Create point set correspondences
 (currently, via blockmatching), calculate affine transforms, and render
