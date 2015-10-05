@@ -1,43 +1,120 @@
-[![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg?branch=master)](https://travis-ci.org/seung-lab/Julimaps)
+# Registration & Transforms
+An image registration package for Julia. Create point set correspondences
+(currently, via blockmatching), calculate affine transforms, and render
+images with affine transforms or use meshes to render images with piecewise
+linear affine transforms.
 
-# Julimaps
-JULia IMAge Processing Suite:
-A set of tools for elastic image registration in Julia.
+## Installation
+Use the package manager:
 
-# Process
-(time in seconds per section)
+```
+Pkg.add("ImageRegistration")
+```
 
-| Step | Read | Match | Solve | Render | Write | Total | Review Method | Intervene Method |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| premontage | 30 | 10 | 10 | 0 | 30 | 80 | (overlay tiles on overview) | NA |
-| montage | 30 | 40 | 20 | 60 | 30 | 180 | (section overlay as checkerboard) | blockmatch image select |
-| prealignment | 30 | 25 | 5 | 30 | 30 | 120 | overlay sections | blockmatch image select |
-| alignment | 30 | 480 | 20 | 80 | 60 | 670 | movie of sections in FIJI | blockmatch image select |
+## Who is this package for?
+This package was designed for people migrating pipelines from other languages 
+who are in need of similar image registration functionality. It was produced in 
+a neuroscience lab, initially for aligning electron microscopy images, then 
+abstracted for more general applications.
 
-# Milestones
-* Montage two tiles (8/9)
-* Montage one section (8/16)
-* Prealign two sections (9/1)
-* Align two sections (9/3)
-* Align five sections (9/5)
-* Align one wafer
-* Align one stack
-* Premontage one section
-* Run on AWS
+## Dependencies
+FixedPointNumbers (to allow for Ufixed series of image types)
+Images & ImageView (for the visualization functions)
 
-# Terminology
-* Tile: the base image unit from the microscope at the highest resolution
-* Section: the image formed by combining all the tiles together
-* Overview: a downsampled image of the entire substrate from which the tiles were imaged (a downsampled superset of the section)
-* Wafer: a collection of sections, denoted by the number of substrates that can fit into the microscope at one time
-* Stack: a collection of sections, that include all the wafers
+## Methods
+* matches = blockmatch(imgA, imgB, offsetA, offsetB, params)
+* img, offset = imwarp(img, tform, offset)
+* img, offset = meshwarp(img, mesh, offset)
+* tform = calculate_translation(matches)
+* tform = calculate_rigid(matches)
+* tform = calculate_affine(matches)
+* tform = calculate_translation(mesh)
+* tform = calculate_rigid(mesh)
+* tform = calculate_affine(mesh)
+* new_mesh = matches2mesh(matches, old_mesh)
 
-# Pipeline
-## Premontage
-Register tile images to the overview image by cross correlating the entire tile (downsampled to the overview image resolution) across the entire overview image. Allow tile translations only. Review by inspecting overlay image of tiles on the overview. There is no intervention method, yet.
-## Montage
-Register tile images to one another by blockmatching in their overlapping portions, as calculated by the premontage translations. Cover each tile image in a triangle mesh, and deform the mesh elastically to accommodate the correspondences. Render with a piecewise affine transform. Review by inspecting the combined overlay plot of all tiles combined. Intervene by removing bad correspondences by identifying bad blockmatch images, or by clicking on correspondences that have non-consistent displacements relative to their neighbors.
-## Prealignment
-Register montaged sections to the previous prealigned section by blockmatching. Render with a regularized affine transform (part affine, part rigid). Review by looking at overlays of the two sections. Intervene by removing bad correspondences by identifying bad blockmatch images, or by clicking on correspondences that have non-consistent displacements relative to their neighbors. 
-## Alignment
-Register prealigned sections to each other, and N+k neighboring sections, by blockmatching. Cover each section image in a triangle mesh, and globally deform all the meshes elastically to accommodate the correspondences. Render with a piecewise affine transform. Review by inspecting the combined overlay plot of all tiles combined. Intervene by removing bad correspondences by identifying bad blockmatch images, or by clicking on correspondences that have non-consistent displacements relative to their neighbors.
+### Objects
+#### Mesh
+* src_nodes
+* dst_nodes
+* edges
+
+#### Matches
+* mesh_indices
+* src_points
+* dst_points
+
+### Registration
+#### convolution
+#### blockmatch
+
+### Transformations
+##### affine
+Solve a system of moving and fixed points to preserve parallelism.
+##### rigid (isometry)
+Solve a system of moving and fixed points to preserve distances and angles.
+##### translation (displacement)
+Solve a system of moving and fixed points to preserve distances and oriented 
+angles.
+##### piecewise affine (diffeomorphism)
+Use a triangle mesh to apply a local affine transform to each triangle.
+
+### Visualizations
+#### 
+
+### Rendering Methods
+#### imwarp
+Apply an affine transform to an entire image.
+#### meshwarp
+Apply a piecewise affine transform to an image, as defined by a mesh.
+
+### Offsets
+To translate between intrinsic and global coordinate systems, a 2-element array
+notes where the upper left pixel in the image is located in global space. When
+a transform is applied to an image, the render method will return the
+transformed image along with an offset, denoting the transformed image's
+location in global space.
+
+Transform methods will work on images with offsets. Offsets also allow an image
+to be rendered in the global coordinate system to align with other images.
+
+### Not currently included in this package
+* Alpha masks
+* Feature-based image registration (SURF or SIFT)
+* Multi-mesh solvers (i.e. affine solvers for more than one mesh, elastic solvers)
+* imfuse visualization function (see Overlay type in Images for a start)
+
+http://gbayer.com/development/moving-files-from-one-git-repository-to-another-preserving-history/
+
+### Example
+```
+# Demo the updated meshwarp function that runs faster than original package
+    path = joinpath("test", "test_images", "turtle.jpg"))
+    img = convert(Array{Ufixed8}, data(imread(path))[:,:,1])'
+    src_nodes = [20.0 20.0;
+                    620.0 20.0;
+                    620.0 560.0;
+                    20.0 560.0;
+                    320.0 290.0]'
+    dst_nodes = [20.0 20.0;
+                    620.0 20.0;
+                    620.0 560.0;
+                    20.0 560.0;
+                    400.0 460.0]'
+    incidence = [1 1 1 0 0 0 0 0;
+                -1 0 0 1 1 0 0 0;
+                0 0 0 -1 0 1 1 0;
+                0 -1 0 0 0 0 -1 1;
+                0 0 -1 0 -1 -1 0 -1]
+    triangles = [1 2 5;
+                1 4 5;
+                2 3 5;
+                3 4 5];
+    node_dict = incidence2dict(incidence)
+    draw_mesh(img, mesh)
+    println(size(img))
+
+    warp = meshwarp(img, src_nodes, dst_nodes, triangles)
+    draw_mesh(warp, dst_nodes, node_dict)
+    println(size(warp))
+```

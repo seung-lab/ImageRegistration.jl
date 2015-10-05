@@ -50,30 +50,30 @@ img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
 @test warped_offset == [4,2]
 
 # test_poly2mask()
-vertices=[1.5 2.5; 2.5 1.5; 3.5 4.5]
-img, off = poly2mask(vertices[:,1],vertices[:,2])
-""" off should be [1,1] and img should be:
-false  false  false  false  false
-false   true   true  false  false
-false  false   true   true  false
-false  false  false  false  false
-"""
-vertices=[1.5 2.4; 2.5 1.5; 3.5 4.5]
-img, off = poly2mask(vertices[:,1],vertices[:,2])
-""" off should be [1,1] and img should be:
-false  false  false  false  false
-false   true  false  false  false
-false  false   true  false  false
-false  false  false  false  false,
-"""
-vertices=[1 2; 2.5 1.5; 3.5 4.5]
-img, off = poly2mask(vertices[:,1],vertices[:,2])
-""" corner case: off should be [1,1] and img should be:
-false   true  false  false  false
-false   true   true  false  false
-false  false   true   true  false
-false  false  false  false  false
-"""
+# vertices=[1.5 2.5; 2.5 1.5; 3.5 4.5]
+# img, off = poly2mask(vertices[:,1],vertices[:,2])
+# """ off should be [1,1] and img should be:
+# false  false  false  false  false
+# false   true   true  false  false
+# false  false   true   true  false
+# false  false  false  false  false
+# """
+# vertices=[1.5 2.4; 2.5 1.5; 3.5 4.5]
+# img, off = poly2mask(vertices[:,1],vertices[:,2])
+# """ off should be [1,1] and img should be:
+# false  false  false  false  false
+# false   true  false  false  false
+# false  false   true  false  false
+# false  false  false  false  false,
+# """
+# vertices=[1 2; 2.5 1.5; 3.5 4.5]
+# img, off = poly2mask(vertices[:,1],vertices[:,2])
+# """ corner case: off should be [1,1] and img should be:
+# false   true  false  false  false
+# false   true   true  false  false
+# false  false   true   true  false
+# false  false  false  false  false
+# """
 # p=plot(x=vertices[:,1],y=vertices[:,2])
 # display(p)
 # img,off
