@@ -91,35 +91,50 @@ to be rendered in the global coordinate system to align with other images.
 
 http://gbayer.com/development/moving-files-from-one-git-repository-to-another-preserving-history/
 
-### Example
+### Examples
 ```
-# Demo the updated meshwarp function that runs faster than original package
-    path = joinpath("test", "test_images", "turtle.jpg"))
-    img = convert(Array{Ufixed8}, data(imread(path))[:,:,1])'
+"""
+Create a mesh with src_nodes and deformed dst_nodes, then use
+meshwarp to deform the image via piecewise affine transforms.
+"""
+    img = load_test_image() # load test/test_images/turtle.jpg
     src_nodes = [20.0 20.0;
                     620.0 20.0;
                     620.0 560.0;
                     20.0 560.0;
-                    320.0 290.0]'
+                    320.0 290.0]
     dst_nodes = [20.0 20.0;
                     620.0 20.0;
                     620.0 560.0;
                     20.0 560.0;
-                    400.0 460.0]'
-    incidence = [1 1 1 0 0 0 0 0;
-                -1 0 0 1 1 0 0 0;
-                0 0 0 -1 0 1 1 0;
-                0 -1 0 0 0 0 -1 1;
-                0 0 -1 0 -1 -1 0 -1]
-    triangles = [1 2 5;
-                1 4 5;
-                2 3 5;
-                3 4 5];
-    node_dict = incidence2dict(incidence)
-    draw_mesh(img, mesh)
-    println(size(img))
+                    400.0 460.0]
+    edges = spzeros(Int64, 8, 5)
+    edges[1,1:2] = [1, -1]
+    edges[2,1] = 1
+    edges[2,4] = -1
+    edges[3,1] = 1
+    edges[3,5] = -1
+    edges[4,2:3] = [1, -1]
+    edges[5,2] = 1
+    edges[5,5] = -1
+    edges[6,3] = 1
+    edges[6,5] = -1
+    edges[7,3:4] = [1, -1]
+    edges[8,4:5] = [1, -1]
+    # 1  -1   0   0   0
+    # 1   0   0  -1   0
+    # 1   0   0   0  -1
+    # 0   1  -1   0   0
+    # 0   1   0   0  -1
+    # 0   0   1   0  -1
+    # 0   0   1  -1   0
+    # 0   0   0   1  -1
 
-    warp = meshwarp(img, src_nodes, dst_nodes, triangles)
-    draw_mesh(warp, dst_nodes, node_dict)
-    println(size(warp))
+    mesh = Mesh(src_nodes, dst_nodes, edges)
+    imgc, img2 = view(img, pixelspacing=[1,1])
+    draw_mesh(imgc, img2, mesh)
+
+    warped_img, offset = meshwarp(img, mesh)
+    wimgc, wimg2 = view(warped_img, pixelspacing=[1,1])
+    draw_mesh(wimgc, wimg2, mesh)
 ```

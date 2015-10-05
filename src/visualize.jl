@@ -1,15 +1,4 @@
 """
-`MAKE_ISOTROPIC` - Convert 2D array to Image object with isotropic pixel spacing
-
-* img: Image object for isotropic ImageView display
-"""
-function make_isotropic(img)
-    img = Image(img)
-    img["pixelspacing"] = [1, 1]
-    return img
-end
-
-"""
 `DRAW_MESH` - Display mesh on image
 
 ```
@@ -24,19 +13,19 @@ an_lines = draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
 * an_lines: annotation object for the lines describing the mesh edges
 """ 
 function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))  
-    lines = Array(Float64, 4, 0)
-    for k in sort(collect(keys(node_dict)))
-        for v in node_dict[k]
-            a = reverse(vec(nodes[k,:]))
-            b = reverse(vec(nodes[v,:]))
-            lines = hcat(lines, vcat(a, b))
-        end
-    end
-    an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="yyxx"))
-    return an_lines
+  lines = Array(Float64, 4, 0)
+  for k in sort(collect(keys(node_dict)))
+      for v in node_dict[k]
+          a = reverse(vec(nodes[k,:]))
+          b = reverse(vec(nodes[v,:]))
+          lines = hcat(lines, vcat(a, b))
+      end
+  end
+  an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="yyxx"))
+  return an_lines
 end
 
-function draw_mesh(img, mesh::Mesh)
+function draw_mesh(imgc, img2, mesh::Mesh)
   node_dict = incidence2dict(mesh.edges)
   an_src = draw_mesh(imgc, img2, mesh.src_nodes, node_dict, RGB(0,1,0))
   an_dst = draw_mesh(imgc, img2, mesh.dst_nodes, node_dict, RGB(1,0,0))
@@ -62,23 +51,28 @@ an_points, an_vectors = draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1),
 """
 function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), 
                                               vec_color=RGB(1,0,1), k=10)
-    vectors = [vectors[:,2]'; 
-                vectors[:,1]'; 
-                (vectors[:,4]'-vectors[:,2]')*k + vectors[:,2]'; 
-                (vectors[:,3]'-vectors[:,1]')*k + vectors[:,1]']
-    an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, 
-                                            coord_order="xxyy", linewidth=3))
-    an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], 
-                                                    color=pt_color, shape='*'))
-    return an_points, an_vectors
+  vectors = [vectors[:,2]'; 
+              vectors[:,1]'; 
+              (vectors[:,4]'-vectors[:,2]')*k + vectors[:,2]'; 
+              (vectors[:,3]'-vectors[:,1]')*k + vectors[:,1]']
+  an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, 
+                                          coord_order="xxyy", linewidth=3))
+  an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], 
+                                                  color=pt_color, shape='*'))
+  return an_points, an_vectors
 end
 
 function draw_vectors(imgc, img2, matches::Matches)
-    vectors = hcat(matches.src_points, matches.dst_points)
-    return draw_vectors(imgc, img2, vectors)
+  vectors = hcat(matches.src_points, matches.dst_points)
+  return draw_vectors(imgc, img2, vectors)
 end
 
 function draw_vectors(imgc, img2, mesh::Mesh)
-    vectors = hcat(mesh.src_nodes, mesh.dst_nodes)
-    return draw_vectors(imgc, img2, vectors)
+  vectors = hcat(mesh.src_nodes, mesh.dst_nodes)
+  return draw_vectors(imgc, img2, vectors)
+end
+
+function load_test_image()
+	path = joinpath("test", "test_images", "turtle.jpg")
+	return convert(Array{Ufixed8}, data(imread(path))[:,:,1])'
 end

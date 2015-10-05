@@ -23,7 +23,7 @@
 type Mesh
   src_nodes::Array 
   dst_nodes::Array
-  edges::SparseMatrixCSC{Float64, Int64}
+  edges::SparseMatrixCSC{Int64, Int64}
 end
 
 Mesh() = Mesh([], [], spzeros(0,0))
