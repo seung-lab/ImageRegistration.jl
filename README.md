@@ -31,6 +31,11 @@ Mesh types exist to apply piecewise transforms. Matches types exist as a more ge
 ### Create point sets
 The blockmatch method takes two images along with some parameters. It creates a mesh so that at each node it can blockmatch between one image and the other. The blockmatched nodes which pass the filter criteria (for now, just a threshold on the cross-correlation value), will create a Matches type. The initial mesh and the matches type are returned.
 
+Blockmatch is written to handle parallel computation. Starting Julia across multiple nodes will automatically take advantage of it:
+```
+julia -p <number of nodes>
+```
+
 ### Geometric transforms
 
 * **affine** transforms
