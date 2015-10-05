@@ -3,6 +3,7 @@ module ImageRegistration
 using Images
 using FixedPointNumbers
 using ImageView
+using Colors
 
 include("mesh.jl")
 include("convolve.jl")
@@ -44,6 +45,8 @@ export
   sz2bb,
   bb2pts,
   +,
-  -
+  -,
+  load_ufixed8_img,
+  load_test_images
 
 end

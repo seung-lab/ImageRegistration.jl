@@ -97,44 +97,44 @@ http://gbayer.com/development/moving-files-from-one-git-repository-to-another-pr
 Create a mesh with src_nodes and deformed dst_nodes, then use
 meshwarp to deform the image via piecewise affine transforms.
 """
-    img = load_test_image() # load test/test_images/turtle.jpg
-    src_nodes = [20.0 20.0;
-                    620.0 20.0;
-                    620.0 560.0;
-                    20.0 560.0;
-                    320.0 290.0]
-    dst_nodes = [20.0 20.0;
-                    620.0 20.0;
-                    620.0 560.0;
-                    20.0 560.0;
-                    400.0 460.0]
-    edges = spzeros(Int64, 8, 5)
-    edges[1,1:2] = [1, -1]
-    edges[2,1] = 1
-    edges[2,4] = -1
-    edges[3,1] = 1
-    edges[3,5] = -1
-    edges[4,2:3] = [1, -1]
-    edges[5,2] = 1
-    edges[5,5] = -1
-    edges[6,3] = 1
-    edges[6,5] = -1
-    edges[7,3:4] = [1, -1]
-    edges[8,4:5] = [1, -1]
-    # 1  -1   0   0   0
-    # 1   0   0  -1   0
-    # 1   0   0   0  -1
-    # 0   1  -1   0   0
-    # 0   1   0   0  -1
-    # 0   0   1   0  -1
-    # 0   0   1  -1   0
-    # 0   0   0   1  -1
+img = load_test_image() # load test/test_images/turtle.jpg
+src_nodes = [20.0 20.0;
+                620.0 20.0;
+                620.0 560.0;
+                20.0 560.0;
+                320.0 290.0]
+dst_nodes = [20.0 20.0;
+                620.0 20.0;
+                620.0 560.0;
+                20.0 560.0;
+                400.0 460.0]
+edges = spzeros(Int64, 8, 5)
+edges[1,1:2] = [1, -1]
+edges[2,1] = 1
+edges[2,4] = -1
+edges[3,1] = 1
+edges[3,5] = -1
+edges[4,2:3] = [1, -1]
+edges[5,2] = 1
+edges[5,5] = -1
+edges[6,3] = 1
+edges[6,5] = -1
+edges[7,3:4] = [1, -1]
+edges[8,4:5] = [1, -1]
+# 1  -1   0   0   0
+# 1   0   0  -1   0
+# 1   0   0   0  -1
+# 0   1  -1   0   0
+# 0   1   0   0  -1
+# 0   0   1   0  -1
+# 0   0   1  -1   0
+# 0   0   0   1  -1
 
-    mesh = Mesh(src_nodes, dst_nodes, edges)
-    imgc, img2 = view(img, pixelspacing=[1,1])
-    draw_mesh(imgc, img2, mesh)
+mesh = Mesh(src_nodes, dst_nodes, edges)
+imgc, img2 = view(img, pixelspacing=[1,1])
+draw_mesh(imgc, img2, mesh)
 
-    warped_img, offset = meshwarp(img, mesh)
-    wimgc, wimg2 = view(warped_img, pixelspacing=[1,1])
-    draw_mesh(wimgc, wimg2, mesh)
+warped_img, offset = meshwarp(img, mesh)
+wimgc, wimg2 = view(warped_img, pixelspacing=[1,1])
+draw_mesh(wimgc, wimg2, mesh)
 ```

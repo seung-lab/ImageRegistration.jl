@@ -50,7 +50,7 @@ an_points, an_vectors = draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1),
 * an_vectors: annotation object for the vectors
 """
 function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), 
-                                              vec_color=RGB(1,0,1), k=10)
+                                              vec_color=RGB(1,0,1), k=1)
   vectors = [vectors[:,2]'; 
               vectors[:,1]'; 
               (vectors[:,4]'-vectors[:,2]')*k + vectors[:,2]'; 
@@ -72,7 +72,12 @@ function draw_vectors(imgc, img2, mesh::Mesh)
   return draw_vectors(imgc, img2, vectors)
 end
 
-function load_test_image()
-	path = joinpath("test", "test_images", "turtle.jpg")
-	return convert(Array{Ufixed8}, data(imread(path))[:,:,1])'
+function load_ufixed8_img(path)
+	return convert(Array{FixedPointNumbers.Ufixed8}, Images.data(Images.imread(path))[:,:,1])'
+end
+
+function load_test_images()
+	pathA = joinpath("test", "test_images", "imgA.tif")
+	pathB = joinpath("test", "test_images", "imgB.tif")
+	return load_ufixed8_img(pathA), load_ufixed8_img(pathB)
 end

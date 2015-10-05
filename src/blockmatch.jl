@@ -1,4 +1,4 @@
-const NO_MATCH = [0; 0; -1]
+const NO_MATCH = ([0 0], -1)
 const NO_RANGE = (0:0, 0:0)
 
 type Matches
@@ -10,12 +10,12 @@ end
 """
 `GET_MAX_XC_VECTOR` - Find the cross correlation peak between two images
 
-`[x, y, r_value], correlogram = get_max_xc_vector(A, B)`
+`[i, j, r_value], correlogram = get_max_xc_vector(A, B)`
 
 * A: 2D array representing the first image
 * B: 2D array representing the second image
-* x: x displacement from the correlogram center to its peak
-* y: y displacement from the correlogram center to its peak
+* i: i displacement from the correlogram center to its peak
+* j: j displacement from the correlogram center to its peak
 * r_value: the value of the correlogram at its peak
 * correlogram: 2D array representing the cross corelation between A & B
 """
@@ -39,7 +39,7 @@ function get_max_xc_vector(A, B)
   if i_max == 0 
     i_max = size(xc, 1)
   end
-  return [i_max-1-rad; j_max-1-rad; r_max], xc
+  return [i_max-1-rad j_max-1-rad], r_max, xc
 end
 
 """
@@ -71,8 +71,8 @@ processors:
 
 """
 function blockmatch(nodes, src_img, dst_img, src_offset, dst_offset, params)
-  n = length(nodes)
-  displacements = Array{Array{Float64, 1}, 1}(n)
+  n = size(nodes, 1)
+  displacements = Array{Tuple{Array{Float64, 2}, Float64}, 1}(n)
   src_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n)
   dst_ranges = Array{Tuple{UnitRange{Int64}, UnitRange{Int64}}, 1}(n)
 
@@ -90,6 +90,7 @@ function blockmatch(nodes, src_img, dst_img, src_offset, dst_offset, params)
     dst_ranges[i] = get_range(dst_sz, pt, dst_offset, b_rad)
   end
 
+  num_procs = nprocs()
   k = 1
   nexti() = (i=k; k+=1; i)
   @sync begin
@@ -106,11 +107,11 @@ function blockmatch(nodes, src_img, dst_img, src_offset, dst_offset, params)
           continue
         end
 
-        src = imgA[src_ranges[i]...]
-        dst = imgB[dst_ranges[i]...]
+        src = src_img[src_ranges[i]...]
+        dst = dst_img[dst_ranges[i]...]
 
         max_vect_xc = remotecall_fetch(p, get_max_xc_vector, src,  dst)
-        displacements[i] = max_vect_xc[1]
+        displacements[i] = max_vect_xc[1:2]
       end
       end
     end
@@ -125,17 +126,17 @@ function blockmatch(nodes, src_img, dst_img, src_offset, dst_offset, params)
     if v == NO_MATCH 
       continue
     end
-    if v[3] < min_r 
+    if v[2] < min_r 
       continue
     end
     push!(mesh_indices, i)
-    src_points = vcat(src_points, nodes[i])
-    dst_points = vcat(src_points, nodes[i] + v[1:2])
+    push!(src_points, nodes[i, :])
+    push!(dst_points, nodes[i, :] + v[1])
   end
   if length(dst_points) == 0
     return Void
   end
-  return Matches(mesh_indices, src_points, dst_points)
+  return Matches(mesh_indices, vcat(src_points...), vcat(dst_points...))
 end
 
 """
