@@ -1,8 +1,11 @@
-# Registration & Transforms
-An image registration package for Julia. Create point set correspondences
-(currently, via blockmatching), calculate affine transforms, and render
-images with affine transforms or use meshes to render images with piecewise
-linear affine transforms.
+[![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg?branch=registration)](https://travis-ci.org/seung-lab/Julimaps)
+
+# Image Registration
+An image registration package for Julia. 
+
+* create point set correspondences (currently, via blockmatching)
+* calculate affine transforms
+* render images with affine transforms or use meshes to render images with piecewise linear affine transforms.
 
 ## Installation
 Use the package manager:
@@ -18,20 +21,23 @@ a neuroscience lab, initially for aligning electron microscopy images, then
 abstracted for more general applications.
 
 ## Dependencies
-FixedPointNumbers (to allow for Ufixed series of image types)
-Images & ImageView (for the visualization functions)
+* FixedPointNumbers (to allow for Ufixed series of image types)
+* Images 
+* ImageView (for the visualization functions)
 
 ## Methods
-* matches = blockmatch(imgA, imgB, offsetA, offsetB, params)
-* img, offset = imwarp(img, tform, offset)
-* img, offset = meshwarp(img, mesh, offset)
-* tform = calculate_translation(matches)
-* tform = calculate_rigid(matches)
-* tform = calculate_affine(matches)
-* tform = calculate_translation(mesh)
-* tform = calculate_rigid(mesh)
-* tform = calculate_affine(mesh)
-* new_mesh = matches2mesh(matches, old_mesh)
+```
+matches = blockmatch(imgA, imgB, offsetA, offsetB, params)
+img, offset = imwarp(img, tform, offset)
+img, offset = meshwarp(img, mesh, offset)
+tform = calculate_translation(matches)
+tform = calculate_rigid(matches)
+tform = calculate_affine(matches)
+tform = calculate_translation(mesh)
+tform = calculate_rigid(mesh)
+tform = calculate_affine(mesh)
+new_mesh = matches2mesh(matches, old_mesh)
+```
 
 ### Objects
 #### Mesh
@@ -60,7 +66,6 @@ angles.
 Use a triangle mesh to apply a local affine transform to each triangle.
 
 ### Visualizations
-#### 
 
 ### Rendering Methods
 #### imwarp
