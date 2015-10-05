@@ -88,7 +88,7 @@ imgA. imgB = load_test_images() # Loading two images from test/test_images
 Set the parameters for the blockmatch
 ```
 params = default_params()
-params["min_r"] = 0.1
+params["search_r"] = 1000
 ```
 
 Blockmatch the first image to the second imag (both with offsets of [0,0])
