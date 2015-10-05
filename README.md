@@ -85,8 +85,9 @@ Working with the ImageView package, there are some functions included to help vi
 * imfuse visualization function (see Overlay type in Images for a start)
 
 ### Examples
-Load two images
+Load the package and load two images
 ```
+using ImageRegistration
 imgA, imgB = load_test_images() # Loading two images from test/test_images
 ```
 
