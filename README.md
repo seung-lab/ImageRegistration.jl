@@ -67,6 +67,11 @@ tform = calculate_rigid(mesh)
 tform = calculate_affine(mesh)
 new_mesh = matches2mesh(matches, old_mesh)
 ```
+### Visualizations
+Working with the ImageView package, there are some functions included to help visualize function outputs.
+
+* **draw_vectors**: display the starting point and line segment of correspondence points (matches or mesh) on an image
+* **draw_mesh**: display the nodes and their edges on an image
 
 ### Not currently included in this package
 * Alpha masks
@@ -75,11 +80,8 @@ new_mesh = matches2mesh(matches, old_mesh)
 * imfuse visualization function (see Overlay type in Images for a start)
 
 ### Examples
+Manually create a mesh with src_nodes and deformed dst_nodes (just to hit home the point), then use meshwarp to deform the image via piecewise affine transforms.
 ```
-"""
-Create a mesh with src_nodes and deformed dst_nodes, then use
-meshwarp to deform the image via piecewise affine transforms.
-"""
 img = load_test_image() # load test/test_images/turtle.jpg
 src_nodes = [20.0 20.0;
                 620.0 20.0;
