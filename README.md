@@ -82,8 +82,7 @@ Working with the ImageView package, there are some functions included to help vi
 ### Examples
 Load two images
 ```
-imgA = imread("test/test_images/imgA.jpg")
-imgB = imread("test/test_images/imgA.jpg")
+imgA. imgB = load_test_images() # Loading two images from test/test_images
 ```
 
 Set the parameters for the blockmatch
@@ -92,9 +91,9 @@ params = default_params()
 params["min_r"] = 0.1
 ```
 
-Blockmatch the first image to the second image
+Blockmatch the first image to the second imag (both with offsets of [0,0])
 ```
-mesh, matches = blockmatch(imgA, imgB, params=params)
+mesh, matches = blockmatch(imgA, imgB, [0,0], [0,0], params)
 ```
 
 View the blockmatch vector field
@@ -116,7 +115,7 @@ warped_mesh = matches2mesh(matches, mesh)
 warped_imgA, warped_offset = meshwarp(imgA, warped_mesh)
 ```
 
-Compare the images
+Visually compare the images
 ```
 view(imgB, pixelspacing=[1,1])
 view(rigid_imgA, pixelspacing=[1,1])
