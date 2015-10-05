@@ -7,13 +7,13 @@ An image registration package toolbox for Julia.
 * Calculate geometric transforms
 * Render images with transforms
 
-## Installation
+### Installation
 Use the package manager:
 ```
 Pkg.add("ImageRegistration")
 ```
 
-## Dependencies
+### Dependencies
 * FixedPointNumbers (to allow for Ufixed series of image types)
 * Images 
 * ImageView (for the visualization functions)
@@ -52,7 +52,7 @@ Every image has an offset to translate between its intrinsic coordinate system a
 
 When a transform is applied to an image, the render method will return the transformed image along with a new offset, denoting the transformed image's new location in global space.
 
-## Partial list of core methods
+### Partial list of core methods
 ```
 matches = blockmatch(imgA, imgB, offsetA, offsetB, params)
 img, offset = imwarp(img, tform, offset)
