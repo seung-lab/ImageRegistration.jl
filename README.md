@@ -7,17 +7,18 @@ An image registration package toolbox for Julia.
 * Calculate geometric transforms
 * Render images with transforms
 
-### Installation
+## Installation
 Use the package manager:
 ```
 Pkg.add("ImageRegistration")
 ```
 
-### Dependencies
+## Dependencies
 * FixedPointNumbers (to allow for Ufixed series of image types)
 * Images 
 * ImageView (for the visualization functions)
 
+## The Toolbox
 ### Types
 There are two basic types to derive and apply transforms in this pacakge, the **Mesh** type and the **Matches** type. 
 
@@ -44,6 +45,7 @@ All transforms are calculated and applied as right-hand matrix mulitplication. S
 * **imwarp**: apply a non-piecewise transform to an entire image
 * **meshwarp**: apply a piecewise transform, as defined by a Mesh, to an image
 
+## Additional information
 ### Indexing notation
 Since Julia stores arrays in column-majored order, this package uses row-column indexing (row represented by "i", and column represented by "j"). For example, the coordinate [5,2] will access the element in the 5th row and 2nd column of an array.
 
