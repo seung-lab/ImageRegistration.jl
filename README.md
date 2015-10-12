@@ -10,7 +10,7 @@ An image registration toolbox for Julia.
 ## Installation
 For now, use the clone tool within Julia:
 ```
-Pkg.clone("https://github.com/seung-lab/ImageRegistration.git")
+Pkg.clone("https://github.com/seung-lab/ImageRegistration.jl.git")
 ```
 
 ## Dependencies
