@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/seung-lab/ImageRegistration.svg?branch=master)](https://travis-ci.org/seung-lab/ImageRegistration)
+[![Build Status](https://travis-ci.org/seung-lab/ImageRegistration.jl.svg?branch=master)](https://travis-ci.org/seung-lab/ImageRegistration.jl)
 
 # ImageRegistration.jl
 An image registration toolbox for Julia. 
