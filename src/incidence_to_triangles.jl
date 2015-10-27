@@ -7,9 +7,9 @@ function find_nonzero_indices(a)
 end
 
 """
-`INCIDENCE2DICT` - Create dictionary of sets of nodes connected to indexing node
+`INCIDENCE_TO_DICT` - Create dictionary of node sets connected to indexing node
 """
-function incidence2dict(D)
+function incidence_to_dict(D)
   D = abs(D)
   node_dict = Dict()
 
@@ -31,9 +31,9 @@ function incidence2dict(D)
 end
 
 """
-`DICT2TRIANGLES` - Convert node dict to 1x3 list of triangle node index vectors
+`DICT_TO_TRIANGLES` - Convert node dict to Nx3 list triangle node index vectors
 """
-function dict2triangles(node_dict)
+function dict_to_triangles(node_dict)
   triangles = Array(Int64, 0, 3)
   for a in sort(collect(keys(node_dict)))
     setA = node_dict[a]
@@ -52,22 +52,22 @@ function dict2triangles(node_dict)
 end
 
 """
-`INCIDENCE2TRIANGLES` - Convert edge-node incidence matrix into triangle array 
-(triples of node indices defining all triangles in the mesh). The triangle array
-will be used when applying piecewise affine transforms through the meshwarp 
-function.
+`INCIDENCE_TO_TRIANGLES` - Convert edge-node incidence matrix into triangle 
+array (triples of node indices defining all triangles in the mesh). The triangle 
+array will be used when applying piecewise affine transforms through the 
+meshwarp function.
 
 See Mesh type documentation for definition of an incidence matrix.
 
 ```
-triangles = incidence2triangles(D)
+triangles = incidence_to_triangles(D)
 ```
 
 * D: edge-node incidence matrix
 * triangles: Nx3 array of ints, each row represents the indices of three nodes
     in one triangle.
 """
-function incidence2triangles(D)
-  node_dict = incidence2dict(D)
-  return dict2triangles(node_dict)
+function incidence_to_triangles(D)
+  node_dict = incidence_to_dict(D)
+  return dict_to_triangles(node_dict)
 end

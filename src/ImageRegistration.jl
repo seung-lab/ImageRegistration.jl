@@ -8,7 +8,7 @@ using Colors
 include("mesh.jl")
 include("convolve.jl")
 include("blockmatch.jl")
-include("incidence2triangles.jl")
+include("incidence_to_triangles.jl")
 include("registration.jl")
 include("transforms.jl")
 include("boundingbox.jl")
@@ -32,8 +32,8 @@ export
   imwarp,
   meshwarp,
   normxcorr2,
-  incidence2triangles,
-  incidence2dict,
+  incidence_to_triangles,
+  incidence_to_dict,
   warp_pts,
   # auxilliary functions
   make_isotropic,

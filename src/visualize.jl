@@ -21,12 +21,13 @@ function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
           lines = hcat(lines, vcat(a, b))
       end
   end
-  an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="yyxx"))
+  an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, 
+                                                          coord_order="yyxx"))
   return an_lines
 end
 
 function draw_mesh(imgc, img2, mesh::Mesh)
-  node_dict = incidence2dict(mesh.edges)
+  node_dict = incidence_to_dict(mesh.edges)
   an_src = draw_mesh(imgc, img2, mesh.src_nodes, node_dict, RGB(0,1,0))
   an_dst = draw_mesh(imgc, img2, mesh.dst_nodes, node_dict, RGB(1,0,0))
   return an_src, an_dst
@@ -73,7 +74,8 @@ function draw_vectors(imgc, img2, mesh::Mesh)
 end
 
 function load_ufixed8_img(path)
-	return convert(Array{FixedPointNumbers.Ufixed8}, Images.data(Images.imread(path))[:,:,1])'
+	return convert(Array{FixedPointNumbers.Ufixed8}, 
+                                  Images.data(Images.imread(path))[:,:,1])'
 end
 
 function load_test_images()

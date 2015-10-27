@@ -47,7 +47,7 @@ function matches2mesh(matches::Matches, mesh::Mesh)
 end
 
 function meshwarp(img, mesh::Mesh, offset=[0,0])
-  triangles = incidence2triangles(mesh.edges)
+  triangles = incidence_to_triangles(mesh.edges)
   return @time meshwarp(img, mesh.src_nodes, mesh.dst_nodes, triangles, offset)
 end
 
