@@ -8,9 +8,9 @@ An image registration toolbox for Julia.
 * Render images with transforms
 
 ## Installation
-For now, use the clone tool within Julia:
+Install via the package manager:
 ```
-Pkg.clone("https://github.com/seung-lab/ImageRegistration.jl.git")
+Pkg.add("ImageRegistration")
 ```
 
 ## Dependencies
