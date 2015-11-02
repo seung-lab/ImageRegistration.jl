@@ -1,9 +1,10 @@
 module ImageRegistration
 
 using Images
-using FixedPointNumbers
-using ImageView
-using Colors
+using Cairo
+# using FixedPointNumbers
+# using ImageView
+# using Colors
 
 include("mesh.jl")
 include("convolve.jl")
@@ -14,7 +15,7 @@ include("transforms.jl")
 include("boundingbox.jl")
 include("imwarp.jl")
 include("meshwarp.jl")
-include("visualize.jl")
+include("draw.jl")
 
 export
   #types
@@ -24,7 +25,7 @@ export
   # core function
   default_params,
   blockmatch,
-  matches2mesh,
+  matches_to_mesh,
   create_mesh,
   calculate_affine,
   calculate_rigid,
@@ -36,9 +37,6 @@ export
   incidence_to_dict,
   warp_pts,
   # auxilliary functions
-  make_isotropic,
-  draw_mesh,
-  draw_vectors,
   find_mesh_bb,
   tform_bb,
   snap_bb,
@@ -46,7 +44,17 @@ export
   bb2pts,
   +,
   -,
-  load_ufixed8_img,
-  load_test_images
+  load_uint8_img,
+  load_test_images,
+  create_drawing,
+  create_contex,
+  draw_vectors,
+  draw_line,
+  draw_points,
+  draw_point,
+  draw_text,
+  draw_indices,
+  get_drawing,
+  draw_reference
 
 end

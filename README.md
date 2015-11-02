@@ -14,9 +14,7 @@ Pkg.add("ImageRegistration")
 ```
 
 ## Dependencies
-* FixedPointNumbers (to allow for Ufixed series of image types)
 * Images 
-* ImageView (for the visualization functions)
 
 ## The Toolbox
 ### Types
@@ -73,7 +71,7 @@ tform = calculate_affine(matches)
 tform = calculate_translation(mesh)
 tform = calculate_rigid(mesh)
 tform = calculate_affine(mesh)
-new_mesh = matches2mesh(matches, old_mesh)
+new_mesh = matches_to_mesh(matches, old_mesh)
 ```
 ### Visualizations
 Working with the ImageView package, there are some functions included to help visualize function outputs.
@@ -105,13 +103,6 @@ Blockmatch the first image to the second imag (both with offsets of [0,0])
 mesh, matches = blockmatch(imgA, imgB, [0,0], [0,0], params)
 ```
 
-View the blockmatch vector field
-```
-using ImageView
-imgc, img2 = view(imgA, pixelspacing=[1,1]) # See ImageView package
-draw_vectors(imgc, img2, matches)
-```
-
 Calculate rigid transform and render the first image with it
 ```
 tform = calculate_rigid(matches)
@@ -120,12 +111,14 @@ rigid_imgA, rigid_offset = imwarp(imgA, tform)
 
 Convert the matches to a mesh and render the piecewise affine transform of the first image
 ```
-warped_mesh = matches2mesh(matches, mesh)
+warped_mesh = matches_to_mesh(matches, mesh)
 warped_imgA, warped_offset = meshwarp(imgA, warped_mesh)
 ```
 
 Visually compare the images
 ```
+using ImageView
+view(imgA, pixelspacing=[1,1])
 view(imgB, pixelspacing=[1,1])
 view(rigid_imgA, pixelspacing=[1,1])
 view(warped_imgA, pixelspacing=[1,1])

@@ -17,7 +17,7 @@ edges[3,2:3] = [1, -1]
 mesh = Mesh(src_nodes, dst_nodes, edges)
 mesh_indices = [1, 2]
 matches = Matches(mesh_indices, src_nodes[1:2,:], dst_nodes[1:2,:])
-new_mesh = matches2mesh(matches, mesh)
+new_mesh = matches_to_mesh(matches, mesh)
 true_mesh = Mesh(src_nodes[1:2,:], dst_nodes[1:2,:], edges[1,1:2])
 @test new_mesh.src_nodes == true_mesh.src_nodes
 @test new_mesh.dst_nodes == true_mesh.dst_nodes

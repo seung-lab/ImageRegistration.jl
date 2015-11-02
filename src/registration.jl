@@ -21,11 +21,11 @@ function blockmatch(src_img, dst_img, src_offset=[0,0], dst_offset=[0,0],
 end
 
 """
-`MATCHES2MESH` - Using matches and old mesh, create new mesh with just nodes
+`MATCHES_TO_MESH` - Using matches and old mesh, create new mesh with just nodes
   related to the matches.
 
 ```
-new_mesh = matches2mesh(matches::Matches, mesh::Mesh)
+new_mesh = matches_to_mesh(matches::Matches, mesh::Mesh)
 ```
 
 * matches: set of Matches
@@ -34,7 +34,7 @@ new_mesh = matches2mesh(matches::Matches, mesh::Mesh)
     where matches were found. The edge-node incidence matrix will also be
     adjusted. 
 """
-function matches2mesh(matches::Matches, mesh::Mesh)
+function matches_to_mesh(matches::Matches, mesh::Mesh)
   assert(length(matches.mesh_indices) == size(matches.dst_points, 1))
   new_mesh = Mesh()
   mask = matches.mesh_indices
@@ -58,4 +58,22 @@ function warp_pts(tform, pts)
     pts = hcat(pts, ones(size(pts,1)))
     tpts = pts * tform
     return tpts[:,1:2]
+end
+
+"""
+Create array of UInt8 type from from image path
+"""
+function load_uint8_image(path::String)
+  img = Images.load(path)
+  return reinterpret(UInt8, Images.data(img)[:,:,1])'
+end
+
+"""
+Load test images
+"""
+function load_test_images()
+  dir = Pkg.dir("ImageRegistration")
+  pathA = joinpath(dir, "test", "test_images", "imgA.tif")
+  pathB = joinpath(dir, "test", "test_images", "imgB.tif")
+  return load_uint8_image(pathA), load_uint8_image(pathB)
 end
