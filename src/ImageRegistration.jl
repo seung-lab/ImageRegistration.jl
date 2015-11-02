@@ -34,6 +34,7 @@ export
   normxcorr2,
   incidence_to_triangles,
   incidence_to_dict,
+  dict_to_triangles,
   warp_pts,
   # auxilliary functions
   make_isotropic,
