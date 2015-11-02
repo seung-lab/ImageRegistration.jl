@@ -2,9 +2,6 @@ module ImageRegistration
 
 using Images
 using Cairo
-# using FixedPointNumbers
-# using ImageView
-# using Colors
 
 include("mesh.jl")
 include("convolve.jl")
@@ -33,6 +30,7 @@ export
   imwarp,
   meshwarp,
   normxcorr2,
+  find_zero_indices,
   incidence_to_triangles,
   incidence_to_dict,
   warp_pts,
@@ -40,8 +38,8 @@ export
   find_mesh_bb,
   tform_bb,
   snap_bb,
-  sz2bb,
-  bb2pts,
+  sz_to_bb,
+  bb_to_pts,
   +,
   -,
   load_uint8_img,

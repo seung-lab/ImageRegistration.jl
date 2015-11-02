@@ -47,7 +47,7 @@ end
 """
 Convert bounding box object to a polygon point list (counter-clockwise)
 """
-function bb2pts(r)
+function bb_to_pts(r)
   return [r.i r.j;
           r.i+r.h r.j;
           r.i+r.h r.j+r.w;
@@ -84,7 +84,7 @@ Snap bounding box to integer values (smallest rectangle containing original)
 Returns BoundingBox of integers
 """
 function snap_bb(bb)
-  r = bb2pts(bb)
+  r = bb_to_pts(bb)
   i = floor(Int,bb.i)
   j = floor(Int,bb.j)
   h = ceil(Int,r[2,1]) - i
@@ -96,7 +96,7 @@ end
 Apply affine transform to points in a bounding box & find new bounding box
 """
 function tform_bb(bb, tform)
-  tform_pts = [bb2pts(bb) ones(size(bb2pts(bb),1),1)] * tform
+  tform_pts = [bb_to_pts(bb) ones(size(bb_to_pts(bb),1),1)] * tform
   i = minimum(tform_pts[:,1])
   j = minimum(tform_pts[:,2])
   h = maximum(tform_pts[:,1])-i
@@ -107,6 +107,6 @@ end
 """
 Convert Tuple for image size into a BoundingBox at (1,1)
 """
-function sz2bb(sz)
+function sz_to_bb(sz)
   return BoundingBox(0, 0, sz[1]-1, sz[2]-1)
 end
