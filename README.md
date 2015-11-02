@@ -73,7 +73,7 @@ tform = calculate_affine(matches)
 tform = calculate_translation(mesh)
 tform = calculate_rigid(mesh)
 tform = calculate_affine(mesh)
-new_mesh = matches2mesh(matches, old_mesh)
+new_mesh = matches_to_mesh(matches, old_mesh)
 ```
 ### Visualizations
 Working with the ImageView package, there are some functions included to help visualize function outputs.
