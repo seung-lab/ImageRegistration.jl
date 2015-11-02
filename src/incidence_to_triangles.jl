@@ -1,9 +1,9 @@
 function find_zero_indices(a)
-  eachindex(a)'[a' .== 0]
+  eachindex(a)'[a .== 0]
 end
 
 function find_nonzero_indices(a)
-  eachindex(a)'[a' .!= 0]
+  eachindex(a)'[a .!= 0]
 end
 
 """
@@ -13,19 +13,19 @@ function incidence_to_dict(D)
   D = abs(D)
   node_dict = Dict()
 
-  for j = 1:size(D,2)
-    i = 1
+  for i = 1:size(D,1)
+    j = 1
     while D[i,j] == 0
-      i += 1
+      j += 1
     end
-    if !(i in keys(node_dict))
-      node_dict[i] = Set{Int64}()
+    if !(j in keys(node_dict))
+      node_dict[j] = Set{Int64}()
     end
-    k = i+1
-    while D[k,j] == 0
+    k = j+1
+    while D[i,k] == 0
       k += 1
     end
-    push!(node_dict[i], k)
+    push!(node_dict[j], k)
   end
   return node_dict
 end

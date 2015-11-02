@@ -133,7 +133,3 @@ end
 function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
     img[i,j]=pixelvalue
 end
-
-function writepixel{T<:Ufixed8}(img::Array{T},i,j,pixelvalue)
-    img[i,j]=pixelvalue
-end

@@ -3,15 +3,16 @@
 
 * src_nodes: Nx2 array of points in global space (original instance)
 * dst_nodes: Nx2 array of points in global space (updated instance)
-* edges: MxN sparse incidence matrix, each column is zero except at two elements 
+* edges: NxM sparse incidence matrix, each column is zero except at two elements 
     with value -1 and 1
     i.e.
-    nodes   A  B  C  D  E
-    edges
-        1   1 -1  0  0  0
-        2   1  0 -1  0  0
-        3   0  1 -1  0  0
-        4   0  1  0 -1  0
+    edges    1  2  3  4
+    nodes
+        A    1  1  0  0  
+        B   -1  0  1  1  
+        C    0 -1 -1  0  
+        D    0  0  0 -1  
+        E    0  0  0  0  
 
 ```
             A - B   E
