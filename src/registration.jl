@@ -40,9 +40,9 @@ function matches_to_mesh(matches::Matches, mesh::Mesh)
   mask = matches.mesh_indices
   new_mesh.src_nodes = mesh.src_nodes[mask, :]
   new_mesh.dst_nodes = matches.dst_points
-  edges = mesh.edges[:, mask]
-  non_orphans = find_zero_indices(sum(edges, 2))
-  new_mesh.edges = edges[non_orphans,:]
+  edges = mesh.edges[mask, :]
+  non_orphans = find_zero_indices(sum(edges, 1))
+  new_mesh.edges = edges[:, non_orphans]
   return new_mesh
 end
 
