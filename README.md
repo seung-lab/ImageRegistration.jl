@@ -87,45 +87,33 @@ Working with the ImageView package, there are some functions included to help vi
 * Multi-mesh solvers (i.e. affine solvers for more than one mesh, elastic solvers)
 * imfuse visualization function (see Overlay type in Images for a start)
 
-### Examples
-Load the package and load two images
+### Example
 ```
+# Load the package and load two images
 using ImageRegistration
 imgA, imgB = load_test_images() # Loading two images from test/test_images
-```
 
-Set the parameters for the blockmatch
-```
+# Set the parameters for the blockmatch
 params = default_params()
 params["search_r"] = 1000
-```
 
-Blockmatch the first image to the second imag (both with offsets of [0,0])
-```
+# Blockmatch the first image to the second imag (both with offsets of [0,0])
 mesh, matches = blockmatch(imgA, imgB, [0,0], [0,0], params)
-```
 
-View the blockmatch vector field
-```
+# View the blockmatch vector field
 using ImageView
 imgc, img2 = view(imgA, pixelspacing=[1,1]) # See ImageView package
 draw_vectors(imgc, img2, matches)
-```
 
-Calculate rigid transform and render the first image with it
-```
+# Calculate rigid transform and render the first image with it
 tform = calculate_rigid(matches)
 rigid_imgA, rigid_offset = imwarp(imgA, tform)
-```
 
-Convert the matches to a mesh and render the piecewise affine transform of the first image
-```
+# Convert the matches to a mesh and render the piecewise affine transform of the first image
 warped_mesh = matches2mesh(matches, mesh)
 warped_imgA, warped_offset = meshwarp(imgA, warped_mesh)
-```
 
-Visually compare the images
-```
+# Visually compare the images
 view(imgB, pixelspacing=[1,1])
 view(rigid_imgA, pixelspacing=[1,1])
 view(warped_imgA, pixelspacing=[1,1])
