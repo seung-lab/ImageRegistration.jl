@@ -31,7 +31,7 @@ function meshwarp{T}(img::Array{T},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
   bb = snap_bb(find_mesh_bb(dst))
-  warped_img = similar(img, bb.h+1, bb.w+1)
+  warped_img = zeros(T, bb.h+1, bb.w+1)
   warped_offset = [bb.i, bb.j]
 
   for t=1:size(trigs, 1)    
