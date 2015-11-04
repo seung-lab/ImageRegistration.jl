@@ -103,7 +103,7 @@ mesh, matches = blockmatch(imgA, imgB, [0,0], [0,0], params)
 tform = calculate_rigid(matches)
 rigid_imgA, rigid_offset = imwarp(imgA, tform)
 
-# Convert the matches to a mesh and render the piecewise affine transform of the first image
+# Convert matches to mesh & render piecewise affine transform of first image
 warped_mesh = matches_to_mesh(matches, mesh)
 warped_imgA, warped_offset = meshwarp(imgA, warped_mesh)
 
