@@ -14,9 +14,8 @@ Pkg.add("ImageRegistration")
 ```
 
 ## Dependencies
-* FixedPointNumbers (to allow for Ufixed series of image types)
 * Images 
-* ImageView (for the visualization functions)
+* Cairo (for visualizations)
 
 ## The Toolbox
 ### Types
