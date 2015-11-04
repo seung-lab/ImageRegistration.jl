@@ -45,15 +45,15 @@ export
   -,
   load_uint8_img,
   load_test_images,
-  create_drawing,
-  create_contex,
-  draw_vectors,
-  draw_line,
-  draw_points,
-  draw_point,
-  draw_text,
-  draw_indices,
-  get_drawing,
-  draw_reference
+  # create_drawing,
+  # create_contex,
+  # draw_vectors,
+  # draw_line,
+  # draw_points,
+  # draw_point,
+  # draw_text,
+  # draw_indices,
+  # get_drawing,
+  # draw_reference
 
 end
