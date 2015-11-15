@@ -11,7 +11,7 @@ end
 """
 `BLOCKMATCH` - Build mesh to produce nodes, and blockmatch between two images.
 """
-function blockmatch(src_img, dst_img, src_offset=[0,0], dst_offset=[0,0], 
+function blockmatch(src_img, dst_img; src_offset=[0,0], dst_offset=[0,0], 
                                                       params=default_params())
   mesh = create_mesh(src_img, src_offset, params["mesh_dist"])
   matches = blockmatch(mesh.src_nodes, src_img, dst_img, 
