@@ -44,7 +44,7 @@ export
   +,
   -,
   load_uint8_img,
-  load_test_images,
+  load_test_images
   # create_drawing,
   # create_contex,
   # draw_vectors,
