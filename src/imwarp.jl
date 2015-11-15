@@ -81,7 +81,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
   M = inv(tform)   # inverse transform in global space
-  M[3,1:2] -= offset'-1.0   # include conversion to pixel space of original img
+  M[3,1:2] -= offset'.-1.0   # include conversion to pixel space of original img
 
   # cycle through all the pixels in warped_img
   for j = 1:size(warped_img,2)
