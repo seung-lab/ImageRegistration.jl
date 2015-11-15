@@ -2,8 +2,7 @@
 `DEFAULT_PARAMS` - Create dictionary of default parameters for blockmatching
 """
 function default_params()
-  return Dict("scaling_factor" => 1.0, 
-                "mesh_dist" => 750, 
+  return Dict(  "mesh_dist" => 750, 
                 "block_size" => 200, 
                 "search_r" => 150, 
                 "min_r" => 0.25)
