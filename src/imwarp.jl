@@ -67,7 +67,7 @@ Bounding box of an image of size (m,n):
                               width
 
 """ 
-function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
+function imwarp{T}(img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0])
   # img bb rooted at offset, with height and width calculated from image
   bb = BoundingBox{Float64}(offset..., size(img, 1)-1.0, size(img, 2)-1.0)
   # transform original bb to generate new bb (may contain continuous values)
@@ -127,9 +127,17 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
 end
 
 function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
-    img[i,j]=round(T,pixelvalue)
+@inbounds    img[i,j]=round(T,pixelvalue)
 end
 
 function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
-    img[i,j]=pixelvalue
+   @inbounds img[i,j]=pixelvalue
+end
+
+function writepixel{T<:Integer}(img::SharedArray{T},i,j,pixelvalue)
+	@fastmath @inbounds img[i,j]=round(T,pixelvalue)
+end
+
+function writepixel{T<:FloatingPoint}(img::SharedArray{T},i,j,pixelvalue)
+   @inbounds img[i,j]=pixelvalue
 end

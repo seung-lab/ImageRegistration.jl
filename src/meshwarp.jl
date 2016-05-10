@@ -1,6 +1,8 @@
 # Initially adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
+
+
 """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
 
@@ -27,14 +29,21 @@ subsequent fusing of multiple warped tiles.
 See definitions in IMWARP documentation for further help.
 
 """ 
-function meshwarp{T}(img::Array{T},
+function meshwarp{T}(img::SharedArray{T},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
-  bb = snap_bb(find_mesh_bb(dst))
-  warped_img = zeros(T, bb.h+1, bb.w+1)
-  warped_offset = [bb.i, bb.j]
 
-  for t=1:size(trigs, 1)    
+  bb = snap_bb(find_mesh_bb(dst))
+  warped_img = SharedArray(T, bb.h+1, bb.w+1)
+  warped_offset = [bb.i, bb.j];
+
+  Us = Array{Any}(size(trigs, 1));
+  Vs = Array{Any}(size(trigs, 1));
+  Ms = Array{Array{Float64, 2}}(size(trigs, 1));
+
+  
+@fastmath @inbounds for t in 1:size(trigs, 1);
+    #println("$t / $(size(trigs, 1))")
     tr = squeeze(trigs[t, :], 1)
     # coordinates of the source triangle
     X = src[tr, 1]
@@ -48,44 +57,41 @@ function meshwarp{T}(img::Array{T},
     M = dst_tri \ src_tri # dst_tri * M = src_tri
     # Create list of coordinates in warped image that represent this
     # triangle (coordinates in the global space).
+    Us[t] = U;
+    Vs[t] = V;
+    Ms[t] = M;
+  end
+
+@sync @fastmath @inbounds for t in 1:size(trigs, 1);
+    @async remotecall_wait(rem(t, nprocs() - 1)+2, calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
+end
+
+  return sdata(warped_img), [bb.i, bb.j]
+end
+
+function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset)
     us, vs = poly2source(U, V)
-    
-    # For every pixel in target triangle we find corresponding pixel in 
-    # source and copy its value
-    if interp
-      for n=1:length(vs)
+   @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
-        i, j = us[n]-warped_offset[1]+1, vs[n]-warped_offset[2]+1
+    @fastmath @inbounds begin
+        i, j = us[ind]-warped_offset[1]+1, vs[ind]-warped_offset[2]+1
         # Use warped coordinate in global space for transform
-        u, v = us[n], vs[n]
+        u, v = us[ind], vs[ind]
         # x, y = M * [u, v, 1]
-        x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
+        @fastmath @inbounds x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
         # Convert original image coordinate to pixel space
         x, y = x-offset[1]+1, y-offset[2]+1
         fx, fy = floor(Int64, x), floor(Int64, y)
         wx, wy = x-fx, y-fy
         if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
           # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-          p = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1]) * (1-wx) + ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1]) * wx
+          @fastmath @inbounds p = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1]) * (1-wx) + ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1]) * wx
           writepixel(warped_img,i,j,p)
-        end
-      end
-    else
-      for n=1:length(vs)
-        i, j = us[n]-warped_offset[1]+1, vs[n]-warped_offset[2]+1
-        u, v = us[n], vs[n]
-        # x, y = M * [u, v, 1]
-        x = M[1,1]*u + M[2,1]*v + M[3,1]
-        y = M[1,2]*u + M[2,2]*v + M[3,2]
-        x, y = round(Int64, x-offset[1]+1), round(Int64, y-offset[2]+1)
-        if 1 <= x && x <= size(img, 1) && 1 <= y && y <= size(img, 2)
-          warped_img[i, j] = img[x, y]
         end
       end
     end
   end
-  return warped_img, [bb.i, bb.j]
-end
+
 
 """
 `POLY2SOURCE` - Run fillpoly and findn over the basic bounding box of a given triangle
