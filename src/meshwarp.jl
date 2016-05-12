@@ -31,16 +31,13 @@ See definitions in IMWARP documentation for further help.
 """ 
 function meshwarp{T}(img::SharedArray{T},
                     src::Matrix{Float64}, dst::Matrix{Float64},
-                    trigs::Matrix{Int64}, offset=[0,0], interp=true; pids = setdiff(procs(), myid()))
+                    trigs::Matrix{Int64}, offset=[0,0], interp=true)
 
-		    println(pids);
 
-		    if length(pids) == 0 
-		      pids = [myid()];
-		    end
 
   bb = snap_bb(find_mesh_bb(dst))
   warped_img = SharedArray(T, bb.h+1, bb.w+1; pids = pids)
+		    println(procs(warped_img));
   warped_offset = [bb.i, bb.j];
 
   Us = Array{Any}(size(trigs, 1));
@@ -68,7 +65,7 @@ function meshwarp{T}(img::SharedArray{T},
   end
 
 @sync @fastmath @inbounds for t in 1:size(trigs, 1);
-    @async remotecall_wait(pids[rem(t, length(pids))+1], calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
+    @async remotecall_wait(procs()[rem(t, nprocs()-1)+2], calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
 end
 
   return sdata(warped_img), [bb.i, bb.j]
