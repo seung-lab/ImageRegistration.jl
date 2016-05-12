@@ -63,8 +63,23 @@ function meshwarp{T}(img::SharedArray{T},
     Ms[t] = M;
   end
 
-@sync @fastmath @inbounds for t in 1:size(trigs, 1);
+  function proc_range(idx, arr::Array)
+	worker_procs = setdiff(procs(), myid());
+	nchunks = length(worker_procs);
+	if nchunks == 0 return 1:length(arr); end
+	if idx == myid() return 1:0; end
+	splits = [round(Int64, s) for s in linspace(0, length(arr), nchunks + 1)];
+	return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
+  end
+
+#=@sync @fastmath @inbounds for t in 1:size(trigs, 1);
     @async remotecall_wait(procs()[rem(t, nprocs()-1)+2], calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
+end=#
+
+@sync @fastmath @inbounds for p in procs()
+      	for t in proc_range(p, Us)
+      	@async remotecall_wait(p, calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
+        end
 end
 
   return sdata(warped_img), [bb.i, bb.j]
