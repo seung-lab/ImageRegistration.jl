@@ -37,7 +37,6 @@ function meshwarp{T}(img::SharedArray{T},
 
   bb = snap_bb(find_mesh_bb(dst))
   warped_img = SharedArray(T, bb.h+1, bb.w+1)
-		    println(procs(warped_img));
   warped_offset = [bb.i, bb.j];
 
   Us = Array{Any}(size(trigs, 1));
