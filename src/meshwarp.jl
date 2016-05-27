@@ -33,7 +33,7 @@ function meshwarp{T}(img::SharedArray{T},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
 
-
+  @everywhere gc();
 
   bb = snap_bb(find_mesh_bb(dst))
   warped_img = SharedArray(T, bb.h+1, bb.w+1)
