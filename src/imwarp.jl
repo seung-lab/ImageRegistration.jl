@@ -56,20 +56,20 @@ Bounding box of an image of size (m,n):
 
 * smallest rectangle in global space that contains the positions of the [1,1] 
   and [m,n] pixels
-* represented by the 4-tuple (offset[1],offset[2],m-1,n-1)
+* represented by the 4-tuple (offset[1],offset[2],m,n)
 
     (offset[1],offset[2])  ___________
                           |           |
                     height|           |
-                     m-1  |           |
+                       m  |           |
                           |___________|
-                               n-1   (offset[1]+m-1,offset[2]+n-1)
+                                n      (offset[1]+m,offset[2]+n)
                               width
 
 """ 
 function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # img bb rooted at offset, with height and width calculated from image
-  bb = BoundingBox{Float64}(offset..., size(img, 1)-1.0, size(img, 2)-1.0)
+  bb = BoundingBox{Float64}(offset..., size(img, 1), size(img, 2))
   # transform original bb to generate new bb (may contain continuous values)
   wbb = tform_bb(bb, tform)
   # snap transformed bb to the nearest exterior integer values
@@ -77,7 +77,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
   # construct warped_img, pixels same Type as img, size calculated from tbb
   # WARNING: should have zero values, but unclear whether guaranteed by similar
   # warped_img = similar(img, tbb.h+1, tbb.w+1)
-  warped_img = zeros(T, tbb.h+1, tbb.w+1)
+  warped_img = zeros(T, tbb.h, tbb.w)
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
   M = inv(tform)   # inverse transform in global space
@@ -127,9 +127,18 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
 end
 
 function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
-    img[i,j]=round(T,pixelvalue)
+  img[i,j]=round(T,pixelvalue)
 end
 
 function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
-    img[i,j]=pixelvalue
+  img[i,j]=pixelvalue
 end
+
+function writepixel{T<:Integer}(img::SharedArray{T},i,j,pixelvalue)
+  img[i,j]=round(T,pixelvalue)
+end
+
+function writepixel{T<:FloatingPoint}(img::SharedArray{T},i,j,pixelvalue)
+  img[i,j]=pixelvalue
+end
+  
