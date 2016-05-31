@@ -13,6 +13,7 @@ src = [0.0 0.0;
 dst = warp_pts(tform, src)
 offset = [0,0]
 img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
+# @test_approx_eq_eps img_warped img 1e-5
 @test warped_offset == [0,0] 
 
 tform = [1 0 0;
