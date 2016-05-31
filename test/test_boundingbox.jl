@@ -35,7 +35,7 @@ bb = BoundingBox(100,100,100,100)
 tbb = tform_bb(bb, tform)
 @test BoundingBox(200,200,100,100) == tbb
 
-sz = (101, 101)
+sz = (100, 100)
 tform = [cos(pi/6) -sin(pi/6) 0;
         sin(pi/6) cos(pi/6) 0;
         0 0 1];

@@ -108,5 +108,5 @@ end
 Convert Tuple for image size into a BoundingBox at (1,1)
 """
 function sz_to_bb(sz)
-  return BoundingBox(0, 0, sz[1]-1, sz[2]-1)
+  return BoundingBox(0, 0, sz[1], sz[2])
 end
