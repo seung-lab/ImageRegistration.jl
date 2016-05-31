@@ -184,3 +184,11 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
   end
   return M
 end
+
+
+function meshwarp{T}(img::Array{T},
+                    src::Matrix{Float64}, dst::Matrix{Float64},
+                    trigs::Matrix{Int64}, offset=[0,0], interp=true)
+  img = convert(SharedArray, img)
+  meshwarp(img, src, dst, trigs, offset, interp)
+end
