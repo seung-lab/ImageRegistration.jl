@@ -1,7 +1,7 @@
 module ImageRegistration
 
-using Images
-using Cairo
+# using Images
+# using Cairo
 
 include("mesh.jl")
 include("convolve.jl")
@@ -12,7 +12,7 @@ include("transforms.jl")
 include("boundingbox.jl")
 include("imwarp.jl")
 include("meshwarp.jl")
-include("draw.jl")
+# include("draw.jl")
 
 export
   #types
@@ -21,6 +21,7 @@ export
   Matches,
   # core function
   default_params,
+  get_max_xc_vector,
   blockmatch,
   matches_to_mesh,
   create_mesh,
