@@ -68,6 +68,14 @@ Bounding box of an image of size (m,n):
 
 """ 
 function imwarp{T}(img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0])
+  bb = BoundingBox{Float64}(offset..., size(img, 1), size(img, 2))
+  wbb = tform_bb(bb, tform)
+  tbb = snap_bb(wbb)
+  warped_img = zeros(T, tbb.h, tbb.w)
+  return imwarp!(warped_img, img, tform, offset)
+end
+
+function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0])
   # img bb rooted at offset, with height and width calculated from image
   bb = BoundingBox{Float64}(offset..., size(img, 1), size(img, 2))
   # transform original bb to generate new bb (may contain continuous values)
@@ -77,7 +85,12 @@ function imwarp{T}(img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0]
   # construct warped_img, pixels same Type as img, size calculated from tbb
   # WARNING: should have zero values, but unclear whether guaranteed by similar
   # warped_img = similar(img, tbb.h+1, tbb.w+1)
-  warped_img = zeros(T, tbb.h, tbb.w)
+  #warped_img = zeros(T, tbb.h, tbb.w)
+  if size(warped_img) != (tbb.h, tbb.w)
+#    println("The supplied output array size is incorrect. Expected $(tbb.h, tbb.w) but got $(size(warped_img)). Aborting.")
+    println("The supplied output array size is incorrect. Abortingk")
+    return;
+  end
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
   M = inv(tform)   # inverse transform in global space
@@ -104,16 +117,21 @@ function imwarp{T}(img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0]
         if 1 <= fx && fx+1 <= size(img, 1)
             if 1 <= fy && fy+1 <= size(img, 2)   # normal case
                 # Expansion of p = [1-wx wx] * img[fx:fx+1, fy:fy+1] * [1-wy; wy]
-                p = ((1.0-wx)*img[fx,fy] + wx*img[fx+1,fy]) * (1.0-wy) + ((1.0-wx)*img[fx,fy+1] + wx*img[fx+1,fy+1]) * wy
-                writepixel(warped_img,i,j,p)
+                p1 = ((1.0-wx)*img[fx,fy] + wx*img[fx+1,fy])# * (1.0-wy)
+		p2 = ((1.0-wx)*img[fx,fy+1] + wx*img[fx+1,fy+1])# * wy
+		p1 = p1 * (1.0-wy)
+		p2 = p2 * wy
+                writepixel(warped_img,i,j,p1 + p2)
             elseif fy == size(img, 2) && wy==0   # edge case
-                p = (1.0-wx)*img[fx,fy] + wx*img[fx+1,fy]
-                writepixel(warped_img,i,j,p)
+                p1 = (1.0-wx)*img[fx,fy]
+		p2 = wx*img[fx+1,fy]
+                writepixel(warped_img,i,j,p1 + p2)
             end
         elseif fx == size(img, 1) && wx==0
             if 1 <= fy && fy+1 <= size(img, 2)   # edge case
-                p = img[fx,fy] * (1.0-wy) + img[fx,fy+1] * wy
-                writepixel(warped_img,i,j,p)
+                p1 = img[fx,fy] * (1.0-wy)
+		p2 = img[fx,fy+1] * wy
+                writepixel(warped_img,i,j,p1 + p2)
             elseif fy == size(img, 2) && wy==0  # corner case
                 p = img[fx,fy]
                 writepixel(warped_img,i,j,p)
