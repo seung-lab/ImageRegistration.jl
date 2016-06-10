@@ -1,7 +1,7 @@
 # Initially adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
-
+global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, 0, 0);
 
 """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
@@ -33,8 +33,6 @@ function meshwarp{T}(img::SharedArray{T},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
 
-  @everywhere gc();
-
   bb = snap_bb(find_mesh_bb(dst))
   warped_img = SharedArray(T, bb.h+1, bb.w+1)
   warped_offset = [bb.i, bb.j];
@@ -42,6 +40,8 @@ function meshwarp{T}(img::SharedArray{T},
   Us = Array{Any}(size(trigs, 1));
   Vs = Array{Any}(size(trigs, 1));
   Ms = Array{Array{Float64, 2}}(size(trigs, 1));
+
+  @everywhere gc()
 
 @fastmath @inbounds for t in 1:size(trigs, 1);
     #println("$t / $(size(trigs, 1))")
@@ -76,17 +76,23 @@ function meshwarp{T}(img::SharedArray{T},
     @async remotecall_wait(procs()[rem(t, nprocs()-1)+2], calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
 end=#
 
-@sync @fastmath @inbounds for p in procs()
-      	for t in proc_range(p, Us)
-      	@async remotecall_wait(p, calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
-        end
+@sync for p in procs()
+      	t = proc_range(p, Us);
+      	@async @fastmath @inbounds remotecall_wait(p, calculate_pixels_in_trig_chunk!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
 end
 
   return sdata(warped_img), [bb.i, bb.j]
 end
 
+function calculate_pixels_in_trig_chunk!(Us, Vs, Ms, img, offset, warped_img, warped_offset)
+  @simd for i in 1:length(Us)
+	calculate_pixels_in_trig!(Us[i], Vs[i], Ms[i], img, offset, warped_img, warped_offset)
+  end
+
+end
+
 function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset)
-    us, vs = poly2source(U, V)
+    us, vs = poly2source!(U, V)
    @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
     @fastmath @inbounds begin
@@ -101,8 +107,11 @@ function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offs
         wx, wy = x-fx, y-fy
         if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
           # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-          @fastmath @inbounds p = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1]) * (1-wx) + ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1]) * wx
-          writepixel(warped_img,i,j,p)
+          @fastmath @inbounds p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
+	  @fastmath @inbounds p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
+	  @fastmath p1 = p1 * (1-wx);
+	  @fastmath p2 = p2 * (wx);
+          writepixel(warped_img,i,j,p1+p2)
         end
       end
     end
@@ -127,6 +136,63 @@ function poly2source(pts_i, pts_j)
   vs += left-1
   return us, vs
 end
+
+function poly2source!(pts_i, pts_j)
+  # Find bb of vertices (vertices in global space)
+  top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
+  left, right = floor(Int64,minimum(pts_j)), ceil(Int64,maximum(pts_j))
+  # Create image based on number of pixels in bb that will identify triangle
+  if size(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})[1] < bottom - top + 1 || size(MESHWARP_POLY2SOURCE_MASK)[2] < right - left + 1
+    global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, bottom-top+1, right-left+1)
+  end
+  (MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})[:] = false;
+  #mask = zeros(Bool, bottom-top+1, right-left+1)
+  # Convert vertices into pixel space and fill the mask to identify triangle
+  for i in 1:length(pts_i)
+    @fastmath @inbounds pts_i[i] = pts_i[i] + 1 - top;
+  end
+  for i in 1:length(pts_j)
+    @fastmath @inbounds pts_j[i] = pts_j[i] + 1 - left;
+  end
+  #fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
+   fillpoly!(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2}, pts_j, pts_i, true)
+  # Create list of pixel coordinates that are contained by the triangle
+  us, vs = findn(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})
+  # Convert that list of pixel coordinates back into global space
+  for i in 1:length(us)
+    @fastmath @inbounds us[i] = us[i] - 1 + top;
+  end
+  for i in 1:length(vs)
+    @fastmath @inbounds vs[i] = vs[i] - 1 + left;
+  end
+#  us += top-1
+#  vs += left-1
+  return us, vs
+end
+#=
+function poly2source!(pts_i, pts_j)
+  # Find bb of vertices (vertices in global space)
+  top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
+  left, right = floor(Int64,minimum(pts_j)), ceil(Int64,maximum(pts_j))
+  if size(MESHWARP_POLY2SOURCE_MASK)[1] < bottom - top + 1 || size(MESHWARP_POLY2SOURCE_MASK)[2] < right - left + 1
+    global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, bottom-top+1, right-left+1)
+  end
+  MESHWARP_POLY2SOURCE_MASK[:] = false;
+  fillpoly!(MESHWARP_POLY2SOURCE_MASK, pts_j-left+1, pts_i-top+1, true)
+  us, vs = findn(mask)
+ #= 
+  # Create image based on number of pixels in bb that will identify triangle
+  mask = zeros(Bool, bottom-top+1, right-left+1)
+  # Convert vertices into pixel space and fill the mask to identify triangle
+  fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
+  # Create list of pixel coordinates that are contained by the triangle
+  us, vs = findn(mask)
+  =#
+  # Convert that list of pixel coordinates back into global space
+  us += top-1
+  vs += left-1
+  return us, vs
+end=#
 
 """
 `FILLPOLY!` - Fill pixels contained inside a polygon
