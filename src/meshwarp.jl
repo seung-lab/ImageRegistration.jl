@@ -41,7 +41,7 @@ function meshwarp{T}(img::SharedArray{T},
   Vs = Array{Any}(size(trigs, 1));
   Ms = Array{Array{Float64, 2}}(size(trigs, 1));
 
-  @everywhere gc()
+  @everywhere gc();
 
 @fastmath @inbounds for t in 1:size(trigs, 1);
     #println("$t / $(size(trigs, 1))")
@@ -81,19 +81,19 @@ end=#
       	@async @fastmath @inbounds remotecall_wait(p, calculate_pixels_in_trig_chunk!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
 end
 
-  return sdata(warped_img), [bb.i, bb.j]
+  return copy(sdata(warped_img)), [bb.i, bb.j]
 end
 
 function calculate_pixels_in_trig_chunk!(Us, Vs, Ms, img, offset, warped_img, warped_offset)
-  @simd for i in 1:length(Us)
+ @simd for i in 1:length(Us)
 	calculate_pixels_in_trig!(Us[i], Vs[i], Ms[i], img, offset, warped_img, warped_offset)
   end
-
+  global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, 0, 0);
 end
 
 function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset)
     us, vs = poly2source!(U, V)
-   @simd for ind in 1:length(us)
+    @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
     @fastmath @inbounds begin
         i, j = us[ind]-warped_offset[1]+1, vs[ind]-warped_offset[2]+1
