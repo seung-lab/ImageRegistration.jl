@@ -92,8 +92,7 @@ function calculate_pixels_in_trig_chunk!(Us, Vs, Ms, img, offset, warped_img, wa
 end
 
 function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset)
-    #us, vs = poly2source!(U, V)
-    us, vs = poly2source(U, V)
+    us, vs = poly2source!(U, V)
     @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
     @fastmath @inbounds begin
@@ -171,30 +170,6 @@ function poly2source!(pts_i, pts_j)
   return us, vs
 end
 
-function poly2source!(pts_i, pts_j)
-  # Find bb of vertices (vertices in global space)
-  top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
-  left, right = floor(Int64,minimum(pts_j)), ceil(Int64,maximum(pts_j))
-  if size(MESHWARP_POLY2SOURCE_MASK)[1] < bottom - top + 1 || size(MESHWARP_POLY2SOURCE_MASK)[2] < right - left + 1
-    global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, bottom-top+1, right-left+1)
-  end
-  MESHWARP_POLY2SOURCE_MASK[:] = false;
-  fillpoly!(MESHWARP_POLY2SOURCE_MASK, pts_j-left+1, pts_i-top+1, true)
-  us, vs = findn(mask)
- #= 
-  # Create image based on number of pixels in bb that will identify triangle
-  mask = zeros(Bool, bottom-top+1, right-left+1)
-  # Convert vertices into pixel space and fill the mask to identify triangle
-  fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
-  # Create list of pixel coordinates that are contained by the triangle
-  us, vs = findn(mask)
-  =#
-  # Convert that list of pixel coordinates back into global space
-  us += top-1
-  vs += left-1
-  return us, vs
-end
-
 """
 `FILLPOLY!` - Fill pixels contained inside a polygon
 
@@ -207,8 +182,8 @@ end
 
 Features:
 
-* This seems intended to work for nonconvex polygons.
-* The vertices should be listed sequentially in px and py. Clockwise/counterclockwise ordering doesn't seem to matter.
+* Intended to work for nonconvex polygons as well as convex polygons.
+* The vertices should be listed sequentially in px and py. Clockwise/counterclockwise ordering doesn't matter.
 * It seems that the polygon is closed automatically if it isn't already, i.e., the last vertex in px, py is not equal to the first.  Does the code work if the input polygon is already closed?
 * The code treats the "edge case," where an edge of the polygon lies exactly on a grid line.
 
