@@ -92,7 +92,8 @@ function calculate_pixels_in_trig_chunk!(Us, Vs, Ms, img, offset, warped_img, wa
 end
 
 function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset)
-    us, vs = poly2source!(U, V)
+    #us, vs = poly2source!(U, V)
+    us, vs = poly2source(U, V)
     @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
     @fastmath @inbounds begin
@@ -105,7 +106,7 @@ function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offs
         x, y = x-offset[1]+1, y-offset[2]+1
         fx, fy = floor(Int64, x), floor(Int64, y)
         wx, wy = x-fx, y-fy
-        if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
+        if 1 <= fx <= size(img, 1)-1 && 1 <= fy <= size(img, 2)-1
           # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
           @fastmath @inbounds p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
 	  @fastmath @inbounds p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
@@ -169,7 +170,7 @@ function poly2source!(pts_i, pts_j)
 #  vs += left-1
   return us, vs
 end
-#=
+
 function poly2source!(pts_i, pts_j)
   # Find bb of vertices (vertices in global space)
   top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
@@ -192,7 +193,7 @@ function poly2source!(pts_i, pts_j)
   us += top-1
   vs += left-1
   return us, vs
-end=#
+end
 
 """
 `FILLPOLY!` - Fill pixels contained inside a polygon
@@ -225,13 +226,18 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
     m = length(px)
     for n=1:length(px)  # loop over edges (m,1),(1,2),(2,3),...,(m-1,m)
       # grid line intersects edge in one of two ways
-      if (px[n] <= x && x <= px[m]) || (px[m] <= x && x <= px[n])
+      if (px[n] <= x <= px[m]) || (px[m] <= x <= px[n])
         if px[n] == px[m]  # intersection is entire edge
           push!(ys, ceil(Int64, py[n]))
           push!(ys, ceil(Int64, py[m]))
         else # intersection is point
             y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
-          push!(ys, ceil(Int64, y))
+	    # deal with rounding error
+	    if ceil(Int64, y) > size(M, 1)
+	      push!(ys, floor(Int64, y))
+	    else
+              push!(ys, ceil(Int64, y))
+	    end
         end            
       end
       m = n
