@@ -182,7 +182,7 @@ end
 
 Features:
 
-* Intended to work for nonconvex polygons as well as convex polygons.
+* Intended to work for nonconvex polygons as well as convex polygons, except that currently the corner cases (described below) fail in non-convex poligons since it doesn't add its own pair.
 * The vertices should be listed sequentially in px and py. Clockwise/counterclockwise ordering doesn't matter.
 * It seems that the polygon is closed automatically if it isn't already, i.e., the last vertex in px, py is not equal to the first.  Does the code work if the input polygon is already closed?
 * The code treats the "edge case," where an edge of the polygon lies exactly on a grid line.
@@ -226,7 +226,9 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
     end
     # Place value in matrix at all the y's between min and max for given x
     for n=1:2:length(ys)           
-      M[ys[n]:ys[n+1], x] = value
+      @simd for y in ys[n]:ys[n+1]
+      @inbounds M[y, x] = value
+      end
     end
   end
   return M
