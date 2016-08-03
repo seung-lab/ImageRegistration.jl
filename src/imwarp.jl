@@ -25,8 +25,10 @@ Bilinear interpolation, with extrapolation using zero fill value.
 
 Global position of `img` pixels (analogous definitions for `warped_img`): 
   
-* [1,1] pixel has position (offset[1], offset[2]) in global space
-* [i,j] pixel has position (offset[1]+i-1, offset[2]+j-1)  
+* [1,1] pixel has position (offset[1] - 0.5, offset[2] - 0.5) in global space
+* [i,j] pixel has position (offset[1]+i-0.5, offset[2]+j-0.5)  
+
+e.g. with no offset, [i, j] pixel has median([i-1:i, j-1:j]) location in global space.
 
 Affine transform of a global position:
 
@@ -43,7 +45,7 @@ Note that:
 2. definition compatible with [MATLAB](http://www.mathworks.com/help/images/ref/affine2d-class.html), but not AffineTransforms.jl
 3. meaning of transform depends on whether the image is in ij or xy format
 
-Affine transform of an image (two equivalent definitions):
+Affine transform of an image (two equivalent definitions, provide scaling isn't an issue):
 
 1. The value of `img` at a position is equal to the value of
 the `warped_img` at the transformed position. 
@@ -88,20 +90,22 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
   #warped_img = zeros(T, tbb.h, tbb.w)
   if size(warped_img) != (tbb.h, tbb.w)
 #    println("The supplied output array size is incorrect. Expected $(tbb.h, tbb.w) but got $(size(warped_img)). Aborting.")
-    println("The supplied output array size is incorrect. Abortingk")
+    println("The supplied output array size is incorrect. Aborting")
     return;
   end
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
+  #tform[3, 1:2] -= 1.0
   M = inv(tform)   # inverse transform in global space
-  M[3,1:2] -= offset'-1.0   # include conversion to pixel space of original img
+#  M[3,1:2] -= offset'-1.0   # include conversion to pixel space of original img
+  M[3,1:2] -= offset'-0.5   # include conversion to pixel space of original img
 
   # cycle through all the pixels in warped_img
   for j = 1:size(warped_img,2)
     for i = 1:size(warped_img,1) # cycle through column-first for speed
         # convert from pixel to global space
         # (we index to zero, then add on the offset)
-        u, v = i-1+warped_offset[1], j-1+warped_offset[2]
+        u, v = i-0.5+warped_offset[1], j-0.5+warped_offset[2]
         # apply inv(tform), conversion back to pixel space included
         # x, y = [u, v, 1] * M - but writing it out moves faster
         x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
@@ -113,34 +117,52 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
         # Bilinear interpolation
         fx, fy = floor(Int64, x), floor(Int64, y)
         wx, wy = x-fx, y-fy
+	rwx, rwy = 1.0 - wx, 1.0 - wy
         # if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
-        if 1 <= fx && fx+1 <= size(img, 1)
-            if 1 <= fy && fy+1 <= size(img, 2)   # normal case
+        if 1 <= fx <= size(img, 1) - 1 && 1 <= fy <= size(img, 2) -1   # normal case
                 # Expansion of p = [1-wx wx] * img[fx:fx+1, fy:fy+1] * [1-wy; wy]
-                p1 = ((1.0-wx)*img[fx,fy] + wx*img[fx+1,fy])# * (1.0-wy)
-		p2 = ((1.0-wx)*img[fx,fy+1] + wx*img[fx+1,fy+1])# * wy
-		p1 = p1 * (1.0-wy)
-		p2 = p2 * wy
-                writepixel(warped_img,i,j,p1 + p2)
-            elseif fy == size(img, 2) && wy==0   # edge case
-                p1 = (1.0-wx)*img[fx,fy]
-		p2 = wx*img[fx+1,fy]
-                writepixel(warped_img,i,j,p1 + p2)
-            end
-        elseif fx == size(img, 1) && wx==0
-            if 1 <= fy && fy+1 <= size(img, 2)   # edge case
-                p1 = img[fx,fy] * (1.0-wy)
-		p2 = img[fx,fy+1] * wy
-                writepixel(warped_img,i,j,p1 + p2)
-            elseif fy == size(img, 2) && wy==0  # corner case
-                p = img[fx,fy]
-                writepixel(warped_img,i,j,p)
-            end
-        #else
-        #    warped_img[i,j] = 0 # Fill value set to zero based on similar function above
-        end
+                @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
+                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
+		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
+		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
+		@fastmath p = pff + pxf + pfy + pxy;
+	else
+	  if 1 <= fx <= size(img, 1) - 1
+		if fy == 0
+		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
+		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
+		@fastmath p = pfy + pxy;
+		elseif fy == size(img, 2)
+                @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
+                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
+		@fastmath p = pff + pxf;
+	    	else p = 0;
+	      end
+	  elseif 1 <= fy <= size(img, 2) - 1
+	    	if fx == 0
+                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
+		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
+		@fastmath p = pxf + pxy;
+		elseif fx == size(img, 1)
+                @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
+		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
+		@fastmath p = pff + pfy;
+	    	else p = 0;
+	      end
+	    elseif fx == 0 && fy == 0
+		@fastmath @inbounds p = wy * wx * img[fx+1,fy+1]
+	    elseif fx == 0 && fy == size(img, 2)
+                @fastmath @inbounds p = rwy * wx * img[fx+1,fy]
+	    elseif fx == size(img, 1) && fy == 0
+		@fastmath @inbounds p = wy * rwx * img[fx,fy+1] 
+	    elseif fx == size(img, 1) && fy == size(img, 2)
+                @fastmath @inbounds p = rwy * rwx * img[fx,fy]
+	    else p = 0;
+	  end
+	end	
+	writepixel(warped_img, i, j, p);
+      end
     end
-  end
   warped_img, warped_offset
 end
 

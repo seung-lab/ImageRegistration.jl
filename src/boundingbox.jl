@@ -7,6 +7,8 @@ immutable BoundingBox{T}
   w::T    # width
 end
 
+eps = 1e-6
+
 BoundingBox() = BoundingBox(0,0,0,0)
 BoundingBox(a, b, c, d) = BoundingBox(promote(a,b,c,d)...)
 
