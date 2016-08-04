@@ -69,15 +69,15 @@ Bounding box of an image of size (m,n):
                               width
 
 """ 
-function imwarp{T}(img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0])
+function imwarp{T}(img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0]; parallel = false)
   bb = BoundingBox{Float64}(offset..., size(img, 1), size(img, 2))
   wbb = tform_bb(bb, tform)
   tbb = snap_bb(wbb)
-  warped_img = zeros(T, tbb.h, tbb.w)
-  return imwarp!(warped_img, img, tform, offset)
+  warped_img = parallel && nprocs() != 1 ? SharedArray(T, tbb.h, tbb.w) : zeros(T, tbb.h, tbb.w)
+  return imwarp!(warped_img, img, tform, offset; parallel = parallel)
 end
 
-function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0])
+function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Array{T}, SharedArray{T}}, tform, offset=[0.0,0.0]; parallel = false)
   # img bb rooted at offset, with height and width calculated from image
   bb = BoundingBox{Float64}(offset..., size(img, 1), size(img, 2))
   # transform original bb to generate new bb (may contain continuous values)
@@ -89,8 +89,7 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
   # warped_img = similar(img, tbb.h+1, tbb.w+1)
   #warped_img = zeros(T, tbb.h, tbb.w)
   if size(warped_img) != (tbb.h, tbb.w)
-#    println("The supplied output array size is incorrect. Expected $(tbb.h, tbb.w) but got $(size(warped_img)). Aborting.")
-    println("The supplied output array size is incorrect. Aborting")
+    println("The supplied output array size is incorrect. Aborting...")
     return;
   end
   # offset of warped_img from the global origin
@@ -99,13 +98,52 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
   M = inv(tform)   # inverse transform in global space
 #  M[3,1:2] -= offset'-1.0   # include conversion to pixel space of original img
   M[3,1:2] -= offset'-0.5   # include conversion to pixel space of original img
-
   x_max = size(img, 1);
   y_max = size(img, 2);
 
+  function proc_range(idx, arr)
+	worker_procs = setdiff(procs(), myid());
+	nchunks = length(worker_procs);
+	if nchunks == 0 return 1:length(arr); end
+	if idx == myid() return 1:0; end
+	splits = [round(Int64, s) for s in linspace(0, length(arr), nchunks + 1)];
+	return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
+  end
+
+  if parallel && nprocs() != 1 
+    if !(typeof(warped_img) <: SharedArray)
+    	println("The supplied output array is not a SharedArray despite the parallel keyword set to true. Aborting...")
+	return;
+    end
+    if !(typeof(img) <: SharedArray)
+	  img_shared = SharedArray(eltype(img), size(img)...)
+	  img_shared[:] = img;
+	  img = img_shared;
+	end
+	@sync for p in procs()
+      		j_range = proc_range(p, 1:size(warped_img, 2));
+      		@async remotecall_wait(p, compute_and_write_columns!, warped_img, img, M, j_range, x_max, y_max, warped_offset)
+	end
+  else
   # cycle through all the pixels in warped_img
   for j = 1:size(warped_img,2)
     for i = 1:size(warped_img,1) # cycle through column-first for speed
+	compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset)
+      end
+    end
+  end
+  warped_img, warped_offset
+end
+
+function compute_and_write_columns!(warped_img, img, M, j_range, x_max, y_max, warped_offset)
+  for j in j_range
+    for i in 1:x_max
+	compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset)
+    end
+  end
+end
+
+function compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset)
         # convert from pixel to global space
         # (we index to zero, then add on the offset)
         @fastmath @inbounds u = i-0.5+warped_offset[1]
@@ -166,9 +204,7 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
 		@fastmath writepixel(warped_img, i, j, pxy);
 	  end
 	end	
-      end
-    end
-  warped_img, warped_offset
+
 end
 
 function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
