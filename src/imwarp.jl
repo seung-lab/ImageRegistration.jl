@@ -126,44 +126,38 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
         # if 1 <= fx && fx+1 <= x_max && 1 <= fy && fy+1 <= y_max
         if 1 <= fx <= x_max - 1 && 1 <= fy <= y_max -1   # normal case
                 # Expansion of p = [1-wx wx] * img[fx:fx+1, fy:fy+1] * [1-wy; wy]
-                @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
-                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
-		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
-		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
-		@fastmath writepixel(warped_img, i, j, pff + pxf + pfy + pxy);
+                @fastmath @inbounds pf = rwx * img[fx,fy] + wx * img[fx+1,fy]
+		@fastmath @inbounds py = rwx * img[fx,fy+1] + wx * img[fx+1,fy+1]
+		@fastmath writepixel(warped_img, i, j, rwy * pf + wy * py);
 	else
 	  if 1 <= fx <= x_max - 1
 		if fy == 0
-		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
-		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
-		@fastmath writepixel(warped_img, i, j, pfy + pxy);
+		@fastmath @inbounds py = rwx * img[fx,fy+1] + wx * img[fx+1,fy+1]
+		@fastmath writepixel(warped_img, i, j, wy * py);
 		elseif fy == y_max
-                @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
-                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
-		@fastmath writepixel(warped_img, i, j, pff + pxf);
+                @fastmath @inbounds pf = rwx * img[fx,fy] + wx * img[fx+1,fy]
+		@fastmath writepixel(warped_img, i, j, rwy + pf);
 	      end
 	  elseif 1 <= fy <= y_max - 1
 	    	if fx == 0
-                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
-		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
-		@fastmath writepixel(warped_img, i, j, pxf + pxy);
+                @fastmath @inbounds px = rwy * img[fx+1,fy] + wy * img[fx+1,fy+1]
+		@fastmath writepixel(warped_img, i, j, wx * px);
 		elseif fx == x_max
-                @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
-		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
-		@fastmath writepixel(warped_img, i, j, pff + pfy);
+                @fastmath @inbounds pf = rwy * img[fx,fy] + wy * img[fx,fy+1] 
+		@fastmath writepixel(warped_img, i, j, rwx + pf);
 	      end
 	    elseif fx == 0 && fy == 0
-		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
-		@fastmath writepixel(warped_img, i, j, pxy);
+		@fastmath @inbounds pxy = wx * img[fx+1,fy+1]
+		@fastmath writepixel(warped_img, i, j, wy * pxy);
 	    elseif fx == 0 && fy == y_max
-                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
-		@fastmath writepixel(warped_img, i, j, pxf);
+                @fastmath @inbounds pxf = wx * img[fx+1,fy]
+		@fastmath writepixel(warped_img, i, j, rwy * pxf);
 	    elseif fx == x_max && fy == 0
-		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
-		@fastmath writepixel(warped_img, i, j, pfy);
+		@fastmath @inbounds pfy = rwx * img[fx,fy+1] 
+		@fastmath writepixel(warped_img, i, j, wy * pfy);
 	    elseif fx == x_max && fy == y_max
-                @fastmath @inbounds pxy = rwy * rwx * img[fx,fy]
-		@fastmath writepixel(warped_img, i, j, pxy);
+                @fastmath @inbounds pxy = rwx * img[fx,fy]
+		@fastmath writepixel(warped_img, i, j, rwy * pxy);
 	  end
 	end	
       end
