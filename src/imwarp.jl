@@ -100,15 +100,20 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
 #  M[3,1:2] -= offset'-1.0   # include conversion to pixel space of original img
   M[3,1:2] -= offset'-0.5   # include conversion to pixel space of original img
 
+  x_max = size(img, 1);
+  y_max = size(img, 2);
+
   # cycle through all the pixels in warped_img
   for j = 1:size(warped_img,2)
     for i = 1:size(warped_img,1) # cycle through column-first for speed
         # convert from pixel to global space
         # (we index to zero, then add on the offset)
-        u, v = i-0.5+warped_offset[1], j-0.5+warped_offset[2]
+        @fastmath @inbounds u = i-0.5+warped_offset[1]
+	@fastmath @inbounds v = j-0.5+warped_offset[2]
         # apply inv(tform), conversion back to pixel space included
         # x, y = [u, v, 1] * M - but writing it out moves faster
-        x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
+        @fastmath @inbounds x = M[1,1]*u + M[2,1]*v + M[3,1]
+	@fastmath @inbounds y = M[1,2]*u + M[2,2]*v + M[3,2]
         # x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]  # faster but differs by a matrix transpose
 
         # Slow...
@@ -118,56 +123,56 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
         fx, fy = floor(Int64, x), floor(Int64, y)
         wx, wy = x-fx, y-fy
 	rwx, rwy = 1.0 - wx, 1.0 - wy
-        # if 1 <= fx && fx+1 <= size(img, 1) && 1 <= fy && fy+1 <= size(img, 2)
-        if 1 <= fx <= size(img, 1) - 1 && 1 <= fy <= size(img, 2) -1   # normal case
+        # if 1 <= fx && fx+1 <= x_max && 1 <= fy && fy+1 <= y_max
+        if 1 <= fx <= x_max - 1 && 1 <= fy <= y_max -1   # normal case
                 # Expansion of p = [1-wx wx] * img[fx:fx+1, fy:fy+1] * [1-wy; wy]
                 @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
                 @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
 		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
 		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
-		@fastmath p = pff + pxf + pfy + pxy;
+		@fastmath writepixel(warped_img, i, j, pff + pxf + pfy + pxy);
 	else
-	  if 1 <= fx <= size(img, 1) - 1
+	  if 1 <= fx <= x_max - 1
 		if fy == 0
 		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
 		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
-		@fastmath p = pfy + pxy;
-		elseif fy == size(img, 2)
+		@fastmath writepixel(warped_img, i, j, pfy + pxy);
+		elseif fy == y_max
                 @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
                 @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
-		@fastmath p = pff + pxf;
-	    	else p = 0;
+		@fastmath writepixel(warped_img, i, j, pff + pxf);
 	      end
-	  elseif 1 <= fy <= size(img, 2) - 1
+	  elseif 1 <= fy <= y_max - 1
 	    	if fx == 0
                 @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
 		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
-		@fastmath p = pxf + pxy;
-		elseif fx == size(img, 1)
+		@fastmath writepixel(warped_img, i, j, pxf + pxy);
+		elseif fx == x_max
                 @fastmath @inbounds pff = rwy * rwx * img[fx,fy]
 		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
-		@fastmath p = pff + pfy;
-	    	else p = 0;
+		@fastmath writepixel(warped_img, i, j, pff + pfy);
 	      end
 	    elseif fx == 0 && fy == 0
-		@fastmath @inbounds p = wy * wx * img[fx+1,fy+1]
-	    elseif fx == 0 && fy == size(img, 2)
-                @fastmath @inbounds p = rwy * wx * img[fx+1,fy]
-	    elseif fx == size(img, 1) && fy == 0
-		@fastmath @inbounds p = wy * rwx * img[fx,fy+1] 
-	    elseif fx == size(img, 1) && fy == size(img, 2)
-                @fastmath @inbounds p = rwy * rwx * img[fx,fy]
-	    else p = 0;
+		@fastmath @inbounds pxy = wy * wx * img[fx+1,fy+1]
+		@fastmath writepixel(warped_img, i, j, pxy);
+	    elseif fx == 0 && fy == y_max
+                @fastmath @inbounds pxf = rwy * wx * img[fx+1,fy]
+		@fastmath writepixel(warped_img, i, j, pxf);
+	    elseif fx == x_max && fy == 0
+		@fastmath @inbounds pfy = wy * rwx * img[fx,fy+1] 
+		@fastmath writepixel(warped_img, i, j, pfy);
+	    elseif fx == x_max && fy == y_max
+                @fastmath @inbounds pxy = rwy * rwx * img[fx,fy]
+		@fastmath writepixel(warped_img, i, j, pxy);
 	  end
 	end	
-	writepixel(warped_img, i, j, p);
       end
     end
   warped_img, warped_offset
 end
 
 function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
-  @inbounds img[i,j]=round(T,pixelvalue)
+  @fastmath @inbounds img[i,j]=round(T,pixelvalue)
 end
 
 function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
