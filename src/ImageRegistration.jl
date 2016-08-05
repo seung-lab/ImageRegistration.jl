@@ -42,6 +42,7 @@ export
   snap_bb,
   sz_to_bb,
   bb_to_pts,
+  bb_to_sz,
   +,
   -,
   load_uint8_img,
