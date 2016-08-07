@@ -137,7 +137,7 @@ end
 
 function compute_and_write_columns!(warped_img, img, M, j_range, x_max, y_max, warped_offset)
   for j in j_range
-    for i in 1:x_max
+    for i in 1:size(warped_img, 1)
 	compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset)
     end
   end
