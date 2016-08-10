@@ -23,7 +23,7 @@ function calculate_affine(moving_pts, fixed_pts)
 end
 
 """
-`CALCULATE_RIGID` - Compute left-hand rigid transform from two Nxd point sets
+`CALCULATE_RIGID` - Compute right-hand rigid transform from two Nxd point sets
 
 ```
 tform = calculate_rigid(moving_pts, fixed_pts)
@@ -108,8 +108,17 @@ end
 """
 Matrix for counter-clockwise rotations in radians
 """
-function make_rotation_matrix(rad)
-  return [cos(rad) -sin(rad) 0; sin(rad) cos(rad) 0; 0 0 1]
+function make_rotation_matrix(theta; image_size = nothing)
+  angle = deg2rad(theta)
+  tform = [cos(angle) sin(angle) 0; -sin(angle) cos(angle) 0; 0 0 1]
+  tform[abs(tform) .< eps] = 0
+  if image_size != nothing
+    	rotated_bb = snap_bb(tform_bb(sz_to_bb(Point([image_size[1], image_size[2]])), tform))
+    	rotation_offset = [rotated_bb.i, rotated_bb.j]
+	translation_matrix = make_translation_matrix(-rotation_offset);
+	tform = tform * translation_matrix
+  end
+  return tform
 end
 
 function make_translation_matrix(offset)
