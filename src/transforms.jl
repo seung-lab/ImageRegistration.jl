@@ -104,3 +104,18 @@ end
 function calculate_translation(mesh::Mesh)
   return calculate_translation(mesh.src_nodes, mesh.dst_nodes)
 end
+
+"""
+Matrix for counter-clockwise rotations in radians
+"""
+function make_rotation_matrix(rad)
+  return [cos(rad) -sin(rad) 0; sin(rad) cos(rad) 0; 0 0 1]
+end
+
+function make_translation_matrix(offset)
+  return [1 0 0; 0 1 0; offset[1] offset[2] 1]
+end
+
+function make_scale_matrix(scale)
+  return [scale 0 0; 0 scale 0; 0 0 1]
+end

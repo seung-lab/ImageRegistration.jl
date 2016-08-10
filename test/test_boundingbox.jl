@@ -71,3 +71,71 @@ a = BoundingBox(20,20,10,10)
 b = BoundingBox(0,0,5,5)
 @test a+b == BoundingBox(0,0,30,30)
 @test isnan((a-b).i)
+
+a = [0.0 0.0;
+     0.0 10.0;
+     10.0 10.0;
+     10.0 0.0;
+     0.0 0.0];
+@test in_poly([5,5], a)
+@test in_poly([0,0], a)
+@test !in_poly([-1,0], a)
+@test in_poly([1,1], a)
+@test !in_poly([11,1], a)
+@test in_poly([10,1], a)
+@test in_poly([9.99,1], a)
+
+b = [5.0 0.0;
+     9.0 10.0;
+     3.0 11.0;
+     4.0 5.0];
+@test in_poly([5,1], b)
+@test !in_poly([0,0], b)
+@test !in_poly([-1,0], b)
+@test !in_poly([1,1], b)
+@test !in_poly([11,1], b)
+@test !in_poly([10.01,1], b)
+@test !in_poly([9.99,1], b)
+@test in_poly([4,5], b)
+@test in_poly([4,6], b)
+
+@test poly_intersects(a, b)
+c = [0.0 0.0;
+     3.0 0.0;
+     3.0 4.0]
+d = [3.0 0.0;
+     3.0 4.0;
+     6.0 0.0]
+@test poly_intersects(c, d)
+@test poly_intersects(d, c)
+@test !poly_intersects(b, c)
+@test !poly_intersects(c, b)
+@test poly_intersects(c, a)
+@test !poly_intersects(b, d)
+@test poly_intersects(a, d)
+
+@test on_line_segment([0,0], ([-1,0], [1,0]))
+@test on_line_segment([0,0], ([-1,0], [1,0.01]))
+@test on_line_segment([0,0], ([-1,0], [1.0001,0]))
+@test on_line_segment([0,0], ([-1,0], [1.001,0]))
+@test on_line_segment([0,0], ([-1,0], [1.01,0]))
+@test on_line_segment([0,0], ([-1,0], [1.1,0]))
+@test !on_line_segment([0,0], ([-1,0], [1.1,0.1]))
+
+@test on_line_segment([0,0], ([0,-1], [0,1]))
+@test on_line_segment([0,0], ([0,-1], [0.01,1]))
+@test on_line_segment([0,0], ([0,-1], [0,1.0001]))
+@test on_line_segment([0,0], ([0,-1], [0,1.001]))
+@test on_line_segment([0,0], ([0,-1], [0,1.01]))
+@test on_line_segment([0,0], ([0,-1], [0,1.1]))
+@test !on_line_segment([0,0], ([0,-1], [0.1,1.1]))
+
+@test on_line_segment([1,1], ([0,0], [10,10]))
+
+e = [3.0 3.0;
+     6.0 3.0;
+     6.0 6.0;
+     3.0 6.0;
+     3.0 3.0];
+@test poly_intersects(a, e)
+@test poly_intersects(e, a)
