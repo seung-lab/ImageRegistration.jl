@@ -108,7 +108,7 @@ end
 """
 Matrix for counter-clockwise rotations in radians
 """
-function make_rotation_matrix(theta; image_size = nothing)
+function make_rotation_matrix(theta, image_size = nothing)
   angle = deg2rad(theta)
   tform = [cos(angle) sin(angle) 0; -sin(angle) cos(angle) 0; 0 0 1]
   tform[abs(tform) .< eps] = 0
