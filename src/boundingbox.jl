@@ -183,7 +183,7 @@ Convert tuple of ranges to bounding box
 """
 function slice_to_bb(slice)
   return BoundingBox(slice[1][1], slice[2][1], 
-                      slice[1][end]-slice[1][1], slice[2][end]-slice[2][1])
+                      slice[1][end]-slice[1][1]+1, slice[2][end]-slice[2][1]+1)
 end
 
 """
