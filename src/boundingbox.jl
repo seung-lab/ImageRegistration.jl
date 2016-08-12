@@ -170,12 +170,12 @@ end
 Convert bounding box to tuple of ranges for easy array slicing
 """
 function bb_to_slice(bb::BoundingBox{Int64})
-  return (bb.i+1):(bb.i+bb.h), (bb.j+1):(bb.j+bb.w)
+  return (bb.i):(bb.i+bb.h-1), (bb.j):(bb.j+bb.w-1)
 end
 
 function bb_to_slice(bb::BoundingBox{Float64})
-  return round(Int64, bb.i+1):round(Int64, bb.i+bb.h), 
-              round(Int64, bb.j+1):round(Int64, bb.j+bb.w)
+  return round(Int64, bb.i):round(Int64, bb.i+bb.h-1), 
+              round(Int64, bb.j):round(Int64, bb.j+bb.w-1)
 end
 
 """
