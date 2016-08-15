@@ -62,7 +62,7 @@ end
 """
 Create array of UInt8 type from from image path
 """
-function load_uint8_image(path::String)
+function load_uint8_image(path::AbstractString)
   img = Images.load(path)
   return reinterpret(UInt8, Images.data(img)[:,:,1])'
 end

@@ -211,7 +211,7 @@ function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
   @fastmath @inbounds img[i,j]=round(T,pixelvalue)
 end
 
-function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
+function writepixel{T<:AbstractFloat}(img::Array{T},i,j,pixelvalue)
    @inbounds img[i,j]=pixelvalue
 end
 
@@ -219,7 +219,7 @@ function writepixel{T<:Integer}(img::SharedArray{T},i,j,pixelvalue)
 	@fastmath @inbounds img[i,j]=round(T,pixelvalue)
 end
 
-function writepixel{T<:FloatingPoint}(img::SharedArray{T},i,j,pixelvalue)
+function writepixel{T<:AbstractFloat}(img::SharedArray{T},i,j,pixelvalue)
    @inbounds img[i,j]=pixelvalue
 end
 
@@ -227,7 +227,7 @@ function writepixel{T<:Integer}(img::SharedArray{T},i,j,pixelvalue)
   img[i,j]=round(T,pixelvalue)
 end
 
-function writepixel{T<:FloatingPoint}(img::SharedArray{T},i,j,pixelvalue)
+function writepixel{T<:AbstractFloat}(img::SharedArray{T},i,j,pixelvalue)
   img[i,j]=pixelvalue
 end
   
