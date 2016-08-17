@@ -5,9 +5,9 @@
 tform = calculate_affine(moving_pts, fixed_pts)
 ```
 
-* moving_pts: 2D array, each row being nonhomogeneous coords of a point, of the 
+* moving_pts: Nxd array, each row being homogeneous coords of a point, of the 
     point set that is moving to fit the fixed point set.
-* fixed_pts: 2D array, each row being nonhomogeneous coords of a point, of the 
+* fixed_pts: Nxd array, each row being homogeneous coords of a point, of the 
     reference point set.
 * tform: affine transformation that produces a mapping of the moving_pts to 
     fixed_pts.
@@ -17,9 +17,7 @@ fixed_pts = moving_pts * tform
 ```
 """
 function calculate_affine(moving_pts, fixed_pts)
-  moving = hcat(moving_pts, ones(size(moving_pts,1)))
-  fixed = hcat(fixed_pts, ones(size(fixed_pts,1)))
-  return moving \ fixed
+  return moving_pts \ fixed_pts
 end
 
 """
@@ -29,9 +27,9 @@ end
 tform = calculate_rigid(moving_pts, fixed_pts)
 ```
 
-* moving_pts: 2D array, each row being nonhomogeneous coords of a point, of the 
+* moving_pts: Nxd array, each row being homogeneous coords of a point, of the 
     point set that is moving to fit the fixed point set.
-* fixed_pts: 2D array, each row being nonhomogeneous coords of a point, of the 
+* fixed_pts: Nxd array, each row being homogeneous coords of a point, of the 
     reference point set.
 * tform: rigid transformation that produces a mapping of the moving_pts to 
     fixed_pts.
@@ -41,6 +39,8 @@ fixed_pts = moving_pts * tform
 ```
 """
 function calculate_rigid(moving_pts, fixed_pts)
+  moving_pts = moving_pts[:,1:end-1]
+  fixed_pts = fixed_pts[:,1:end-1]
   n, dim = size(moving_pts)
   moving_bar = mean(moving_pts, 1)
   fixed_bar = mean(fixed_pts, 1)
@@ -62,9 +62,9 @@ end
 tform = calculate_translation(moving_pts, fixed_pts)
 ```
 
-* moving_pts: 2D array, each row being nonhomogeneous coords of a point, of the 
+* moving_pts: Nxd array, each row being nonhomogeneous coords of a point, of the 
     point set that is moving to fit the fixed point set.
-* fixed_pts: 2D array, each row being nonhomogeneous coords of a point, of the 
+* fixed_pts: Nxd array, each row being nonhomogeneous coords of a point, of the 
     reference point set.
 * tform: translation transformation that produces a mapping of the moving_pts to 
     fixed_pts.
