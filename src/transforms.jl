@@ -106,7 +106,7 @@ function calculate_translation(mesh::Mesh)
 end
 
 """
-Matrix for counter-clockwise rotations in radians
+Matrix for rotation in degrees (clockwise rotation with left-handed Cartesian)
 """
 function make_rotation_matrix(theta, image_size = nothing)
   angle = deg2rad(theta)
