@@ -31,7 +31,7 @@ function -(bbA::BoundingBox, bbB::BoundingBox)
   j = max(bbA.j, bbB.j)
   h = min(bbA.h+bbA.i, bbB.h+bbB.i)-i
   w = min(bbA.w+bbA.j, bbB.w+bbB.j)-j
-  if h < 0 || w < 0
+  if h <= 0 || w <= 0
     bb = BoundingBox(NaN, NaN, NaN, NaN)
   else
     bb = BoundingBox(i,j,h,w)
