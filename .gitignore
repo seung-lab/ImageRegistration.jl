@@ -8,3 +8,4 @@ EM_images/
 bucket_dir_path.txt
 bucket_dir_path.txt~
 *.jld
+.DS_Store

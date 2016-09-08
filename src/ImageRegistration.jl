@@ -12,6 +12,7 @@ include("transforms.jl")
 include("boundingbox.jl")
 include("imwarp.jl")
 include("meshwarp.jl")
+include("geometry.jl")
 # include("draw.jl")
 
 export
@@ -59,6 +60,11 @@ export
   pt_on_line_segment,
   poly_contains_poly,
   poly_intersects,
+  cross2,
+  clip_polygon,
+  pt_on_left,
+  line_to_vector,
+  find_line_intersection,
   load_uint8_img,
   load_test_images,
   make_rotation_matrix,
