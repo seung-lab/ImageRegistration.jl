@@ -73,16 +73,21 @@ b = [4,5]
 
 a = [0,0,2,2]
 b = [0,2,2,0]
+@test find_line_segment_intersection(a,b) == [1,1]
 @test find_line_intersection(a,b) == [1,1]
 b = [0,4,2,2]
+@test find_line_segment_intersection(a,b) == [2,2]
 @test find_line_intersection(a,b) == [2,2]
 b = [0,10,2,8]
-@test find_line_intersection(a,b) == nothing
+@test find_line_segment_intersection(a,b) == nothing
+@test find_line_intersection(a,b) == [5,5]
 a = [1,0,1,2]
 b = [0,2,2,0]
+@test find_line_segment_intersection(a,b) == [1,1]
 @test find_line_intersection(a,b) == [1,1]
 a = [1,0,1,2]
 b = [1,2,1,1]
+@test find_line_segment_intersection(a,b) == [1,1]
 @test find_line_intersection(a,b) == [1,1]
 
 a = [0,0,3,0]
@@ -100,13 +105,44 @@ b = [4,5]
 subject = [0.0 0.0
            10.0 0.0
            10.0 10.0
-           0.0 10.0]
+           0.0 10.0
+           0.0 0.0]
 clip = [-1.0 3.0
       11.0 3.0
       11.0 8.0
-      -1.0 8.0]
-output = [0.0 3.0
-      10.0 3.0
+      -1.0 8.0
+      -1.0 3.0]
+output = [10.0 3.0
       10.0 8.0
-      0.0 8.0]
-@test clip_polygon(subject, clip) == output
+      0.0 8.0
+      0.0 3.0
+      10.0 3.0]
+@test_approx_eq clip_polygon(subject, clip) output
+
+subject = [0.0 0.0
+           10.0 0.0
+           10.0 10.0
+           0.0 10.0
+           0.0 0.0]
+clip = [3.0 3.0
+      8.0 3.0
+      8.0 8.0
+      3.0 8.0
+      3.0 3.0]
+output = [3.0 3.0
+      8.0 3.0
+      8.0 8.0
+      3.0 8.0
+      3.0 3.0]
+@test_approx_eq clip_polygon(subject, clip) output
+
+a = [0.0 0.0
+    4.0 0.0
+    4.0 3.0
+    0.0 0.0]
+@test_approx_eq poly_area(a) 6
+a = [0.0 0.0
+    -4.0 0.0
+    -4.0 -3.0
+    0.0 0.0]
+@test_approx_eq poly_area(a) 6

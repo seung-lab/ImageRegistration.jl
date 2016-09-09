@@ -115,7 +115,10 @@ function clip_polygon(subject, clip)
             start_pt = end_pt
         end
     end
-    return output
+    if length(output) > 1
+      push!(output, output[1])
+    end
+    return hcat(output...)'
 end
 
 """
@@ -141,7 +144,7 @@ Outputs:
 
 http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
 """
-function find_line_intersection(a, b)
+function find_line_segment_intersection(a, b)
     p = a[1:2]
     r = line_to_vector(a)
     q = b[1:2]
@@ -154,7 +157,7 @@ function find_line_intersection(a, b)
             # collinear
             t0 = (q-p)' * r/(r'*r)
             t1 = t0 + s' * r/(r'*r)
-            if s'*r < 0
+            if (s'*r)[1] < 0
                 return p + t1[1]*r
             else
                 return p + t0[1]*r
@@ -174,6 +177,30 @@ function find_line_intersection(a, b)
 end
 
 """
+Find intersection of two lines - no protection
+"""
+function find_line_intersection(a, b)
+    p = a[1:2]
+    r = line_to_vector(a)
+    q = b[1:2]
+    s = line_to_vector(b)
+    if cross2(r, s) == 0
+      # collinear
+      t0 = (q-p)' * r/(r'*r)
+      t1 = t0 + s' * r/(r'*r)
+      if (s'*r)[1] < 0
+          return p + t1[1]*r
+      else
+          return p + t0[1]*r
+      end
+    else
+      t = cross2(q-p, s / cross2(r, s))
+      # u = cross2(q-p, r / cross2(r, s))
+      return p + t*r
+    end
+end
+
+"""
 Convert 4-element line segment to 2-element vector
 """
 function line_to_vector(a)
@@ -185,4 +212,19 @@ Given two 2-element vectors, return their determinant
 """
 function cross2(a, b)
     return a[1]*b[2] - a[2]*b[1]
+end
+
+"""
+Given an Nx2 list of convex polygon vertices, calculate polygon area
+"""
+function poly_area(a)
+  N = size(a,1)
+  if a[1,:] == a[N,:]
+    N -= 1
+  end
+  area = 0
+  for i = 1:N
+    area += abs(cross2(a[i,:], a[N,:]))
+  end
+  return area / 2
 end
