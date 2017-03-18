@@ -71,7 +71,7 @@ end
 Load test images
 """
 function load_test_images()
-  dir = Pkg.dir("ImageRegistration")
+  dir = dirname(dirname(@__FILE__))
   pathA = joinpath(dir, "test", "test_images", "imgA.tif")
   pathB = joinpath(dir, "test", "test_images", "imgB.tif")
   return load_uint8_image(pathA), load_uint8_image(pathB)
