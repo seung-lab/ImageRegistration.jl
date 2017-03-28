@@ -192,19 +192,25 @@ Bugs:
 * The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
 * The "corner case" where a grid line intersects a single vertex of the polygon does not appear to be properly treated.  The corner case is nongeneric if px and py are floats.  But the corner case could be common if px and py are ints, which seems encouraged by the parametric typing.
 """ 
-function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T)
+function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse=false)
   @assert length(py) == length(px)    
   left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
+  ymax = size(M, 1);
+  if reverse xrange = 1:size(M, 2)
+  else xrange = left:right
+  end
   # Scan poly from left to right
-  for x=left:right     # loop over grid lines
-    ys = Set{Int64}()
+  for x=xrange     # loop over grid lines
+    if reverse ys = Array{Int64, 1}([1, ymax])
+    else ys = Array{Int64, 1}()
+    end
     m = length(px)
     for n=1:length(px)  # loop over edges (m,1),(1,2),(2,3),...,(m-1,m)
       # grid line intersects edge in one of two ways
       if (px[n] <= x <= px[m]) || (px[m] <= x <= px[n])
-        if px[n] == px[m]  # intersection is entire edge
-          push!(ys, ceil(Int64, py[n]))
-          push!(ys, ceil(Int64, py[m]))
+        if px[n] == px[m]  # intersection is entire edge - do nothing (both points will be added from the edges before and after)
+          #push!(ys, ceil(Int64, py[n]))
+          #push!(ys, ceil(Int64, py[m]))
         else # intersection is point
             y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
 	    # deal with rounding error
