@@ -173,12 +173,13 @@ end
 """
 `FILLPOLY!` - Fill pixels contained inside a polygon
 
-    M = fillpoly!(M, px, py, value)
+    M = fillpoly!(M, px, py, value; reverse)
 
 * `M`: 2D array, image
 * `px`: 1D array, x-components of polygon vertices
 * `py`: 1D array, y-components of polygon vertices
 * `value`: fill value
+* `reverse`: Boolean kwarg, false by default; if true then fills in everything outside the polygon
 
 Features:
 
@@ -186,13 +187,14 @@ Features:
 * The vertices should be listed sequentially in px and py. Clockwise/counterclockwise ordering doesn't matter.
 * It seems that the polygon is closed automatically if it isn't already, i.e., the last vertex in px, py is not equal to the first.  Does the code work if the input polygon is already closed?
 * The code treats the "edge case," where an edge of the polygon lies exactly on a grid line.
+* The boundary of the polygon is filled whether or not reverse kwarg is set - i.e. the results with `reverse` set to true and false are not perfect complements due to the boundary.
 
 Bugs:
 
 * The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
 * The "corner case" where a grid line intersects a single vertex of the polygon does not appear to be properly treated.  The corner case is nongeneric if px and py are floats.  But the corner case could be common if px and py are ints, which seems encouraged by the parametric typing.
 """ 
-function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse=false)
+function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
   @assert length(py) == length(px)    
   left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
   ymax = size(M, 1);
