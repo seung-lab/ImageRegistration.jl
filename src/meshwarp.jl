@@ -183,37 +183,52 @@ end
 
 Features:
 
-* Intended to work for nonconvex polygons as well as convex polygons, except that currently the corner cases (described below) fail in non-convex poligons since it doesn't add its own pair.
+* Intended to work for nonconvex polygons as well as convex polygons
 * The vertices should be listed sequentially in px and py. Clockwise/counterclockwise ordering doesn't matter.
-* It seems that the polygon is closed automatically if it isn't already, i.e., the last vertex in px, py is not equal to the first.  Does the code work if the input polygon is already closed?
+* Duplicate points in sequence are handled by removing until only one remains.
+* Polygons need not be closed (i.e. last point needs not be the same as the first point) - if closed, they will be handled as duplicates initially.
+* The code treats the "corner case," where the vertex of the polygon intersects the grid line at one point.
 * The code treats the "edge case," where an edge of the polygon lies exactly on a grid line.
 * The boundary of the polygon is filled whether or not reverse kwarg is set - i.e. the results with `reverse` set to true and false are not perfect complements due to the boundary.
 
 Bugs:
 
 * The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
-* The "corner case" where a grid line intersects a single vertex of the polygon does not appear to be properly treated.  The corner case is nongeneric if px and py are floats.  But the corner case could be common if px and py are ints, which seems encouraged by the parametric typing.
 """ 
 function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
   @assert length(py) == length(px)    
   left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
-  ymax = size(M, 1);
   if reverse xrange = 1:size(M, 2)
   else xrange = left:right
   end
+  l = length(px)
+  #force no duplicates, including at the end
+    for i in 1:length(px)
+	if px[i] == px[l] && py[i] == py[l]
+	  px[l] = 0
+	  py[l] = 0
+	end
+	  l = i
+    end
+    px = px[px .!= 0]
+    py = py[py .!= 0]
   # Scan poly from left to right
   for x=xrange     # loop over grid lines
-    if reverse ys = Array{Int64, 1}([1, ymax])
-    else ys = Array{Int64, 1}()
-    end
+    ys = Array{Int64, 1}()
     m = length(px)
+    xdir_last = sign(px[m] - px[m-1]) # direction of the line segment
     for n=1:length(px)  # loop over edges (m,1),(1,2),(2,3),...,(m-1,m)
+      xdir_cur = sign(px[n] - px[m])
       # grid line intersects edge in one of two ways
       if (px[n] <= x <= px[m]) || (px[m] <= x <= px[n])
-        if px[n] == px[m]  # intersection is entire edge - do nothing (both points will be added from the edges before and after)
-          #push!(ys, ceil(Int64, py[n]))
-          #push!(ys, ceil(Int64, py[m]))
-        else # intersection is point
+	if px[n] == px[m]  # intersection is entire edge
+	  if xdir_last + xdir_cur == 0 # if two vertical edges in a row remove the last one
+	    pop!(ys)
+	  end
+          push!(ys, ceil(Int64, py[n]))
+	else# intersection is point
+	  # do not add duplicate points (endpoint of the last segment), unless the direction is changing in x
+	  if px[m] != x || xdir_last + xdir_cur == 0
             y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
 	    # deal with rounding error
 	    if ceil(Int64, y) > size(M, 1)
@@ -221,16 +236,22 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
 	    else
               push!(ys, ceil(Int64, y))
 	    end
-        end            
+       	  end            
+      	end
       end
+      xdir_last = xdir_cur
       m = n
     end
     # generically, two intersections for a convex polygon
     # generically, even number of intersections for a nonconvex polygon
     ys = sort([y for y in ys])  # sort the intersection points
-    # if odd number of intersection points, add duplicate end point
     if length(ys) % 2 == 1
+      println("odd number of intersection points at $x")
       push!(ys, ys[end])
+    end
+    if reverse
+      unshift!(ys, 1)
+      push!(ys, size(M,1))
     end
     # Place value in matrix at all the y's between min and max for given x
     for n=1:2:length(ys)           
