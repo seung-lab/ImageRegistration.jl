@@ -227,8 +227,8 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
 	  end
           push!(ys, ceil(Int64, py[n]))
 	else# intersection is point
-	  # do not add duplicate points (endpoint of the last segment), unless the direction is changing in x
-	  if px[m] != x || xdir_last + xdir_cur == 0
+	  # do not add duplicate points (endpoint of the last segment), unless the direction is reversing in x or the last segment was vertical
+	  if px[m] != x || xdir_last + xdir_cur == 0 || xdir_last == 0
             y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
 	    # deal with rounding error
 	    if ceil(Int64, y) > size(M, 1)
