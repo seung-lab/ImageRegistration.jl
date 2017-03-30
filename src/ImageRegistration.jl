@@ -33,6 +33,7 @@ export
   meshwarp,
   normxcorr2,
   find_zero_indices,
+  fillpoly!,
   incidence_to_triangles,
   incidence_to_dict,
   dict_to_triangles,
