@@ -228,7 +228,7 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
 #	  if xdir_last + xdir_cur == 0 # if two vertical edges in a row remove the last one
 #	    pop!(ys)
 #	  end
-	  push!(tops, minimum((py[n], py[m])))
+	  push!(tops, ceil(Int64, minimum((py[n], py[m]))))
 	  #push!(signs, xdir_cur)
           #push!(ys, ceil(Int64, py[n]))
 	else# intersection is point
