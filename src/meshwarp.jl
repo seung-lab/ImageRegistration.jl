@@ -215,6 +215,9 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
   # Scan poly from left to right
   for x=xrange     # loop over grid lines
     ys = Array{Int64, 1}()
+    tops = Set{Int64}() # tops of vertical edges
+    signs = Array{Int64, 1}()
+    ys_clean = Array{Int64, 1}()
     m = length(px)
     xdir_last = sign(px[m] - px[m-1]) # direction of the line segment
     for n=1:length(px)  # loop over edges (m,1),(1,2),(2,3),...,(m-1,m)
@@ -222,14 +225,17 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
       # grid line intersects edge in one of two ways
       if (px[n] <= x <= px[m]) || (px[m] <= x <= px[n])
 	if px[n] == px[m]  # intersection is entire edge
-	  if xdir_last + xdir_cur == 0 # if two vertical edges in a row remove the last one
-	    pop!(ys)
-	  end
-          push!(ys, ceil(Int64, py[n]))
+#	  if xdir_last + xdir_cur == 0 # if two vertical edges in a row remove the last one
+#	    pop!(ys)
+#	  end
+	  push!(tops, minimum((py[n], py[m])))
+	  #push!(signs, xdir_cur)
+          #push!(ys, ceil(Int64, py[n]))
 	else# intersection is point
-	  # do not add duplicate points (endpoint of the last segment), unless the direction is reversing in x or the last segment was vertical
+	  # do not add duplicate points (endpoint of the last segment), unless the direction is reversing in x or the last segment is vertical
 	  if px[m] != x || xdir_last + xdir_cur == 0 || xdir_last == 0
             y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
+	    push!(signs, xdir_cur)
 	    # deal with rounding error
 	    if ceil(Int64, y) > size(M, 1)
 	      push!(ys, floor(Int64, y))
@@ -243,19 +249,38 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
       m = n
     end
     # generically, two intersections for a convex polygon
-    # generically, even number of intersections for a nonconvex polygon
-    ys = sort([y for y in ys])  # sort the intersection points
+    perm = sortperm(ys)  # sort the intersection points
+    ys = ys[perm]  # sort the intersection points
+    signs = signs[perm]  # sort the intersection points
+    i = 1
+    while (i < length(ys))
+	y_entry = ys[i]
+	y_exit = ys[i]
+	entry_sign = signs[i]
+	while (i < length(ys))
+	  i += 1
+	  y_exit = ys[i]
+	  exit_sign = signs[i]
+	  if in(y_exit, tops) continue;
+	  elseif exit_sign != entry_sign break; end
+	end
+	push!(ys_clean, y_entry)
+	push!(ys_clean, y_exit)
+	i += 1
+    end
+    
+#=
     if length(ys) % 2 == 1
       println("odd number of intersection points at $x")
       push!(ys, ys[end])
-    end
+    end =#
     if reverse
-      unshift!(ys, 1)
-      push!(ys, size(M,1))
+      unshift!(ys_clean, 1)
+      push!(ys_clean, size(M,1))
     end
     # Place value in matrix at all the y's between min and max for given x
-    for n=1:2:length(ys)           
-      @simd for y in ys[n]:ys[n+1]
+    for n=1:2:length(ys_clean)           
+      @simd for y in ys_clean[n]:ys_clean[n+1]
       @inbounds M[y, x] = value
       end
     end
