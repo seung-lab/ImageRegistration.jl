@@ -78,21 +78,40 @@ end=#
 
 @sync for p in procs()
       	t = proc_range(p, Us);
-      	@async @fastmath @inbounds remotecall_wait(p, calculate_pixels_in_trig_chunk!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
+      	@async @fastmath @inbounds remotecall_wait(p, calculate_pixels_in_trig_chunk!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset, interp)
 end
 
   return copy(sdata(warped_img)), [bb.i, bb.j]
 end
 
-function calculate_pixels_in_trig_chunk!(Us, Vs, Ms, img, offset, warped_img, warped_offset)
+function calculate_pixels_in_trig_chunk!(Us, Vs, Ms, img, offset, warped_img, warped_offset, interp)
  @simd for i in 1:length(Us)
-	calculate_pixels_in_trig!(Us[i], Vs[i], Ms[i], img, offset, warped_img, warped_offset)
+	calculate_pixels_in_trig!(Us[i], Vs[i], Ms[i], img, offset, warped_img, warped_offset, interp)
   end
   global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, 0, 0);
 end
 
-function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset)
+function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset, interp)
+
+    # Takes weights wx, wy that denotes how close the value is to [fx+1, fy+1] from [fx, fy] and writes the weighted average to [i, j]
+    function computepixel_interp(warped_img, img, i, j, wx, wy, fx, fy)
+          # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
+          @fastmath @inbounds p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
+	  @fastmath @inbounds p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
+	  @fastmath p1 = p1 * (1-wx);
+	  @fastmath p2 = p2 * (wx);
+          writepixel(warped_img,i,j,p1+p2)
+    end
+
+    function computepixel(warped_img, img, i, j, wx, wy, fx, fy)
+      	  @fastmath y = wy < 0.5 ? fy : fy + 1
+      	  @fastmath x = wx < 0.5 ? fx : fx + 1
+	  @inbounds v = img[x,y]
+          writepixel(warped_img,i,j,v)
+    end
+
     us, vs = poly2source!(U, V)
+    computepixel_func = interp ? computepixel_interp : computepixel
     @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
     @fastmath @inbounds begin
@@ -106,12 +125,7 @@ function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offs
         fx, fy = floor(Int64, x), floor(Int64, y)
         wx, wy = x-fx, y-fy
         if 1 <= fx <= size(img, 1)-1 && 1 <= fy <= size(img, 2)-1
-          # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-          @fastmath @inbounds p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
-	  @fastmath @inbounds p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
-	  @fastmath p1 = p1 * (1-wx);
-	  @fastmath p2 = p2 * (wx);
-          writepixel(warped_img,i,j,p1+p2)
+	computepixel_func(warped_img, img, i, j, wx, wy, fx, fy)
         end
       end
     end
