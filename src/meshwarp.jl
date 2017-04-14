@@ -211,7 +211,7 @@ Bugs:
 * The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
 """ 
 function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; convex::Bool=false, reverse::Bool=false)
-  convex ? return fillpoly_convex!(M, px, py, value; reverse = reverse) : return fillpoly_nonconvex!(M, px, py, value; reverse = reverse)
+  convex ? (return fillpoly_convex!(M, px, py, value; reverse = reverse)) : (return fillpoly_nonconvex!(M, px, py, value; reverse = reverse))
 end
 
 function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
