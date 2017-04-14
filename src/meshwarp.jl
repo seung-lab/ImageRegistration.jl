@@ -142,7 +142,7 @@ function poly2source(pts_i, pts_j)
   # Create image based on number of pixels in bb that will identify triangle
   mask = zeros(Bool, bottom-top+1, right-left+1)
   # Convert vertices into pixel space and fill the mask to identify triangle
-  fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
+  fillpoly!(mask, pts_j-left+1, pts_i-top+1, true; convex = true)
   # Create list of pixel coordinates that are contained by the triangle
   us, vs = findn(mask)
   # Convert that list of pixel coordinates back into global space
@@ -169,7 +169,7 @@ function poly2source!(pts_i, pts_j)
     @fastmath @inbounds pts_j[i] = pts_j[i] + 1 - left;
   end
   #fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
-   fillpoly!(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2}, pts_j, pts_i, true)
+   fillpoly!(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2}, pts_j, pts_i, true; convex = true)
   # Create list of pixel coordinates that are contained by the triangle
   us, vs = findn(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})
   # Convert that list of pixel coordinates back into global space
@@ -193,6 +193,7 @@ end
 * `px`: 1D array, x-components of polygon vertices
 * `py`: 1D array, y-components of polygon vertices
 * `value`: fill value
+* `convex`: Boolean kwarg, false by default; if true then assumes the polygon is convex and well-formed without duplicates
 * `reverse`: Boolean kwarg, false by default; if true then fills in everything outside the polygon
 
 Features:
@@ -209,7 +210,70 @@ Bugs:
 
 * The original code (https://github.com/dfdx/PiecewiseAffineTransforms.jl/blob/master/src/polyline.jl) used implicit conversion to Int64 (presumably rounding).  Tommy/Shang replaced this by ceil.  This might produce inconsistent results, with the same pixel belonging to more than one triangle.
 """ 
-function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
+function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; convex::Bool=false, reverse::Bool=false)
+  convex ? return fillpoly_convex!(M, px, py, value; reverse = reverse) : return fillpoly_nonconvex!(M, px, py, value; reverse = reverse)
+end
+
+function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
+  left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
+  if reverse xrange = 1:size(M, 2)
+  else xrange = left:right
+  end
+  l = length(px)
+  # Scan poly from left to right
+  for x=xrange     # loop over grid lines
+    top = 0
+    bot = 0
+    xdir_last = sign(px[m] - px[m-1]) # direction of the line segment
+    for n=1:length(px)  # loop over edges (m,1),(1,2),(2,3),...,(m-1,m)
+      xdir_cur = sign(px[n] - px[m])
+      # grid line intersects edge in one of two ways
+      if (px[n] <= x <= px[m]) || (px[m] <= x <= px[n])
+	if px[n] == px[m]  # intersection is entire edge, do nothing
+	else# intersection is point
+	  # do not add duplicate points (endpoint of the last segment), unless the direction is reversing in x or the last segment is vertical
+	  if px[m] != x || xdir_last + xdir_cur == 0 || xdir_last == 0
+            y = py[n] + (x-px[n]) * (py[m]-py[n])/(px[m]-px[n])
+	    # deal with rounding error
+	    if ceil(Int64, y) > size(M, 1)
+	      val = floor(Int64, y)
+	    else
+              val = ceil(Int64, y)
+	    end
+	    if top == 0
+	      top = val 
+	    elseif top < val
+	      bot = val
+	    else
+	      bot = top
+	      top = val
+	      break
+	    end
+       	  end            
+      	end
+      end
+      xdir_last = xdir_cur
+      m = n
+    end
+
+    if reverse
+      @simd for y in 1:top
+      @inbounds M[y, x] = value
+      end
+      @simd for y in bot:size(M,1)
+      @inbounds M[y, x] = value
+      end
+    else
+    # Place value in matrix at all the y's between min and max for given x
+      @simd for y in top:bot
+      @inbounds M[y, x] = value
+      end
+    end
+  end
+  return M
+end
+
+function fillpoly_nonconvex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
   @assert length(py) == length(px)    
   left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
   if reverse xrange = 1:size(M, 2)
@@ -262,10 +326,12 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
       xdir_last = xdir_cur
       m = n
     end
+
+    if length(ys) != 2
     # generically, two intersections for a convex polygon
     perm = sortperm(ys)  # sort the intersection points
     ys = ys[perm]  # sort the intersection points
-    signs = signs[perm]  # sort the intersection points
+    signs = signs[perm]  # sort the intersection points' signs
     i = 1
     while (i < length(ys))
 	y_entry = ys[i]
@@ -282,12 +348,11 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
 	push!(ys_clean, y_exit)
 	i += 1
     end
+  else
+    #if ys length is two then we can simply sort instead of going through the whole algorithm
+    ys_clean = sort(ys)
+    end
     
-#=
-    if length(ys) % 2 == 1
-      println("odd number of intersection points at $x")
-      push!(ys, ys[end])
-    end =#
     if reverse
       unshift!(ys_clean, 1)
       push!(ys_clean, size(M,1))
