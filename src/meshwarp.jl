@@ -142,7 +142,7 @@ function poly2source(pts_i, pts_j)
   # Create image based on number of pixels in bb that will identify triangle
   mask = zeros(Bool, bottom-top+1, right-left+1)
   # Convert vertices into pixel space and fill the mask to identify triangle
-  fillpoly!(mask, pts_j-left+1, pts_i-top+1, true; convex = true)
+  fillpoly!(mask, pts_j-left+1, pts_i-top+1, true; convex = false)
   # Create list of pixel coordinates that are contained by the triangle
   us, vs = findn(mask)
   # Convert that list of pixel coordinates back into global space
@@ -214,6 +214,7 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
   convex ? (return fillpoly_convex!(M, px, py, value; reverse = reverse)) : (return fillpoly_nonconvex!(M, px, py, value; reverse = reverse))
 end
 
+# currently broken - do not use
 function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
   left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
   if reverse xrange = 1:size(M, 2)
