@@ -214,7 +214,6 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
   convex ? (return fillpoly_convex!(M, px, py, value; reverse = reverse)) : (return fillpoly_nonconvex!(M, px, py, value; reverse = reverse))
 end
 
-# currently broken - do not use
 function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
   left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
   if reverse xrange = 1:size(M, 2)
@@ -257,6 +256,8 @@ function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P
       xdir_last = xdir_cur
       m = n
     end
+
+    if top == 0 || bot == 0 continue end
 
     if reverse
       @simd for y in 1:top
