@@ -43,7 +43,7 @@ function meshwarp{T}(img::SharedArray{T},
 
   @everywhere gc();
 
-@fastmath @inbounds for t in 1:size(trigs, 1);
+  for t in 1:size(trigs, 1);
     #println("$t / $(size(trigs, 1))")
     tr = squeeze(trigs[t, :], 1)
     # coordinates of the source triangle
@@ -72,13 +72,13 @@ function meshwarp{T}(img::SharedArray{T},
 	return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
   end
 
-#=@sync @fastmath @inbounds for t in 1:size(trigs, 1);
+#=@sync   for t in 1:size(trigs, 1);
     @async remotecall_wait(procs()[rem(t, nprocs()-1)+2], calculate_pixels_in_trig!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset)
 end=#
 
 @sync for p in procs()
       	t = proc_range(p, Us);
-      	@async @fastmath @inbounds remotecall_wait(p, calculate_pixels_in_trig_chunk!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset, interp)
+      	@async   remotecall_wait(p, calculate_pixels_in_trig_chunk!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset, interp)
 end
 
   return copy(sdata(warped_img)), [bb.i, bb.j]
@@ -96,17 +96,17 @@ function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offs
     # Takes weights wx, wy that denotes how close the value is to [fx+1, fy+1] from [fx, fy] and writes the weighted average to [i, j]
     function computepixel_interp(warped_img, img, i, j, wx, wy, fx, fy)
           # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-          @fastmath @inbounds p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
-	  @fastmath @inbounds p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
-	  @fastmath p1 = p1 * (1-wx);
-	  @fastmath p2 = p2 * (wx);
+            p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
+	    p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
+	   p1 = p1 * (1-wx);
+	   p2 = p2 * (wx);
           writepixel(warped_img,i,j,p1+p2)
     end
 
     function computepixel(warped_img, img, i, j, wx, wy, fx, fy)
-      	  @fastmath y = wy < 0.5 ? fy : fy + 1
-      	  @fastmath x = wx < 0.5 ? fx : fx + 1
-	  @inbounds v = img[x,y]
+      	   y = wy < 0.5 ? fy : fy + 1
+      	   x = wx < 0.5 ? fx : fx + 1
+	   v = img[x,y]
           writepixel(warped_img,i,j,v)
     end
 
@@ -114,12 +114,12 @@ function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offs
     computepixel_func = interp ? computepixel_interp : computepixel
     @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
-    @fastmath @inbounds begin
+      begin
         i, j = us[ind]-warped_offset[1]+1, vs[ind]-warped_offset[2]+1
         # Use warped coordinate in global space for transform
         u, v = us[ind], vs[ind]
         # x, y = M * [u, v, 1]
-        @fastmath @inbounds x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
+          x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
         # Convert original image coordinate to pixel space
         x, y = x-offset[1]+1, y-offset[2]+1
         fx, fy = floor(Int64, x), floor(Int64, y)
@@ -163,10 +163,10 @@ function poly2source!(pts_i, pts_j)
   #mask = zeros(Bool, bottom-top+1, right-left+1)
   # Convert vertices into pixel space and fill the mask to identify triangle
   for i in 1:length(pts_i)
-    @fastmath @inbounds pts_i[i] = pts_i[i] + 1 - top;
+      pts_i[i] = pts_i[i] + 1 - top;
   end
   for i in 1:length(pts_j)
-    @fastmath @inbounds pts_j[i] = pts_j[i] + 1 - left;
+      pts_j[i] = pts_j[i] + 1 - left;
   end
   #fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
    fillpoly!(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2}, pts_j, pts_i, true; convex = true)
@@ -174,10 +174,10 @@ function poly2source!(pts_i, pts_j)
   us, vs = findn(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})
   # Convert that list of pixel coordinates back into global space
   for i in 1:length(us)
-    @fastmath @inbounds us[i] = us[i] - 1 + top;
+      us[i] = us[i] - 1 + top;
   end
   for i in 1:length(vs)
-    @fastmath @inbounds vs[i] = vs[i] - 1 + left;
+      vs[i] = vs[i] - 1 + left;
   end
 #  us += top-1
 #  vs += left-1
@@ -261,15 +261,15 @@ function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P
 
     if reverse
       @simd for y in 1:top
-      @inbounds M[y, x] = value
+       M[y, x] = value
       end
       @simd for y in bot:size(M,1)
-      @inbounds M[y, x] = value
+       M[y, x] = value
       end
     else
     # Place value in matrix at all the y's between min and max for given x
       @simd for y in top:bot
-      @inbounds M[y, x] = value
+       M[y, x] = value
       end
     end
   end
@@ -363,7 +363,7 @@ function fillpoly_nonconvex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vecto
     # Place value in matrix at all the y's between min and max for given x
     for n=1:2:length(ys_clean)           
       @simd for y in ys_clean[n]:ys_clean[n+1]
-      @inbounds M[y, x] = value
+       M[y, x] = value
       end
     end
   end
