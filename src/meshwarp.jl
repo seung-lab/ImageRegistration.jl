@@ -224,6 +224,7 @@ function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P
   for x=xrange     # loop over grid lines
     top = 0
     bot = 0
+    m = length(px)
     xdir_last = sign(px[m] - px[m-1]) # direction of the line segment
     for n=1:length(px)  # loop over edges (m,1),(1,2),(2,3),...,(m-1,m)
       xdir_cur = sign(px[n] - px[m])
