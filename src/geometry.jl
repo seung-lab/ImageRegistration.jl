@@ -1,6 +1,15 @@
 """
 Returns true if point, pt, is contained by the polygon defined by points in poly
 
+Inputs:
+  pt: 2-element array
+  poly: Nx2 array as the vertices defining the polygon
+          the last point is a repeat of the first
+          i.e. poly[1,:] == poly[end,:]
+
+Outputs:
+  Boolean whether point is contained within the polygon
+
 Pulled from:
 https://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
 
