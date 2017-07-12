@@ -9,9 +9,9 @@ global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, 0, 0);
     warped_img, [bb.i, bb.j] = meshwarp(img, src, dst, trigs, offset, interp)
 
 * `img`: 2D array, image (todo: extend to Image type)
-* `src`: Nx2 array, positions of mesh nodes in `img` (global space)
-* `dst`: Nx2 array, positions of mesh nodes in `warped_img` (global space)
-* `trigs`: Nx3 array, each row contains indices of nodes of a triangle
+* `src`: 2xN array, positions of mesh nodes in `img` (global space)
+* `dst`: 2xN array, positions of mesh nodes in `warped_img` (global space)
+* `trigs`: 3xN array, each column contains indices of nodes of a triangle
 * `offset`: 2-element array, position of img[1,1] in global space (optional - default is [0,0])
 * `interp`: bool determining whether to use bilinear interpolation or not
     (optional - default is true)
@@ -34,18 +34,23 @@ function meshwarp{T}(img::SharedArray{T},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
 
   bb = snap_bb(find_mesh_bb(dst))
-  warped_img = SharedArray(T, bb.h+1, bb.w+1)
+  warped_img = SharedArray{T}(bb.h+1, bb.w+1)
   warped_offset = [bb.i, bb.j];
 
-  Us = Array{Any}(size(trigs, 1));
-  Vs = Array{Any}(size(trigs, 1));
-  Ms = Array{Array{Float64, 2}}(size(trigs, 1));
+  Us = Array{Array{Float64, 1}}(size(trigs, 2));
+  Vs = Array{Array{Float64, 1}}(size(trigs, 2));
+  Ms = Array{Array{Float64, 2}}(size(trigs, 2));
 
   @everywhere gc();
 
-@fastmath @inbounds for t in 1:size(trigs, 1);
+   src_tri = ones(Float64, 3, 3)
+   dst_tri = ones(Float64, 3, 3)
+
+@fastmath @inbounds for t in 1:size(trigs, 2);
     #println("$t / $(size(trigs, 1))")
-    tr = squeeze(trigs[t, :], 1)
+    #tr = squeeze(trigs[t, :], 1) = necessary for 0.4.6
+    tr = view(trigs, :, t)
+    #= slow version
     # coordinates of the source triangle
     X = src[tr, 1]
     Y = src[tr, 2]
@@ -55,6 +60,16 @@ function meshwarp{T}(img::SharedArray{T},
     # Create matrix to transform from destination triangle to source image
     src_tri = [X Y ones(3,1)]
     dst_tri = [U V ones(3,1)]
+    =#
+    U = dst[1, tr]
+    V = dst[2, tr]
+    # Create matrix to transform from destination triangle to source image
+    src_tri[:, 1] = view(src, 1, tr)
+    src_tri[:, 2] = view(src, 2, tr)
+
+    dst_tri[:, 1] = U
+    dst_tri[:, 2] = V
+
     M = dst_tri \ src_tri # dst_tri * M = src_tri
     # Create list of coordinates in warped image that represent this
     # triangle (coordinates in the global space).
@@ -78,7 +93,7 @@ end=#
 
 @sync for p in procs()
       	t = proc_range(p, Us);
-      	@async @fastmath @inbounds remotecall_wait(p, calculate_pixels_in_trig_chunk!, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset, interp)
+      	@async @fastmath @inbounds remotecall_wait(calculate_pixels_in_trig_chunk!, p, Us[t], Vs[t], Ms[t], img, offset, warped_img, warped_offset, interp ? computepixel_interp : computepixel)
 end
 
   return copy(sdata(warped_img)), [bb.i, bb.j]
@@ -91,27 +106,32 @@ function calculate_pixels_in_trig_chunk!(Us, Vs, Ms, img, offset, warped_img, wa
   global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, 0, 0);
 end
 
-function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset, interp)
-
-    # Takes weights wx, wy that denotes how close the value is to [fx+1, fy+1] from [fx, fy] and writes the weighted average to [i, j]
-    function computepixel_interp(warped_img, img, i, j, wx, wy, fx, fy)
-          # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
-          @fastmath @inbounds p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
-	  @fastmath @inbounds p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
-	  @fastmath p1 = p1 * (1-wx);
-	  @fastmath p2 = p2 * (wx);
-          writepixel(warped_img,i,j,p1+p2)
+function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offset, computepixel_func)
+  poly::Array{Bool,2}, i_oset::Int64, j_oset::Int64 = poly2source_new!(U, V)
+    for j_poly in 1:size(poly,2)
+    	for i_poly in 1:size(poly,1)
+    @fastmath @inbounds begin
+	#check if poly is true
+      	if poly[i_poly, j_poly] == false continue end
+        # Use warped coordinate in global space for transform - this changes back from the test polygon to global space
+	u, v = i_poly + i_oset, j_poly + j_oset
+        # Convert warped coordinate to pixel space
+        i, j = u-warped_offset[1]+1, v-warped_offset[2]+1
+        # x, y = M * [u, v, 1]
+        @fastmath @inbounds x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
+        # Convert original image coordinate to pixel space
+        x, y = x-offset[1]+1, y-offset[2]+1
+        fx, fy = floor(Int64, x), floor(Int64, y)
+        wx, wy = x-fx, y-fy
+        if 1 <= fx <= size(img, 1)-1 && 1 <= fy <= size(img, 2)-1
+	computepixel_func(warped_img, img, i, j, wx, wy, fx, fy)
+        end
+      end
+      end
     end
-
-    function computepixel(warped_img, img, i, j, wx, wy, fx, fy)
-      	  @fastmath y = wy < 0.5 ? fy : fy + 1
-      	  @fastmath x = wx < 0.5 ? fx : fx + 1
-	  @inbounds v = img[x,y]
-          writepixel(warped_img,i,j,v)
-    end
-
-    us, vs = poly2source!(U, V)
-    computepixel_func = interp ? computepixel_interp : computepixel
+#=
+   us, vs = poly2source!(U, V)
+#    computepixel_func = interp ? computepixel_interp : computepixel
     @simd for ind in 1:length(us)
         # Convert warped coordinate to pixel space
     @fastmath @inbounds begin
@@ -129,7 +149,25 @@ function calculate_pixels_in_trig!(U, V, M, img, offset, warped_img, warped_offs
         end
       end
     end
-  end
+    =#
+end
+
+    # Takes weights wx, wy that denotes how close the value is to [fx+1, fy+1] from [fx, fy] and writes the weighted average to [i, j]
+    @inline function computepixel_interp(warped_img, img, i, j, wx, wy, fx, fy)
+          # Expansion of p = [1-wy wy] * img[fy:fy+1, fx:fx+1] * [1-wx; wx]
+          @fastmath @inbounds p1 = ((1-wy)*img[fx,fy] + wy*img[fx,fy+1])
+	  @fastmath @inbounds p2 = ((1-wy)*img[fx+1,fy] + wy*img[fx+1,fy+1])
+	  @fastmath p1 = p1 * (1-wx);
+	  @fastmath p2 = p2 * (wx);
+          writepixel(warped_img,i,j,p1+p2)
+    end
+
+    function computepixel(warped_img, img, i, j, wx, wy, fx, fy)
+      	  @fastmath y = wy < 0.5 ? fy : fy + 1
+      	  @fastmath x = wx < 0.5 ? fx : fx + 1
+	  @inbounds v = img[x,y]
+          writepixel(warped_img,i,j,v)
+    end
 
 
 """
@@ -151,6 +189,45 @@ function poly2source(pts_i, pts_j)
   return us, vs
 end
 
+@inline function poly2source_new!(pts_i, pts_j)
+  # Find bb of vertices (vertices in global space)
+  top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
+  left, right = floor(Int64,minimum(pts_j)), ceil(Int64,maximum(pts_j))
+  # Create image based on number of pixels in bb that will identify triangle
+  if size(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})[1] < bottom - top + 1 || size(MESHWARP_POLY2SOURCE_MASK)[2] < right - left + 1
+    global MESHWARP_POLY2SOURCE_MASK = zeros(Bool, bottom-top+1, right-left+1)
+  end
+  (MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})[:] = false;
+
+  #mask = zeros(Bool, bottom-top+1, right-left+1)
+  # Convert vertices into pixel space and fill the mask to identify triangle
+  for i in 1:length(pts_i)
+    @fastmath @inbounds pts_i[i] = pts_i[i] + 1 - top;
+  end
+  for i in 1:length(pts_j)
+    @fastmath @inbounds pts_j[i] = pts_j[i] + 1 - left;
+  end
+  #fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
+   fillpoly_convex!(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2}, pts_j, pts_i, true)
+   # return the offsets that have to be added
+   return MESHWARP_POLY2SOURCE_MASK, top - 1, left - 1
+   #=
+  # Create list of pixel coordinates that are contained by the triangle
+  us, vs = findn(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})
+  # Convert that list of pixel coordinates back into global space
+  for i in 1:length(us)
+    @fastmath @inbounds us[i] = us[i] - 1 + top;
+  end
+  for i in 1:length(vs)
+    @fastmath @inbounds vs[i] = vs[i] - 1 + left;
+  end
+#  us += top-1
+#  vs += left-1
+  return us, vs
+  =#
+end
+
+
 function poly2source!(pts_i, pts_j)
   # Find bb of vertices (vertices in global space)
   top, bottom = floor(Int64,minimum(pts_i)), ceil(Int64,maximum(pts_i))
@@ -169,7 +246,7 @@ function poly2source!(pts_i, pts_j)
     @fastmath @inbounds pts_j[i] = pts_j[i] + 1 - left;
   end
   #fillpoly!(mask, pts_j-left+1, pts_i-top+1, true)
-   fillpoly!(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2}, pts_j, pts_i, true; convex = true)
+   fillpoly_convex!(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2}, pts_j, pts_i, true)
   # Create list of pixel coordinates that are contained by the triangle
   us, vs = findn(MESHWARP_POLY2SOURCE_MASK::Array{Bool, 2})
   # Convert that list of pixel coordinates back into global space

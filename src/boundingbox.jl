@@ -82,10 +82,10 @@ end
 
 """ 
 function find_mesh_bb(nodes)
-    ilow = floor(Int64,minimum(nodes[:,1]))
-    jlow = floor(Int64,minimum(nodes[:,2]))
-    ihigh = ceil(Int64,maximum(nodes[:,1]))
-    jhigh = ceil(Int64,maximum(nodes[:,2]))
+    ilow = floor(Int64,minimum(nodes[1,:]))
+    jlow = floor(Int64,minimum(nodes[2,:]))
+    ihigh = ceil(Int64,maximum(nodes[1,:]))
+    jhigh = ceil(Int64,maximum(nodes[2,:]))
     return BoundingBox(ilow, jlow, ihigh-ilow, jhigh-jlow)
 end
 

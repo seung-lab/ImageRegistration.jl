@@ -94,22 +94,18 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
   end
   # offset of warped_img from the global origin
   warped_offset = [tbb.i, tbb.j]
+  warped_offset_i = tbb.i
+  warped_offset_j = tbb.j
   #tform[3, 1:2] -= 1.0
   M = inv(tform)   # inverse transform in global space
-#  M[3,1:2] -= offset'-1.0   # include conversion to pixel space of original img
-  M[3,1:2] -= offset'-0.5   # include conversion to pixel space of original img
+#  M[3,1:2] -= offset-1.0   # include conversion to pixel space of original img
+  M[3,1:2] -= offset-0.5   # include conversion to pixel space of original img
+
+
   x_max = size(img, 1);
   y_max = size(img, 2);
 
-  function proc_range(idx, arr)
-	worker_procs = setdiff(procs(), myid());
-	nchunks = length(worker_procs);
-	if nchunks == 0 return 1:length(arr); end
-	if idx == myid() return 1:0; end
-	splits = [round(Int64, s) for s in linspace(0, length(arr), nchunks + 1)];
-	return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
-  end
-
+  
   if parallel && nprocs() != 1 
     if !(typeof(warped_img) <: SharedArray)
     	println("The supplied output array is not a SharedArray despite the parallel keyword set to true. Aborting...")
@@ -118,40 +114,49 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
     if !(typeof(img) <: SharedArray)
 	  img_shared = SharedArray(eltype(img), size(img)...)
 	  img_shared[:] = img;
-	  img = img_shared;
+	else img_shared = img
 	end
+    parallel_imwarp_internal!(warped_img, img_shared, M, i, j, x_max, y_max, warped_offset_i, warped_offset_j)
+
+    # the @sync call has to be inclosed inside a function since otherwise type inference in the else part gets messed up
+    function parallel_imwarp_internal(warped_img, img_shared, M, i, j, x_max, y_max, warped_offset_i, warped_offset_j)
 	@sync for p in procs()
       		j_range = proc_range(p, 1:size(warped_img, 2));
-      		@async remotecall_wait(p, compute_and_write_columns!, warped_img, img, M, j_range, x_max, y_max, warped_offset)
+      		@async remotecall_wait(compute_and_write_columns!, p, warped_img, img_shared, M, j_range, x_max, y_max, warped_offset_i, warped_offset_j)
 	end
-  else
+      end
+
+  else 
   # cycle through all the pixels in warped_img
-  for j = 1:size(warped_img,2)
-    for i = 1:size(warped_img,1) # cycle through column-first for speed
-	compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset)
+  jr = 1:size(warped_img, 2)
+  ir = 1:size(warped_img, 1)
+  for j = jr
+    for i = ir # cycle through column-first for speed
+	compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset_i, warped_offset_j)
       end
     end
   end
   warped_img, warped_offset
 end
 
-function compute_and_write_columns!(warped_img, img, M, j_range, x_max, y_max, warped_offset)
+function compute_and_write_columns!(warped_img, img, M, j_range, x_max, y_max, warped_offset_i, warped_offset_j)
   for j in j_range
     for i in 1:size(warped_img, 1)
-	compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset)
+	compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset_i, warped_offset_j)
     end
   end
 end
 
-function compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped_offset)
+function compute_and_write_pixel!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Array{T}, SharedArray{T}}, M::Array, i::Int64, j::Int64, x_max::Int64, y_max::Int64, warped_offset_i::Int64, warped_offset_j::Int64)
         # convert from pixel to global space
         # (we index to zero, then add on the offset)
-        @fastmath @inbounds u = i-0.5+warped_offset[1]
-	@fastmath @inbounds v = j-0.5+warped_offset[2]
+        @fastmath @inbounds u = i-0.5+warped_offset_i
+	@fastmath @inbounds v = j-0.5+warped_offset_j
         # apply inv(tform), conversion back to pixel space included
         # x, y = [u, v, 1] * M - but writing it out moves faster
         @fastmath @inbounds x = M[1,1]*u + M[2,1]*v + M[3,1]
 	@fastmath @inbounds y = M[1,2]*u + M[2,2]*v + M[3,2]
+
         # x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]  # faster but differs by a matrix transpose
 
         # Slow...
@@ -203,8 +208,7 @@ function compute_and_write_pixel!(warped_img, img, M, i, j, x_max, y_max, warped
                 @fastmath @inbounds pxy = rwy * rwx * img[fx,fy]
 		@fastmath writepixel(warped_img, i, j, pxy);
 	  end
-	end	
-
+	end
 end
 
 function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
@@ -233,3 +237,11 @@ function writepixel{T<:AbstractFloat}(img::SharedArray{T},i,j,pixelvalue)
 end
 =#
   
+  function proc_range(idx, arr)
+	worker_procs = setdiff(procs(), myid());
+	nchunks = length(worker_procs);
+	if nchunks == 0 return 1:length(arr); end
+	if idx == myid() return 1:0; end
+	splits = [round(Int64, s) for s in linspace(0, length(arr), nchunks + 1)];
+	return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
+  end
