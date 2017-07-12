@@ -48,7 +48,6 @@ function meshwarp{T}(img::SharedArray{T},
 
 @fastmath @inbounds for t in 1:size(trigs, 2);
     #println("$t / $(size(trigs, 1))")
-    #tr = squeeze(trigs[t, :], 1) = necessary for 0.4.6
     tr = view(trigs, :, t)
     #= slow version
     # coordinates of the source triangle
