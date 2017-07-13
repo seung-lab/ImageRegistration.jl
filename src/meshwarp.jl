@@ -40,8 +40,8 @@ function meshwarp{T}(img::SharedArray{T},
   # compatibility fix for 0.4.6
   #Us = Array{Array{Float64, 1}}(size(trigs, 2));
   #Vs = Array{Array{Float64, 1}}(size(trigs, 2));
-  Us = Array{Array{Float64}}(size(trigs, 2));
-  Vs = Array{Array{Float64}}(size(trigs, 2));
+  Us = Array{Array{Float64, Any}}(size(trigs, 2));
+  Vs = Array{Array{Float64, Any}}(size(trigs, 2));
   Ms = Array{Array{Float64, 2}}(size(trigs, 2));
 
   @everywhere gc();
