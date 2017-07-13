@@ -1,12 +1,6 @@
 module ImageRegistration
 
    if VERSION != v"0.6.0"
-
-     function call{T}(::Type{SharedArray{T}}, si, sj)
-       return SharedArray(T, si, sj)
-     end
-     println("yay")
-
      view = slice
    end
 # using Images
