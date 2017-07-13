@@ -1,8 +1,5 @@
 module ImageRegistration
 
-   if VERSION != v"0.6.0"
-     view = slice
-   end
 # using Images
 # using Cairo
 
