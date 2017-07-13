@@ -75,8 +75,8 @@ function meshwarp{T}(img::SharedArray{T},
     M = dst_tri \ src_tri # dst_tri * M = src_tri
     # Create list of coordinates in warped image that represent this
     # triangle (coordinates in the global space).
-    Us[t] = U;
-    Vs[t] = V;
+    Us[t] = vec(U);
+    Vs[t] = vec(V);
     Ms[t] = M;
   end
 
