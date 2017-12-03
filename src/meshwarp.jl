@@ -291,6 +291,12 @@ function fillpoly!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, valu
   convex ? (return fillpoly_convex!(M, px, py, value; reverse = reverse)) : (return fillpoly_nonconvex!(M, px, py, value; reverse = reverse))
 end
 
+function fillpoly!{T,P<:Number}(M::SharedArray{T}, px::Vector{P}, py::Vector{P}, value::T; convex::Bool=false, reverse::Bool=false)
+  M = convert(Array, M)
+  fillpoly!(M, px, py, value; convex=convex, reverse=reverse)
+  M = convert(SharedArray, M)
+end
+
 function fillpoly_convex!{T,P<:Number}(M::Matrix{T}, px::Vector{P}, py::Vector{P}, value::T; reverse::Bool=false)
   left, right = floor(Int64,minimum(px)), ceil(Int64,maximum(px))
   if reverse xrange = 1:size(M, 2)
