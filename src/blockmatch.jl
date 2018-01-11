@@ -110,7 +110,7 @@ function blockmatch(nodes, src_img, dst_img, src_offset, dst_offset, params)
         src = src_img[src_ranges[i]...]
         dst = dst_img[dst_ranges[i]...]
 
-        max_vect_xc = remotecall_fetch(p, get_max_xc_vector, src,  dst)
+        max_vect_xc = remotecall_fetch(get_max_xc_vector, p, src,  dst)
         displacements[i] = max_vect_xc[1:2]
       end
       end

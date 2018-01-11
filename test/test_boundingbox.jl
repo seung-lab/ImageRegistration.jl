@@ -35,27 +35,27 @@ bb = BoundingBox(100,100,100,100)
 tbb = tform_bb(bb, tform)
 @test BoundingBox(200,200,100,100) == tbb
 
-sz = (101, 101)
+sz = (100, 100)
 tform = [cos(pi/6) -sin(pi/6) 0;
         sin(pi/6) cos(pi/6) 0;
         0 0 1];
 bb = BoundingBox(0, -50, 136.60254037844388, 136.60254037844388)
-tbb = tform_bb(sz2bb(sz), tform)
-@test_approx_eq bb2pts(bb) bb2pts(tbb)
+tbb = tform_bb(sz_to_bb(sz), tform)
+@test_approx_eq bb_to_pts(bb) bb_to_pts(tbb)
 
 # test_snap_bb()
-bb = snap_bb(sz2bb((100.5, 200.75)))
-tbb = sz2bb((101, 201))
-@test bb2pts(bb) == bb2pts(tbb)
+bb = snap_bb(sz_to_bb((100.5, 200.75)))
+tbb = sz_to_bb((101, 201))
+@test bb_to_pts(bb) == bb_to_pts(tbb)
 
-bb = snap_bb(sz2bb((100.9, 200.1)))
-tbb = sz2bb((101, 201))
-@test bb2pts(bb) == bb2pts(tbb)
+bb = snap_bb(sz_to_bb((100.9, 200.1)))
+tbb = sz_to_bb((101, 201))
+@test bb_to_pts(bb) == bb_to_pts(tbb)
 
 bb = snap_bb(BoundingBox(100.9, 200.1, 100.5, 100.2))
-tbb = sz2bb((101, 201))
+tbb = sz_to_bb((101, 201))
 tbb = BoundingBox(100, 200, 102, 101)
-@test bb2pts(bb) == bb2pts(tbb)  
+@test bb_to_pts(bb) == bb_to_pts(tbb)  
 
 a = BoundingBox(0,0,10,10)
 b = BoundingBox(0,0,5,5)

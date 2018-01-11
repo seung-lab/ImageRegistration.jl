@@ -33,4 +33,4 @@ tform = [cos(0.5) -sin(0.5) 0;
         0 0 1]
 offset = [0.0, 0.0]
 img_warped, warped_offset = imwarp(img, tform, offset)
-@test warped_offset == [0, -5]
+@test warped_offset == [0, -6]

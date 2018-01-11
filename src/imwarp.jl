@@ -101,10 +101,8 @@ function imwarp!{T}(warped_img::Union{Array{T}, SharedArray{T}}, img::Union{Arra
 #  M[3,1:2] -= offset-1.0   # include conversion to pixel space of original img
   M[3,1:2] -= offset-0.5   # include conversion to pixel space of original img
 
-
   x_max = size(img, 1);
   y_max = size(img, 2);
-
   
   if parallel && nprocs() != 1 
     if !(typeof(warped_img) <: SharedArray)
