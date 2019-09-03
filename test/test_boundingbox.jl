@@ -1,3 +1,5 @@
+
+println("testing BoundingBox")
 # test_bb_operations()
 A = BoundingBox(10,10,30,20)
 B = BoundingBox(5,20,20,10)
@@ -11,13 +13,13 @@ D = BoundingBox(5,10,35,20)
   dst = [4.0 2.0;
           8.0 2.0;
           6.0 10.0]
-  bounds = find_mesh_bb(dst)
+  bounds = find_mesh_bb(dst')
   @test bounds == BoundingBox(4,2,4,8)
 
   dst = [0.0 0.0;
           0.0 0.0;
           0.0 0.0]
-  bounds = find_mesh_bb(dst)
+  bounds = find_mesh_bb(dst')
   @test bounds == BoundingBox(0,0,0,0)
 
 # test_tform_bb()
@@ -41,7 +43,7 @@ tform = [cos(pi/6) -sin(pi/6) 0;
         0 0 1];
 bb = BoundingBox(0, -50, 136.60254037844388, 136.60254037844388)
 tbb = tform_bb(sz_to_bb(sz), tform)
-@test_approx_eq bb_to_pts(bb) bb_to_pts(tbb)
+@test bb_to_pts(bb) ≈ bb_to_pts(tbb)
 
 # test_snap_bb()
 bb = snap_bb(sz_to_bb((100.5, 200.75)))
@@ -55,7 +57,7 @@ tbb = sz_to_bb((101, 201))
 bb = snap_bb(BoundingBox(100.9, 200.1, 100.5, 100.2))
 tbb = sz_to_bb((101, 201))
 tbb = BoundingBox(100, 200, 102, 101)
-@test bb_to_pts(bb) == bb_to_pts(tbb)  
+@test bb_to_pts(bb) == bb_to_pts(tbb)
 
 a = BoundingBox(0,0,10,10)
 b = BoundingBox(0,0,5,5)

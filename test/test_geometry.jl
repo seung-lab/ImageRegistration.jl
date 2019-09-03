@@ -1,29 +1,31 @@
+
+println("testing geometry")
 a = [0.0 0.0;
      0.0 10.0;
      10.0 10.0;
      10.0 0.0;
      0.0 0.0];
-@test in_poly([5,5], a)
-@test in_poly([0,0], a)
-@test !in_poly([-1,0], a)
-@test in_poly([1,1], a)
-@test !in_poly([11,1], a)
-@test in_poly([10,1], a)
-@test in_poly([9.99,1], a)
+@test pt_in_poly([5,5], a)
+@test pt_in_poly([0,0], a)
+@test !pt_in_poly([-1,0], a)
+@test pt_in_poly([1,1], a)
+@test !pt_in_poly([11,1], a)
+@test pt_in_poly([10,1], a)
+@test pt_in_poly([9.99,1], a)
 
 b = [5.0 0.0;
      9.0 10.0;
      3.0 11.0;
      4.0 5.0];
-@test in_poly([5,1], b)
-@test !in_poly([0,0], b)
-@test !in_poly([-1,0], b)
-@test !in_poly([1,1], b)
-@test !in_poly([11,1], b)
-@test !in_poly([10.01,1], b)
-@test !in_poly([9.99,1], b)
-@test in_poly([4,5], b)
-@test in_poly([4,6], b)
+@test pt_in_poly([5,1], b)
+@test !pt_in_poly([0,0], b)
+@test !pt_in_poly([-1,0], b)
+@test !pt_in_poly([1,1], b)
+@test !pt_in_poly([11,1], b)
+@test !pt_in_poly([10.01,1], b)
+@test !pt_in_poly([9.99,1], b)
+@test pt_in_poly([4,5], b)
+@test pt_in_poly([4,6], b)
 
 @test poly_intersects(a, b)
 c = [0.0 0.0;
@@ -37,26 +39,26 @@ d = [3.0 0.0;
 @test !poly_intersects(b, c)
 @test !poly_intersects(c, b)
 @test poly_intersects(c, a)
-@test !poly_intersects(b, d)
+@test poly_intersects(b, d)
 @test poly_intersects(a, d)
 
-@test on_line_segment([0,0], ([-1,0], [1,0]))
-@test on_line_segment([0,0], ([-1,0], [1,0.01]))
-@test on_line_segment([0,0], ([-1,0], [1.0001,0]))
-@test on_line_segment([0,0], ([-1,0], [1.001,0]))
-@test on_line_segment([0,0], ([-1,0], [1.01,0]))
-@test on_line_segment([0,0], ([-1,0], [1.1,0]))
-@test !on_line_segment([0,0], ([-1,0], [1.1,0.1]))
+@test pt_on_line_segment([0,0], ([-1,0], [1,0]))
+@test pt_on_line_segment([0,0], ([-1,0], [1,0.01]))
+@test pt_on_line_segment([0,0], ([-1,0], [1.0001,0]))
+@test pt_on_line_segment([0,0], ([-1,0], [1.001,0]))
+@test pt_on_line_segment([0,0], ([-1,0], [1.01,0]))
+@test pt_on_line_segment([0,0], ([-1,0], [1.1,0]))
+@test !pt_on_line_segment([0,0], ([-1,0], [1.1,0.1]))
 
-@test on_line_segment([0,0], ([0,-1], [0,1]))
-@test on_line_segment([0,0], ([0,-1], [0.01,1]))
-@test on_line_segment([0,0], ([0,-1], [0,1.0001]))
-@test on_line_segment([0,0], ([0,-1], [0,1.001]))
-@test on_line_segment([0,0], ([0,-1], [0,1.01]))
-@test on_line_segment([0,0], ([0,-1], [0,1.1]))
-@test !on_line_segment([0,0], ([0,-1], [0.1,1.1]))
+@test pt_on_line_segment([0,0], ([0,-1], [0,1]))
+@test pt_on_line_segment([0,0], ([0,-1], [0.01,1]))
+@test pt_on_line_segment([0,0], ([0,-1], [0,1.0001]))
+@test pt_on_line_segment([0,0], ([0,-1], [0,1.001]))
+@test pt_on_line_segment([0,0], ([0,-1], [0,1.01]))
+@test pt_on_line_segment([0,0], ([0,-1], [0,1.1]))
+@test !pt_on_line_segment([0,0], ([0,-1], [0.1,1.1]))
 
-@test on_line_segment([1,1], ([0,0], [10,10]))
+@test pt_on_line_segment([1,1], ([0,0], [10,10]))
 
 e = [3.0 3.0;
      6.0 3.0;
@@ -117,7 +119,7 @@ output = [10.0 3.0
       0.0 8.0
       0.0 3.0
       10.0 3.0]
-@test_approx_eq clip_polygon(subject, clip) output
+@test clip_polygon(subject, clip) ≈ output
 
 subject = [0.0 0.0
            10.0 0.0
@@ -134,15 +136,15 @@ output = [3.0 3.0
       8.0 8.0
       3.0 8.0
       3.0 3.0]
-@test_approx_eq clip_polygon(subject, clip) output
+@test clip_polygon(subject, clip) ≈ output
 
 a = [0.0 0.0
     4.0 0.0
     4.0 3.0
     0.0 0.0]
-@test_approx_eq poly_area(a) 6
+@test poly_area(a) ≈ 6
 a = [0.0 0.0
     -4.0 0.0
     -4.0 -3.0
     0.0 0.0]
-@test_approx_eq poly_area(a) 6
+@test poly_area(a) ≈ 6

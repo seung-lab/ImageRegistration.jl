@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/seung-lab/ImageRegistration.jl.svg?branch=master)](https://travis-ci.org/seung-lab/ImageRegistration.jl)
 
 # ImageRegistration.jl
-An image registration toolbox for Julia. 
+An image registration toolbox for Julia.
 
 * Create point set correspondences
 * Calculate geometric transforms
@@ -14,12 +14,12 @@ Pkg.add("ImageRegistration")
 ```
 
 ## Dependencies
-* Images 
+* Images
 * Cairo (for visualizations)
 
 ## The Toolbox
 ### Types
-There are two basic types to derive and apply transforms in this pacakge, the **Mesh** type and the **Matches** type. 
+There are two basic types to derive and apply transforms in this pacakge, the **Mesh** type and the **Matches** type.
 
 The Mesh type includes two sets of nodes, source nodes (src_nodes) and the destination nodes that represent the transformation of the mesh (dst_nodes), as well as an incidence matrix the represents the edges of the mesh. See the `Mesh` documentation for more information.
 
@@ -41,7 +41,7 @@ julia -p <number of nodes>
 * **rigid** transforms (isometries)
 * **translations** (displacements)
 * **piecewise affine** transforms (diffeomorphisms)
- 
+
 All transforms are calculated and applied as right-hand matrix mulitplication. See the documentation in `IMWARP` and `MESHWARP`, as well as each of the transforms for more information.
 
 ### Render
@@ -97,7 +97,7 @@ params = default_params()
 params["search_r"] = 1000
 
 # Blockmatch the first image to the second imag (both with offsets of [0,0])
-mesh, matches = blockmatch(imgA, imgB, [0,0], [0,0], params)
+mesh, matches = blockmatch(imgA, imgB, src_offset=[0,0], dst_offset=[0,0], params=params)
 
 # Calculate rigid transform and render the first image with it
 tform = calculate_rigid(matches)
