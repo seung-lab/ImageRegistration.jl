@@ -1,3 +1,5 @@
+using Statistics
+
 """
 `CALCULATE_AFFINE` - Compute left-hand affine transform from two Nxd point sets
 
@@ -5,11 +7,11 @@
 tform = calculate_affine(moving_pts, fixed_pts)
 ```
 
-* moving_pts: Nxd array, each row being homogeneous coords of a point, of the 
+* moving_pts: Nxd array, each row being homogeneous coords of a point, of the
     point set that is moving to fit the fixed point set.
-* fixed_pts: Nxd array, each row being homogeneous coords of a point, of the 
+* fixed_pts: Nxd array, each row being homogeneous coords of a point, of the
     reference point set.
-* tform: affine transformation that produces a mapping of the moving_pts to 
+* tform: affine transformation that produces a mapping of the moving_pts to
     fixed_pts.
 
 ```
@@ -27,11 +29,11 @@ end
 tform = calculate_rigid(moving_pts, fixed_pts)
 ```
 
-* moving_pts: Nxd array, each row being homogeneous coords of a point, of the 
+* moving_pts: Nxd array, each row being homogeneous coords of a point, of the
     point set that is moving to fit the fixed point set.
-* fixed_pts: Nxd array, each row being homogeneous coords of a point, of the 
+* fixed_pts: Nxd array, each row being homogeneous coords of a point, of the
     reference point set.
-* tform: rigid transformation that produces a mapping of the moving_pts to 
+* tform: rigid transformation that produces a mapping of the moving_pts to
     fixed_pts.
 
 ```
@@ -42,15 +44,15 @@ function calculate_rigid(moving_pts, fixed_pts)
   moving_pts = moving_pts[:,1:end-1]
   fixed_pts = fixed_pts[:,1:end-1]
   n, dim = size(moving_pts)
-  moving_bar = mean(moving_pts, 1)
-  fixed_bar = mean(fixed_pts, 1)
+  moving_bar = mean(moving_pts, dims=1)
+  fixed_bar = mean(fixed_pts, dims=1)
   moving_centered = moving_pts .- moving_bar
   fixed_centered = fixed_pts .- fixed_bar
-  C = fixed_centered.' * moving_centered / n
+  C = transpose(fixed_centered) * moving_centered / n
   U,s,V = svd(C)
-  # Rotation R in least squares sense: 
+  # Rotation R in least squares sense:
   # moving_pts - moving_bar = (fixed_pts - fixed_bar)*R
-  R = (U * diagm(vcat(ones(dim-1), det(U*V.'))) * V.' ).'
+  R = transpose(U * diagm(0 => vcat(ones(dim-1), det(U*transpose(V)))) * transpose(V) )
   t = fixed_bar - moving_bar*R
   return [R zeros(dim); t 1]
 end
@@ -62,11 +64,11 @@ end
 tform = calculate_translation(moving_pts, fixed_pts)
 ```
 
-* moving_pts: Nxd array, each row being nonhomogeneous coords of a point, of the 
+* moving_pts: Nxd array, each row being nonhomogeneous coords of a point, of the
     point set that is moving to fit the fixed point set.
-* fixed_pts: Nxd array, each row being nonhomogeneous coords of a point, of the 
+* fixed_pts: Nxd array, each row being nonhomogeneous coords of a point, of the
     reference point set.
-* tform: translation transformation that produces a mapping of the moving_pts to 
+* tform: translation transformation that produces a mapping of the moving_pts to
     fixed_pts.
 
 ```
@@ -75,10 +77,10 @@ fixed_pts = moving_pts * tform
 """
 function calculate_translation(moving_pts, fixed_pts)
   n, dim = size(moving_pts)
-  moving_bar = mean(moving_pts, 1)
-  fixed_bar = mean(fixed_pts, 1)
+  moving_bar = mean(moving_pts, dims=1)
+  fixed_bar = mean(fixed_pts, dims=1)
   t = fixed_bar - moving_bar
-  return [eye(2) zeros(dim); t 1]
+  return [Matrix(1.0I,2,2) zeros(dim); t 1]
 end
 
 function calculate_affine(matches::Matches)

@@ -2,6 +2,10 @@ module ImageRegistration
 
 # using Images
 # using Cairo
+using SharedArrays
+using SparseArrays
+using LinearAlgebra
+using Distributed
 
 include("mesh.jl")
 include("convolve.jl")

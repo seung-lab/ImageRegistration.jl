@@ -1,5 +1,5 @@
 using ImageRegistration
-using Base.Test
+using Test
 
 include("test_boundingbox.jl")
 include("test_imwarp.jl")
